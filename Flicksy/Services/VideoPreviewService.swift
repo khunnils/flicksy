@@ -17,8 +17,8 @@ actor VideoPreviewService {
     static let shared = VideoPreviewService()
 
     /// Quantized maximum pixel sizes, mirroring `ThumbnailService` so that
-    /// changing the grid column count reuses cached posters instead of
-    /// regenerating every frame for a slightly different size.
+    /// nearby zoom levels reuse cached posters instead of regenerating every
+    /// frame for a slightly different size.
     private enum SizeBucket: Int {
         case small = 256
         case medium = 512

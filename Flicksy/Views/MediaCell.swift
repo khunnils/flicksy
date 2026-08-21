@@ -8,17 +8,41 @@ import SwiftUI
 /// Shared visual chrome for grid cells: a rounded, subtly bordered card that
 /// clips its content.
 struct MediaCardBackground<Content: View>: View {
+    var isSelected: Bool = false
     @ViewBuilder var content: Content
 
     var body: some View {
         content
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(.quaternary.opacity(0.5))
+            .background(isSelected ? AnyShapeStyle(.tint.opacity(0.18)) : AnyShapeStyle(.quaternary.opacity(0.5)))
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .strokeBorder(.separator, lineWidth: 0.5)
+                    .strokeBorder(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.separator),
+                                  lineWidth: isSelected ? 3 : 0.5)
             )
+    }
+}
+
+extension View {
+    /// Finder-style click-to-select behaviour for a media element.
+    ///
+    /// A plain click selects only `item`; Command-click toggles it in the
+    /// selection; Shift-click extends the range from the anchor; a double click
+    /// opens the preview. The modifier variants are attached as
+    /// `highPriorityGesture` so they win over the plain click when a modifier is
+    /// held.
+    func selectableCell(_ item: MediaItem, model: BrowserModel) -> some View {
+        self
+            .contentShape(Rectangle())
+            .highPriorityGesture(TapGesture().modifiers(.command).onEnded {
+                model.selectItem(item, toggle: true)
+            })
+            .highPriorityGesture(TapGesture().modifiers(.shift).onEnded {
+                model.selectItem(item, extend: true)
+            })
+            .onTapGesture(count: 2) { model.previewItem(item) }
+            .onTapGesture { model.selectItem(item) }
     }
 }
 

@@ -24,9 +24,9 @@ actor ThumbnailService {
         let pixelHeight: Int?
     }
 
-    /// Quantized maximum pixel sizes. Bucketing means changing the grid column
-    /// count reuses an existing cached thumbnail instead of regenerating every
-    /// image for a slightly different pixel size.
+    /// Quantized maximum pixel sizes. Bucketing means nearby zoom levels reuse
+    /// an existing cached thumbnail instead of regenerating every image for a
+    /// slightly different pixel size.
     private enum SizeBucket: Int, CaseIterable {
         case small = 256
         case medium = 512

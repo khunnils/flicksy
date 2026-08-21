@@ -26,9 +26,11 @@ struct VideoCell: View {
 
     private var isActive: Bool { model.playingVideoID == item.id }
 
+    private var isSelected: Bool { model.selectedItemIDs.contains(item.id) }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            MediaCardBackground {
+            MediaCardBackground(isSelected: isSelected) {
                 content
             }
             .aspectRatio(1, contentMode: .fit)
@@ -61,7 +63,7 @@ struct VideoCell: View {
     @ViewBuilder
     private var content: some View {
         if let playback {
-            VideoPlayerView(player: playback.player, controlsStyle: .inline)
+            VideoPlayerView(player: playback.player, controlsStyle: .inline, refusesKeyboardFocus: true)
         } else if let poster {
             posterView(poster)
         } else if didFail {
@@ -80,6 +82,7 @@ struct VideoCell: View {
             .padding(2)
             .overlay {
                 Button {
+                    model.selectItem(item)
                     model.playingVideoID = item.id
                 } label: {
                     Image(systemName: "play.circle.fill")
@@ -90,12 +93,9 @@ struct VideoCell: View {
                 .buttonStyle(.plain)
                 .help("Play inline")
             }
-            // Clicking the frame itself (rather than the play button) opens the
-            // focused viewer, per spec section 16.
-            .contentShape(Rectangle())
-            .onTapGesture {
-                model.openViewer(item)
-            }
+            // Clicking the frame selects; double-clicking opens the focused viewer
+            // (spec section 16).
+            .selectableCell(item, model: model)
     }
 
     private var subtitle: String? {

@@ -64,13 +64,26 @@ final class VideoPlayback {
 /// `AVPlayerView` is used in preference to a hand-built transport so playback
 /// gets the standard macOS scrubber, volume, and keyboard behaviour for free
 /// (spec section 18).
+/// An `AVPlayerView` that declines first-responder status.
+///
+/// Inline grid players use this so keyboard events (Space, Enter, arrows, Delete)
+/// keep flowing to the browser for selection and navigation instead of being
+/// swallowed by whichever clip happens to be playing. The full-screen viewer uses
+/// a normal `AVPlayerView` so its transport keeps keyboard focus.
+private final class NonKeyPlayerView: AVPlayerView {
+    override var acceptsFirstResponder: Bool { false }
+}
+
 struct VideoPlayerView: NSViewRepresentable {
     let player: AVPlayer
     var controlsStyle: AVPlayerViewControlsStyle = .inline
     var showsFullScreenToggleButton = false
+    /// When true the view refuses first-responder status so keyboard events reach
+    /// the browser. Used by inline grid cells.
+    var refusesKeyboardFocus = false
 
     func makeNSView(context: Context) -> AVPlayerView {
-        let view = AVPlayerView()
+        let view: AVPlayerView = refusesKeyboardFocus ? NonKeyPlayerView() : AVPlayerView()
         view.player = player
         view.controlsStyle = controlsStyle
         view.showsFullScreenToggleButton = showsFullScreenToggleButton

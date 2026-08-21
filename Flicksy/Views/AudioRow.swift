@@ -27,6 +27,7 @@ struct AudioRow: View {
     @State private var pendingSeekFraction: Double?
 
     private var isActive: Bool { model.playingAudioID == item.id }
+    private var isSelected: Bool { model.selectedItemIDs.contains(item.id) }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -53,8 +54,14 @@ struct AudioRow: View {
         .padding(.vertical, 8)
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary.opacity(0.4))
+        .background(isSelected ? AnyShapeStyle(.tint.opacity(0.18)) : AnyShapeStyle(.quaternary.opacity(0.4)))
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.clear),
+                              lineWidth: isSelected ? 3 : 0)
+        )
+        .selectableCell(item, model: model)
         .task(id: item.url.path) {
             await loadWaveform()
         }
@@ -143,6 +150,7 @@ struct AudioRow: View {
     // MARK: - Playback
 
     private func toggle() {
+        model.selectItem(item)
         guard let playback, isActive else {
             activate()
             return
@@ -153,6 +161,7 @@ struct AudioRow: View {
     /// Clicking anywhere on the waveform plays from that position, whether or not
     /// the row is already the active one.
     private func seek(toFraction fraction: Double) {
+        model.selectItem(item)
         guard let playback else {
             pendingSeekFraction = fraction
             activate()

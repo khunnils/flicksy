@@ -12,7 +12,11 @@ import Foundation
 /// directory enumeration. Expensive fields (`duration`, pixel dimensions) are
 /// filled in lazily by later milestones and remain `nil` until then.
 struct MediaItem: Identifiable, Hashable, Sendable {
-    let id: UUID
+    /// Identity is the file's path so that selection and playback state stay
+    /// stable across rescans (which rebuild the item list from scratch), matching
+    /// how `MediaFolder` keys on its path.
+    var id: String { url.path }
+
     let url: URL
     let type: MediaType
     let name: String
@@ -24,7 +28,6 @@ struct MediaItem: Identifiable, Hashable, Sendable {
     var modifiedAt: Date?
 
     nonisolated init(
-        id: UUID = UUID(),
         url: URL,
         type: MediaType,
         name: String,
@@ -34,7 +37,6 @@ struct MediaItem: Identifiable, Hashable, Sendable {
         fileSize: Int64? = nil,
         modifiedAt: Date? = nil
     ) {
-        self.id = id
         self.url = url
         self.type = type
         self.name = name

@@ -20,16 +20,15 @@ struct ImageCell: View {
     @State private var pixelSize: (width: Int, height: Int)?
     @State private var didFail = false
 
+    private var isSelected: Bool { model.selectedItemIDs.contains(item.id) }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            MediaCardBackground {
+            MediaCardBackground(isSelected: isSelected) {
                 content
             }
             .aspectRatio(1, contentMode: .fit)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                model.openViewer(item)
-            }
+            .selectableCell(item, model: model)
 
             MediaCaption(title: item.name, subtitle: subtitle)
         }

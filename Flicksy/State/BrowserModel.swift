@@ -6,6 +6,11 @@
 import Foundation
 import Observation
 
+/// Grid navigation directions for keyboard selection movement.
+enum MoveDirection {
+    case left, right, up, down
+}
+
 /// The single source of truth for the browser UI.
 ///
 /// Deliberately kept to plain `@Observable` state with no additional architectural
@@ -63,6 +68,18 @@ final class BrowserModel {
     /// The item shown in the focused full-screen viewer, if any (spec section 16).
     private(set) var viewerItemID: MediaItem.ID?
 
+    /// Items the user has selected in the browser. Selection is independent of
+    /// playback and viewer state: clicking selects (Finder-style) rather than
+    /// opening, so the user can act on one or many items at once.
+    var selectedItemIDs: Set<MediaItem.ID> = []
+
+    /// The anchor for Shift-click / Shift-arrow range selection.
+    var selectionAnchorID: MediaItem.ID?
+
+    /// The keyboard cursor: the last item touched by a click or arrow move. Drives
+    /// arrow navigation, Space preview and Enter playback.
+    var focusedItemID: MediaItem.ID?
+
     private(set) var isScanning = false
     private(set) var isLoadingMedia = false
 
@@ -70,20 +87,37 @@ final class BrowserModel {
     /// the situation is resolved (spec section 24).
     var loadError: String?
 
-    /// Number of columns in the image/video grid (1...4), persisted between
-    /// launches (spec section 9).
-    var gridColumns: Int {
+    /// Target thumbnail width in points. The grid fits as many columns as will
+    /// accommodate this size; persisted between launches.
+    var thumbnailSize: Double {
         didSet {
-            let clamped = min(max(gridColumns, 1), 4)
-            if clamped != gridColumns {
-                gridColumns = clamped
+            let clamped = Self.clampedThumbnailSize(thumbnailSize)
+            if clamped != thumbnailSize {
+                thumbnailSize = clamped
                 return
             }
-            UserDefaults.standard.set(gridColumns, forKey: Self.gridColumnsKey)
+            UserDefaults.standard.set(thumbnailSize, forKey: Self.thumbnailSizeKey)
         }
     }
 
-    private static let gridColumnsKey = "gridColumns"
+    static let minThumbnailSize: Double = 80
+    static let maxThumbnailSize: Double = 400
+    static let defaultThumbnailSize: Double = 200
+    static let thumbnailSizeStep: Double = 28
+
+    static func clampedThumbnailSize(_ size: Double) -> Double {
+        min(max(size, minThumbnailSize), maxThumbnailSize)
+    }
+
+    func zoomIn() {
+        thumbnailSize = Self.clampedThumbnailSize(thumbnailSize + Self.thumbnailSizeStep)
+    }
+
+    func zoomOut() {
+        thumbnailSize = Self.clampedThumbnailSize(thumbnailSize - Self.thumbnailSizeStep)
+    }
+
+    private static let thumbnailSizeKey = "thumbnailSize"
 
     private let rootStore = RootFolderStore()
     private var scanTask: Task<Void, Never>?
@@ -92,8 +126,8 @@ final class BrowserModel {
     // MARK: - Lifecycle
 
     init() {
-        let storedColumns = UserDefaults.standard.integer(forKey: Self.gridColumnsKey)
-        gridColumns = storedColumns == 0 ? 3 : min(max(storedColumns, 1), 4)
+        let storedSize = UserDefaults.standard.object(forKey: Self.thumbnailSizeKey) as? Double
+        thumbnailSize = storedSize.map(Self.clampedThumbnailSize) ?? Self.defaultThumbnailSize
     }
 
     /// Restore persisted root folders and scan them. Call once when the UI appears.
@@ -187,6 +221,206 @@ final class BrowserModel {
         playingVideoID = nil
         playingAudioID = nil
         viewerItemID = nil
+        selectedItemIDs = []
+        selectionAnchorID = nil
+        focusedItemID = nil
+    }
+
+    // MARK: - Selection
+
+    /// The items in visual order: the grid (images and videos) followed by the
+    /// audio list. Selection and keyboard navigation walk this sequence so Up/Down
+    /// can carry the cursor between the two sections.
+    var orderedItems: [MediaItem] { visualItems + audioItems }
+
+    /// Update the selection for a click on `item`.
+    ///
+    /// - `extend`: Shift-click — select the range from the anchor to `item`.
+    /// - `toggle`: Command-click — add or remove `item` without disturbing the rest.
+    /// - neither: a plain click that selects only `item`.
+    func selectItem(_ item: MediaItem, toggle: Bool = false, extend: Bool = false) {
+        if extend, let anchor = selectionAnchorID ?? focusedItemID {
+            selectRange(from: anchor, to: item.id)
+            focusedItemID = item.id
+            return
+        }
+
+        if toggle {
+            if selectedItemIDs.contains(item.id) {
+                selectedItemIDs.remove(item.id)
+            } else {
+                selectedItemIDs.insert(item.id)
+            }
+            focusedItemID = item.id
+            selectionAnchorID = item.id
+            return
+        }
+
+        selectedItemIDs = [item.id]
+        focusedItemID = item.id
+        selectionAnchorID = item.id
+    }
+
+    private func selectRange(from: MediaItem.ID, to: MediaItem.ID) {
+        let ordered = orderedItems
+        guard let a = ordered.firstIndex(where: { $0.id == from }),
+              let b = ordered.firstIndex(where: { $0.id == to })
+        else {
+            selectedItemIDs = [to]
+            return
+        }
+        let range = a <= b ? a...b : b...a
+        selectedItemIDs = Set(ordered[range].map(\.id))
+    }
+
+    func selectAll() {
+        selectedItemIDs = Set(orderedItems.map(\.id))
+        if focusedItemID == nil { focusedItemID = orderedItems.first?.id }
+    }
+
+    func clearSelection() {
+        selectedItemIDs = []
+        selectionAnchorID = nil
+        focusedItemID = nil
+    }
+
+    /// Move the keyboard cursor through `orderedItems`.
+    ///
+    /// Left/Right step by one; Up/Down step by a full grid row while in the visual
+    /// grid and by one while in the single-column audio list. Movement clamps at
+    /// either end rather than wrapping, matching Finder.
+    func moveSelection(_ direction: MoveDirection, columns: Int, extending: Bool) {
+        let ordered = orderedItems
+        guard !ordered.isEmpty else { return }
+
+        let cols = max(1, columns)
+        let visualCount = visualItems.count
+        let currentIndex = focusedItemID
+            .flatMap { id in ordered.firstIndex { $0.id == id } } ?? 0
+        let inAudio = currentIndex >= visualCount
+
+        var target: Int
+        switch direction {
+        case .left: target = currentIndex - 1
+        case .right: target = currentIndex + 1
+        case .up: target = inAudio ? currentIndex - 1 : currentIndex - cols
+        case .down: target = inAudio ? currentIndex + 1 : currentIndex + cols
+        }
+        target = min(max(target, 0), ordered.count - 1)
+
+        let item = ordered[target]
+        selectItem(item, extend: extending)
+    }
+
+    // MARK: - Preview / viewer playlist
+
+    /// The set of items the viewer's Left/Right navigation walks. When two or more
+    /// visual items are selected, browsing is confined to that subset; otherwise it
+    /// spans every image and video in the folder.
+    var viewerPlaylist: [MediaItem] {
+        let selectedVisual = visualItems.filter { selectedItemIDs.contains($0.id) }
+        return selectedVisual.count >= 2 ? selectedVisual : visualItems
+    }
+
+    /// Open the preview for the current selection. Uses the focused item when it is
+    /// an image or video, otherwise the first selected visual item. Audio-only
+    /// selections do nothing (audio is not previewable).
+    func openPreview() {
+        if let focusedItemID,
+           let focused = orderedItems.first(where: { $0.id == focusedItemID }),
+           focused.type != .audio {
+            openViewer(focused)
+            return
+        }
+        if let firstVisual = visualItems.first(where: { selectedItemIDs.contains($0.id) }) {
+            openViewer(firstVisual)
+        }
+    }
+
+    /// Select `item` and, if it is previewable, open it in the viewer. Used for
+    /// double-click.
+    func previewItem(_ item: MediaItem) {
+        selectItem(item)
+        if item.type != .audio {
+            openViewer(item)
+        }
+    }
+
+    /// Start or stop inline playback of the focused item. Videos toggle
+    /// `playingVideoID`, audio toggles `playingAudioID`, images are ignored.
+    func togglePlaybackOfFocusedItem() {
+        guard let focusedItemID,
+              let item = orderedItems.first(where: { $0.id == focusedItemID })
+        else { return }
+
+        switch item.type {
+        case .video:
+            playingVideoID = (playingVideoID == item.id) ? nil : item.id
+        case .audio:
+            playingAudioID = (playingAudioID == item.id) ? nil : item.id
+        case .image:
+            break
+        }
+    }
+
+    // MARK: - Trash
+
+    /// Move the selected items to the Trash, Finder-style: recoverable, not a
+    /// permanent delete. Files that succeed are removed from the listing
+    /// immediately; the focus moves to the nearest surviving neighbour.
+    func moveSelectedItemsToTrash() {
+        guard !selectedItemIDs.isEmpty else { return }
+
+        let ordered = orderedItems
+        let targets = ordered.filter { selectedItemIDs.contains($0.id) }
+        guard !targets.isEmpty else { return }
+
+        let firstDeletedIndex = ordered.firstIndex { selectedItemIDs.contains($0.id) } ?? 0
+
+        var trashedIDs: Set<MediaItem.ID> = []
+        var failed = false
+        for item in targets {
+            do {
+                try FileManager.default.trashItem(at: item.url, resultingItemURL: nil)
+                trashedIDs.insert(item.id)
+            } catch {
+                failed = true
+            }
+        }
+
+        guard !trashedIDs.isEmpty else {
+            loadError = "The selected items could not be moved to the Trash. If this folder was added before deletion was enabled, remove and re-add it to grant write access."
+            return
+        }
+
+        if let playingVideoID, trashedIDs.contains(playingVideoID) { self.playingVideoID = nil }
+        if let playingAudioID, trashedIDs.contains(playingAudioID) { self.playingAudioID = nil }
+        if let viewerItemID, trashedIDs.contains(viewerItemID) { self.viewerItemID = nil }
+
+        mediaItems.removeAll { trashedIDs.contains($0.id) }
+        visualItems.removeAll { trashedIDs.contains($0.id) }
+        audioItems.removeAll { trashedIDs.contains($0.id) }
+        selectedItemIDs.subtract(trashedIDs)
+
+        let newOrdered = visualItems + audioItems
+        if newOrdered.isEmpty {
+            focusedItemID = nil
+            selectionAnchorID = nil
+            selectedItemIDs = []
+        } else {
+            let idx = min(firstDeletedIndex, newOrdered.count - 1)
+            let newFocus = newOrdered[idx]
+            focusedItemID = newFocus.id
+            selectionAnchorID = newFocus.id
+            selectedItemIDs = [newFocus.id]
+        }
+
+        if failed {
+            loadError = "Some items could not be moved to the Trash."
+        }
+
+        // A newly emptied folder should disappear from the smart sidebar.
+        rescanRoots()
     }
 
     // MARK: - Full media viewer
@@ -203,6 +437,7 @@ final class BrowserModel {
         playingVideoID = nil
         playingAudioID = nil
         viewerItemID = item.id
+        focusedItemID = item.id
     }
 
     func closeViewer() {
@@ -217,26 +452,28 @@ final class BrowserModel {
         stepViewer(by: 1)
     }
 
-    /// Move the viewer selection through `visualItems`, stopping at either end
+    /// Move the viewer selection through `viewerPlaylist`, stopping at either end
     /// rather than wrapping around.
     private func stepViewer(by offset: Int) {
+        let playlist = viewerPlaylist
         guard let viewerItemID,
-              let index = visualItems.firstIndex(where: { $0.id == viewerItemID })
+              let index = playlist.firstIndex(where: { $0.id == viewerItemID })
         else { return }
 
         let next = index + offset
-        guard visualItems.indices.contains(next) else { return }
-        self.viewerItemID = visualItems[next].id
+        guard playlist.indices.contains(next) else { return }
+        self.viewerItemID = playlist[next].id
     }
 
     var canShowPreviousInViewer: Bool { viewerNeighbourExists(offset: -1) }
     var canShowNextInViewer: Bool { viewerNeighbourExists(offset: 1) }
 
     private func viewerNeighbourExists(offset: Int) -> Bool {
+        let playlist = viewerPlaylist
         guard let viewerItemID,
-              let index = visualItems.firstIndex(where: { $0.id == viewerItemID })
+              let index = playlist.firstIndex(where: { $0.id == viewerItemID })
         else { return false }
-        return visualItems.indices.contains(index + offset)
+        return playlist.indices.contains(index + offset)
     }
 
     // MARK: - Helpers

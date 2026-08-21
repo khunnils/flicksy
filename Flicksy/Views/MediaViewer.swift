@@ -159,10 +159,17 @@ struct MediaViewer: View {
     /// from accessibility, they exist purely to register key equivalents.
     private var shortcuts: some View {
         ZStack {
+            // Space closes the preview, matching Finder's Quick Look.
+            Button("Close") {
+                model.closeViewer()
+            }
+            .keyboardShortcut(.space, modifiers: [])
+
+            // Enter starts/stops playback of the previewed video.
             Button("Play/Pause") {
                 playback?.togglePlayPause()
             }
-            .keyboardShortcut(.space, modifiers: [])
+            .keyboardShortcut(.return, modifiers: [])
             .disabled(playback == nil)
 
             Button("Toggle Full Screen") {

@@ -17,17 +17,34 @@ struct MediaBrowserApp: App {
                 .environment(model)
         }
         .commands {
-            // Grid column shortcuts as real menu items (spec section 9) so the
-            // Cmd-1...Cmd-4 accelerators work regardless of keyboard focus.
             CommandGroup(after: .toolbar) {
                 Section {
-                    ForEach(1...4, id: \.self) { count in
-                        Button("\(count) Column\(count == 1 ? "" : "s")") {
-                            model.gridColumns = count
-                        }
-                        .keyboardShortcut(KeyEquivalent(Character("\(count)")), modifiers: .command)
+                    Button("Zoom In") {
+                        model.zoomIn()
                     }
+                    .keyboardShortcut("+")
+                    .disabled(model.thumbnailSize >= BrowserModel.maxThumbnailSize)
+
+                    Button("Zoom Out") {
+                        model.zoomOut()
+                    }
+                    .keyboardShortcut("-")
+                    .disabled(model.thumbnailSize <= BrowserModel.minThumbnailSize)
                 }
+            }
+
+            CommandGroup(replacing: .pasteboard) {
+                Button("Select All") {
+                    model.selectAll()
+                }
+                .keyboardShortcut("a", modifiers: .command)
+                .disabled(model.orderedItems.isEmpty || model.viewerItemID != nil)
+
+                Button("Move to Trash") {
+                    model.moveSelectedItemsToTrash()
+                }
+                .keyboardShortcut(.delete, modifiers: .command)
+                .disabled(model.selectedItemIDs.isEmpty || model.viewerItemID != nil)
             }
         }
     }

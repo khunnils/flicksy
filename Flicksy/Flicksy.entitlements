@@ -4,7 +4,9 @@
 <dict>
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
-	<key>com.apple.security.files.user-selected.read-only</key>
+	<!-- Read-write so the user can move media to the Trash (Finder-style delete).
+	     Without this the sandbox denies FileManager.trashItem on selected folders. -->
+	<key>com.apple.security.files.user-selected.read-write</key>
 	<true/>
 	<!-- Required for security-scoped bookmarks to persist folder access across launches.
 	     There is no Xcode build setting that emits this key, so it must live here. -->
