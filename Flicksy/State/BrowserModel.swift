@@ -43,7 +43,22 @@ final class BrowserModel {
     /// playing before — the invariant "at most one inline player exists" is
     /// therefore enforced by the state itself rather than by cells coordinating
     /// with each other (spec section 12).
-    var playingVideoID: MediaItem.ID?
+    var playingVideoID: MediaItem.ID? {
+        didSet {
+            if playingVideoID != nil { playingAudioID = nil }
+        }
+    }
+
+    /// The one audio row permitted to hold a live player (spec section 15).
+    ///
+    /// Kept separate from `playingVideoID` because an audio row stays selected and
+    /// scrubbable while paused, but the two are mutually exclusive: hearing a clip
+    /// and a sound effect at once tells you nothing about either.
+    var playingAudioID: MediaItem.ID? {
+        didSet {
+            if playingAudioID != nil { playingVideoID = nil }
+        }
+    }
 
     /// The item shown in the focused full-screen viewer, if any (spec section 16).
     private(set) var viewerItemID: MediaItem.ID?
@@ -170,6 +185,7 @@ final class BrowserModel {
         visualItems = items.filter { $0.type == .image || $0.type == .video }
         audioItems = items.filter { $0.type == .audio }
         playingVideoID = nil
+        playingAudioID = nil
         viewerItemID = nil
     }
 
@@ -182,9 +198,10 @@ final class BrowserModel {
     }
 
     func openViewer(_ item: MediaItem) {
-        // The viewer creates its own player; releasing the inline one keeps the
-        // "one player at a time" invariant.
+        // The viewer creates its own player; releasing the inline ones keeps the
+        // "one player at a time" invariant and stops audio playing underneath it.
         playingVideoID = nil
+        playingAudioID = nil
         viewerItemID = item.id
     }
 

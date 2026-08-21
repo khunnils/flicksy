@@ -87,6 +87,21 @@ enum MediaFormatting {
             : String(format: "%d:%02d", minutes, secs)
     }
 
+    /// `m:ss` clock for the audio transport, where a steadily counting readout is
+    /// easier to follow than the fractional-seconds form used on video cells.
+    static func clock(_ seconds: TimeInterval?) -> String? {
+        guard let seconds, seconds.isFinite, seconds >= 0 else { return nil }
+
+        let total = Int(seconds)
+        let hours = total / 3600
+        let minutes = (total % 3600) / 60
+        let secs = total % 60
+
+        return hours > 0
+            ? String(format: "%d:%02d:%02d", hours, minutes, secs)
+            : String(format: "%d:%02d", minutes, secs)
+    }
+
     static func dimensions(width: Int?, height: Int?) -> String? {
         guard let width, let height, width > 0, height > 0 else { return nil }
         return "\(width)×\(height)"
