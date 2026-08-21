@@ -24,6 +24,15 @@ struct MainView: View {
                     }
                 }
         }
+        .overlay {
+            // Overlaying the split view (rather than using a sheet) lets the
+            // viewer cover the sidebar and fill the window, per spec section 16.
+            if let item = model.viewerItem {
+                MediaViewer(item: item)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.15), value: model.viewerItemID)
         .task {
             model.restore()
         }

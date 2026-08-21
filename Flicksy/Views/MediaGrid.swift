@@ -30,7 +30,7 @@ struct MediaGrid: View {
                 case .image:
                     ImageCell(item: item, targetPixels: targetPixels)
                 case .video:
-                    VideoCell(item: item)
+                    VideoCell(item: item, targetPixels: targetPixels)
                 case .audio:
                     EmptyView() // Audio is rendered in its own full-width section.
                 }

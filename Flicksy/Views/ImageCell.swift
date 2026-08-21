@@ -14,6 +14,8 @@ struct ImageCell: View {
     let item: MediaItem
     let targetPixels: CGFloat
 
+    @Environment(BrowserModel.self) private var model
+
     @State private var image: NSImage?
     @State private var pixelSize: (width: Int, height: Int)?
     @State private var didFail = false
@@ -24,6 +26,10 @@ struct ImageCell: View {
                 content
             }
             .aspectRatio(1, contentMode: .fit)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                model.openViewer(item)
+            }
 
             MediaCaption(title: item.name, subtitle: subtitle)
         }

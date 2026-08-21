@@ -10,14 +10,6 @@ import SwiftUI
 struct MediaBrowserView: View {
     @Environment(BrowserModel.self) private var model
 
-    private var visualItems: [MediaItem] {
-        model.mediaItems.filter { $0.type == .image || $0.type == .video }
-    }
-
-    private var audioItems: [MediaItem] {
-        model.mediaItems.filter { $0.type == .audio }
-    }
-
     var body: some View {
         Group {
             if model.selectedFolderID == nil {
@@ -46,15 +38,15 @@ struct MediaBrowserView: View {
     private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                if !visualItems.isEmpty {
+                if !model.visualItems.isEmpty {
                     section(title: "IMAGES & VIDEO") {
-                        MediaGrid(items: visualItems, columns: model.gridColumns)
+                        MediaGrid(items: model.visualItems, columns: model.gridColumns)
                     }
                 }
 
-                if !audioItems.isEmpty {
+                if !model.audioItems.isEmpty {
                     section(title: "AUDIO") {
-                        AudioSection(items: audioItems)
+                        AudioSection(items: model.audioItems)
                     }
                 }
             }

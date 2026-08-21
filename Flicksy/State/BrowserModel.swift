@@ -30,6 +30,24 @@ final class BrowserModel {
     /// Media directly contained in the selected folder.
     private(set) var mediaItems: [MediaItem] = []
 
+    /// `mediaItems` split by presentation: images and videos share the grid while
+    /// audio gets full-width rows (spec section 8). These are stored rather than
+    /// computed because a folder may hold thousands of items and views read them
+    /// on every body evaluation.
+    private(set) var visualItems: [MediaItem] = []
+    private(set) var audioItems: [MediaItem] = []
+
+    /// The one grid cell permitted to hold a live `AVPlayer`.
+    ///
+    /// Playing a video assigns this, which implicitly tears down whatever was
+    /// playing before — the invariant "at most one inline player exists" is
+    /// therefore enforced by the state itself rather than by cells coordinating
+    /// with each other (spec section 12).
+    var playingVideoID: MediaItem.ID?
+
+    /// The item shown in the focused full-screen viewer, if any (spec section 16).
+    private(set) var viewerItemID: MediaItem.ID?
+
     private(set) var isScanning = false
     private(set) var isLoadingMedia = false
 
@@ -87,7 +105,7 @@ final class BrowserModel {
         rootStore.removeFolder(url)
         if selectedFolderID == id {
             selectedFolderID = nil
-            mediaItems = []
+            setMediaItems([])
         }
         rescanRoots()
     }
@@ -116,7 +134,7 @@ final class BrowserModel {
             // Drop a selection that no longer exists in the refreshed tree.
             if let selection = selectedFolderID, !folderExists(withID: selection, in: trees) {
                 selectedFolderID = nil
-                mediaItems = []
+                setMediaItems([])
             }
         }
     }
@@ -124,7 +142,7 @@ final class BrowserModel {
     private func loadMediaForSelection() {
         mediaTask?.cancel()
         guard let id = selectedFolderID else {
-            mediaItems = []
+            setMediaItems([])
             return
         }
 
@@ -135,14 +153,73 @@ final class BrowserModel {
             do {
                 let items = try await FolderScanner.mediaItems(in: url)
                 guard !Task.isCancelled else { return }
-                mediaItems = items
+                setMediaItems(items)
             } catch is CancellationError {
                 return
             } catch {
-                mediaItems = []
+                setMediaItems([])
                 loadError = "This folder could not be read."
             }
         }
+    }
+
+    /// Replace the current listing, rebuild the per-section splits, and drop any
+    /// playback or viewer state that referred to the previous folder.
+    private func setMediaItems(_ items: [MediaItem]) {
+        mediaItems = items
+        visualItems = items.filter { $0.type == .image || $0.type == .video }
+        audioItems = items.filter { $0.type == .audio }
+        playingVideoID = nil
+        viewerItemID = nil
+    }
+
+    // MARK: - Full media viewer
+
+    /// The item currently presented in the viewer, resolved from its id.
+    var viewerItem: MediaItem? {
+        guard let viewerItemID else { return nil }
+        return visualItems.first { $0.id == viewerItemID }
+    }
+
+    func openViewer(_ item: MediaItem) {
+        // The viewer creates its own player; releasing the inline one keeps the
+        // "one player at a time" invariant.
+        playingVideoID = nil
+        viewerItemID = item.id
+    }
+
+    func closeViewer() {
+        viewerItemID = nil
+    }
+
+    func showPreviousInViewer() {
+        stepViewer(by: -1)
+    }
+
+    func showNextInViewer() {
+        stepViewer(by: 1)
+    }
+
+    /// Move the viewer selection through `visualItems`, stopping at either end
+    /// rather than wrapping around.
+    private func stepViewer(by offset: Int) {
+        guard let viewerItemID,
+              let index = visualItems.firstIndex(where: { $0.id == viewerItemID })
+        else { return }
+
+        let next = index + offset
+        guard visualItems.indices.contains(next) else { return }
+        self.viewerItemID = visualItems[next].id
+    }
+
+    var canShowPreviousInViewer: Bool { viewerNeighbourExists(offset: -1) }
+    var canShowNextInViewer: Bool { viewerNeighbourExists(offset: 1) }
+
+    private func viewerNeighbourExists(offset: Int) -> Bool {
+        guard let viewerItemID,
+              let index = visualItems.firstIndex(where: { $0.id == viewerItemID })
+        else { return false }
+        return visualItems.indices.contains(index + offset)
     }
 
     // MARK: - Helpers

@@ -31,12 +31,15 @@ actor ThumbnailService {
         case small = 256
         case medium = 512
         case large = 1024
+        /// Only requested by the full media viewer, which fills the window.
+        case extraLarge = 2048
 
         static func bucket(forTargetPixels pixels: CGFloat) -> SizeBucket {
             switch pixels {
             case ..<384: return .small
             case ..<768: return .medium
-            default: return .large
+            case ..<1536: return .large
+            default: return .extraLarge
             }
         }
     }
@@ -83,9 +86,11 @@ actor ThumbnailService {
         inFlight[key] = nil
 
         if let result {
-            let width = result.pixelWidth ?? maxPixel
-            let height = result.pixelHeight ?? maxPixel
-            cache.setObject(Box(result), forKey: key, cost: width * height * 4)
+            // Cost must reflect the downsampled thumbnail actually held in memory,
+            // not the source file's dimensions, or a handful of large originals
+            // would blow the limit and evict everything.
+            let size = result.image.size
+            cache.setObject(Box(result), forKey: key, cost: Int(size.width * size.height) * 4)
         }
         return result
     }
