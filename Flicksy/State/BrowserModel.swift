@@ -236,7 +236,8 @@ final class BrowserModel {
     /// Update the selection for a click on `item`.
     ///
     /// - `extend`: Shift-click — select the range from the anchor to `item`.
-    /// - `toggle`: Command-click — add or remove `item` without disturbing the rest.
+    /// - `toggle`: Command-click or Control-click — add or remove `item` without
+    ///   disturbing the rest.
     /// - neither: a plain click that selects only `item`.
     func selectItem(_ item: MediaItem, toggle: Bool = false, extend: Bool = false) {
         if extend, let anchor = selectionAnchorID ?? focusedItemID {

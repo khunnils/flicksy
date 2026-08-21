@@ -54,12 +54,12 @@ struct AudioRow: View {
         .padding(.vertical, 8)
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(isSelected ? AnyShapeStyle(.tint.opacity(0.18)) : AnyShapeStyle(.quaternary.opacity(0.4)))
+        .background(isSelected ? AnyShapeStyle(.quaternary.opacity(0.5)) : AnyShapeStyle(.clear))
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.clear),
-                              lineWidth: isSelected ? 3 : 0)
+                .strokeBorder(isSelected ? AnyShapeStyle(.separator) : AnyShapeStyle(.clear),
+                              lineWidth: isSelected ? 1 : 0)
         )
         .selectableCell(item, model: model)
         .task(id: item.url.path) {

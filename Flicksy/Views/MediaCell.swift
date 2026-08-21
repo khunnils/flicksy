@@ -3,10 +3,11 @@
 //  MediaBrowser
 //
 
+import AppKit
 import SwiftUI
 
-/// Shared visual chrome for grid cells: a rounded, subtly bordered card that
-/// clips its content.
+/// Shared visual chrome for grid cells. Unselected media sits directly on the
+/// browser surface; selection adds only a quiet, neutral highlight.
 struct MediaCardBackground<Content: View>: View {
     var isSelected: Bool = false
     @ViewBuilder var content: Content
@@ -14,12 +15,12 @@ struct MediaCardBackground<Content: View>: View {
     var body: some View {
         content
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(isSelected ? AnyShapeStyle(.tint.opacity(0.18)) : AnyShapeStyle(.quaternary.opacity(0.5)))
+            .background(isSelected ? AnyShapeStyle(.quaternary.opacity(0.5)) : AnyShapeStyle(.clear))
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .strokeBorder(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.separator),
-                                  lineWidth: isSelected ? 3 : 0.5)
+                    .strokeBorder(isSelected ? AnyShapeStyle(.separator) : AnyShapeStyle(.clear),
+                                  lineWidth: isSelected ? 1 : 0)
             )
     }
 }
@@ -27,22 +28,37 @@ struct MediaCardBackground<Content: View>: View {
 extension View {
     /// Finder-style click-to-select behaviour for a media element.
     ///
-    /// A plain click selects only `item`; Command-click toggles it in the
-    /// selection; Shift-click extends the range from the anchor; a double click
-    /// opens the preview. The modifier variants are attached as
-    /// `highPriorityGesture` so they win over the plain click when a modifier is
-    /// held.
+    /// Selection happens as soon as the pointer goes down, so it does not wait for
+    /// the double-click recognizer to fail. A double click still opens the preview.
     func selectableCell(_ item: MediaItem, model: BrowserModel) -> some View {
-        self
+        modifier(SelectableCellModifier(item: item, model: model))
+    }
+}
+
+private struct SelectableCellModifier: ViewModifier {
+    let item: MediaItem
+    let model: BrowserModel
+
+    func body(content: Content) -> some View {
+        content
             .contentShape(Rectangle())
-            .highPriorityGesture(TapGesture().modifiers(.command).onEnded {
-                model.selectItem(item, toggle: true)
-            })
-            .highPriorityGesture(TapGesture().modifiers(.shift).onEnded {
-                model.selectItem(item, extend: true)
-            })
-            .onTapGesture(count: 2) { model.previewItem(item) }
-            .onTapGesture { model.selectItem(item) }
+            .simultaneousGesture(
+                LongPressGesture(minimumDuration: 0)
+                    .onEnded { _ in select() }
+            )
+            .simultaneousGesture(
+                TapGesture(count: 2)
+                    .onEnded { model.previewItem(item) }
+            )
+    }
+
+    private func select() {
+        let modifiers = NSEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        model.selectItem(
+            item,
+            toggle: modifiers.contains(.command) || modifiers.contains(.control),
+            extend: modifiers.contains(.shift)
+        )
     }
 }
 
