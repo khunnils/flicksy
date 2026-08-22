@@ -5,8 +5,8 @@
 
 import SwiftUI
 
-/// The main content area: an image/video grid section followed by a full-width
-/// audio section (spec section 8).
+/// The main content area. Images/video and audio live on separate tabs so a
+/// stills review never scrolls past a waveform list, and vice versa.
 struct MediaBrowserView: View {
     @Environment(BrowserModel.self) private var model
 
@@ -47,7 +47,7 @@ struct MediaBrowserView: View {
                         description: Text("This folder does not contain any supported media.")
                     )
                 }
-            } else if model.hasActiveSearch && model.orderedItems.isEmpty {
+            } else if model.hasActiveSearch && model.visualItems.isEmpty && model.audioItems.isEmpty {
                 ContentUnavailableView(
                     "No Results",
                     systemImage: "magnifyingglass",
@@ -81,28 +81,42 @@ struct MediaBrowserView: View {
     }
 
     private var content: some View {
+        Group {
+            switch model.libraryTab {
+            case .visual:
+                if model.visualItems.isEmpty {
+                    emptyTab(
+                        title: "No Images or Video",
+                        systemImage: "photo.on.rectangle",
+                        otherTabHint: model.audioItems.isEmpty ? nil : "Matching audio is in the Audio tab."
+                    )
+                } else {
+                    scrollingPane(visualGrid)
+                }
+            case .audio:
+                if model.audioItems.isEmpty {
+                    emptyTab(
+                        title: "No Audio",
+                        systemImage: "waveform",
+                        otherTabHint: model.visualItems.isEmpty ? nil : "Matching images and video are in the Images & Video tab."
+                    )
+                } else {
+                    scrollingPane(audioList)
+                }
+            }
+        }
+    }
+
+    private func scrollingPane<Content: View>(_ content: Content) -> some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    if !model.visualItems.isEmpty {
-                        section(title: "IMAGES & VIDEO") {
-                            MediaGrid(
-                                items: model.visualItems,
-                                thumbnailSize: CGFloat(model.thumbnailSize),
-                                cardAspectRatio: CGFloat(model.cardAspectRatio)
-                            )
-                        }
+                content
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width in
+                        columns = columnCount(forWidth: width)
+                        audioColumns = audioColumnCount(forWidth: width)
                     }
-
-                    if !model.audioItems.isEmpty {
-                        audioSection
-                    }
-                }
-                .padding(16)
-                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width in
-                    columns = columnCount(forWidth: width)
-                    audioColumns = audioColumnCount(forWidth: width)
-                }
             }
             .onChange(of: model.focusedItemID) { _, id in
                 guard let id else { return }
@@ -111,6 +125,33 @@ struct MediaBrowserView: View {
                 }
             }
         }
+    }
+
+    private var visualGrid: some View {
+        MediaGrid(
+            items: model.visualItems,
+            thumbnailSize: CGFloat(model.thumbnailSize),
+            cardAspectRatio: CGFloat(model.cardAspectRatio)
+        )
+    }
+
+    private var audioList: some View {
+        AudioSection(items: model.audioItems, viewMode: model.audioViewMode)
+    }
+
+    private func emptyTab(title: String, systemImage: String, otherTabHint: String?) -> some View {
+        ContentUnavailableView {
+            Label(title, systemImage: systemImage)
+        } description: {
+            if let otherTabHint {
+                Text(otherTabHint)
+            } else if model.hasActiveSearch {
+                Text("No media matches \u{201c}\(model.searchQuery)\u{201d}.")
+            } else {
+                Text("This folder does not contain this kind of media.")
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     /// Mirror the grid's adaptive-column math so Up/Down move by a full row.
@@ -128,6 +169,15 @@ struct MediaBrowserView: View {
         return max(1, Int((available + spacing) / (minimumItemWidth + spacing)))
     }
 
+    private var navigationColumns: Int {
+        switch model.libraryTab {
+        case .visual:
+            columns
+        case .audio:
+            model.audioViewMode == .icons ? audioColumns : 1
+        }
+    }
+
     private func handleKey(_ press: KeyPress) -> KeyPress.Result {
         // While the viewer is open its own shortcuts (arrows, Space, Enter, Esc)
         // take over, so the grid stays out of the way.
@@ -136,13 +186,13 @@ struct MediaBrowserView: View {
         let extend = press.modifiers.contains(.shift)
         switch press.key {
         case .leftArrow:
-            model.moveSelection(.left, columns: columns, audioColumns: activeAudioColumns, extending: extend)
+            model.moveSelection(.left, columns: navigationColumns, extending: extend)
         case .rightArrow:
-            model.moveSelection(.right, columns: columns, audioColumns: activeAudioColumns, extending: extend)
+            model.moveSelection(.right, columns: navigationColumns, extending: extend)
         case .upArrow:
-            model.moveSelection(.up, columns: columns, audioColumns: activeAudioColumns, extending: extend)
+            model.moveSelection(.up, columns: navigationColumns, extending: extend)
         case .downArrow:
-            model.moveSelection(.down, columns: columns, audioColumns: activeAudioColumns, extending: extend)
+            model.moveSelection(.down, columns: navigationColumns, extending: extend)
         case .space:
             model.openPreview()
         case .return:
@@ -153,53 +203,5 @@ struct MediaBrowserView: View {
             return .ignored
         }
         return .handled
-    }
-
-    private var activeAudioColumns: Int {
-        model.audioViewMode == .icons ? audioColumns : 1
-    }
-
-    @ViewBuilder
-    private var audioSection: some View {
-        @Bindable var model = model
-
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("AUDIO")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-
-                Picker("Audio View", selection: $model.audioViewMode) {
-                    Image(systemName: "square.grid.2x2")
-                        .accessibilityLabel("Icon View")
-                        .tag(AudioViewMode.icons)
-                    Image(systemName: "waveform")
-                        .accessibilityLabel("Waveform View")
-                        .tag(AudioViewMode.waveforms)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .controlSize(.small)
-                .frame(width: 76)
-                .help("Audio view")
-            }
-
-            Divider()
-
-            AudioSection(items: model.audioItems, viewMode: model.audioViewMode)
-        }
-    }
-
-    @ViewBuilder
-    private func section<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Divider()
-            content()
-        }
     }
 }

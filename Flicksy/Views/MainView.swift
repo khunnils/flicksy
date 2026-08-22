@@ -31,8 +31,19 @@ struct MainView: View {
             MediaBrowserView()
                 .navigationTitle("Media Browser")
                 .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        LibraryTabPicker()
+                    }
+                    ToolbarItem {
+                        SortControl()
+                    }
                     ToolbarItem(placement: .primaryAction) {
-                        GridZoomControl()
+                        switch model.libraryTab {
+                        case .visual:
+                            GridZoomControl()
+                        case .audio:
+                            AudioViewModeControl()
+                        }
                     }
                 }
         }
@@ -72,6 +83,7 @@ struct MainView: View {
         guard scrollMonitor == nil else { return }
         scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
             guard model.viewerItemID == nil,
+                  model.libraryTab == .visual,
                   event.modifierFlags.contains(.command)
             else { return event }
 

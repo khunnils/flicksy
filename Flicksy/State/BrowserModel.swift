@@ -18,6 +18,76 @@ enum AudioViewMode: String, CaseIterable {
     case waveforms
 }
 
+/// The two library panes. Images and video share a visual grid; audio has its
+/// own icon/waveform view so the two are never mixed in one scrolling list.
+enum MediaLibraryTab: String, CaseIterable, Identifiable {
+    case visual
+    case audio
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .visual: "Images & Video"
+        case .audio: "Audio"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .visual: "photo.on.rectangle"
+        case .audio: "waveform"
+        }
+    }
+}
+
+/// Keys the listing can be ordered by. The same choice applies to both library
+/// tabs (name, last updated, and so on).
+enum MediaSortKey: String, CaseIterable, Identifiable {
+    case name
+    case modified
+    case size
+    case kind
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .name: "Name"
+        case .modified: "Date Modified"
+        case .size: "Size"
+        case .kind: "Kind"
+        }
+    }
+
+    var ascendingLabel: String {
+        switch self {
+        case .name: "A to Z"
+        case .modified: "Oldest First"
+        case .size: "Smallest First"
+        case .kind: "Ascending"
+        }
+    }
+
+    var descendingLabel: String {
+        switch self {
+        case .name: "Z to A"
+        case .modified: "Newest First"
+        case .size: "Largest First"
+        case .kind: "Descending"
+        }
+    }
+
+    /// Conventional direction when the user first picks this key: names A–Z,
+    /// dates newest first, sizes largest first.
+    var defaultAscending: Bool {
+        switch self {
+        case .name, .kind: true
+        case .modified, .size: false
+        }
+    }
+}
+
 /// The single source of truth for the browser UI.
 ///
 /// Deliberately kept to plain `@Observable` state with no additional architectural
@@ -50,7 +120,7 @@ final class BrowserModel {
     var searchQuery = "" {
         didSet {
             guard searchQuery != oldValue else { return }
-            applySearchFilter()
+            rebuildVisibleItems()
         }
     }
 
@@ -71,9 +141,36 @@ final class BrowserModel {
         }
     }
 
-    /// `mediaItems` filtered by `searchQuery` and split by presentation: images
-    /// and videos share the grid while audio gets full-width rows (spec section
-    /// 8). These are stored because views read them on every body evaluation.
+    /// Which library pane is showing. Persisted so a creator who lives in Audio
+    /// does not keep getting bounced back to stills.
+    var libraryTab: MediaLibraryTab = .visual {
+        didSet {
+            guard libraryTab != oldValue else { return }
+            UserDefaults.standard.set(libraryTab.rawValue, forKey: Self.libraryTabKey)
+            isolateCurrentTab()
+        }
+    }
+
+    /// Shared sort, applied to whichever tab is visible.
+    var sortKey: MediaSortKey = .name {
+        didSet {
+            guard sortKey != oldValue else { return }
+            UserDefaults.standard.set(sortKey.rawValue, forKey: Self.sortKeyKey)
+            sortAscending = sortKey.defaultAscending
+            rebuildVisibleItems()
+        }
+    }
+
+    var sortAscending: Bool = true {
+        didSet {
+            guard sortAscending != oldValue else { return }
+            UserDefaults.standard.set(sortAscending, forKey: Self.sortAscendingKey)
+            rebuildVisibleItems()
+        }
+    }
+
+    /// `mediaItems` filtered by `searchQuery`, split by type, and ordered by
+    /// `sortKey`. Images and videos share the visual tab; audio has its own.
     private(set) var visualItems: [MediaItem] = []
     private(set) var audioItems: [MediaItem] = []
 
@@ -159,6 +256,9 @@ final class BrowserModel {
 
     private static let thumbnailSizeKey = "thumbnailSize"
     private static let audioViewModeKey = "audioViewMode"
+    private static let libraryTabKey = "libraryTab"
+    private static let sortKeyKey = "sortKey"
+    private static let sortAscendingKey = "sortAscending"
 
     private let rootStore = RootFolderStore()
     private var scanTask: Task<Void, Never>?
@@ -173,6 +273,20 @@ final class BrowserModel {
         let storedAudioMode = UserDefaults.standard.string(forKey: Self.audioViewModeKey)
             .flatMap(AudioViewMode.init(rawValue:))
         audioViewMode = storedAudioMode ?? .icons
+
+        let storedTab = UserDefaults.standard.string(forKey: Self.libraryTabKey)
+            .flatMap(MediaLibraryTab.init(rawValue:))
+        libraryTab = storedTab ?? .visual
+
+        let storedSort = UserDefaults.standard.string(forKey: Self.sortKeyKey)
+            .flatMap(MediaSortKey.init(rawValue:))
+        sortKey = storedSort ?? .name
+
+        if UserDefaults.standard.object(forKey: Self.sortAscendingKey) == nil {
+            sortAscending = (storedSort ?? .name).defaultAscending
+        } else {
+            sortAscending = UserDefaults.standard.bool(forKey: Self.sortAscendingKey)
+        }
     }
 
     /// Restore persisted root folders and scan them. Call once when the UI appears.
@@ -328,7 +442,8 @@ final class BrowserModel {
         selectedItemIDs = []
         selectionAnchorID = nil
         focusedItemID = nil
-        applySearchFilter()
+        rebuildVisibleItems()
+        preferPopulatedTab()
     }
 
     /// Use the median image ratio when every image is landscape. Missing or
@@ -371,26 +486,39 @@ final class BrowserModel {
         searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// Rebuild the visible sections and ensure no interaction state refers to an
-    /// item hidden by the new query.
-    private func applySearchFilter() {
+    /// Rebuild the visible tab listings: search filter, type split, then the
+    /// shared sort. Drops interaction state that pointed at items no longer shown.
+    private func rebuildVisibleItems() {
         let query = normalizedSearchQuery
         let visibleItems = query.isEmpty
             ? mediaItems
             : mediaItems.filter { $0.name.localizedStandardContains(query) }
 
-        visualItems = visibleItems.filter { $0.type == .image || $0.type == .video }
-        audioItems = visibleItems.filter { $0.type == .audio }
+        visualItems = sortedItems(visibleItems.filter { $0.type == .image || $0.type == .video })
+        audioItems = sortedItems(visibleItems.filter { $0.type == .audio })
 
-        let visibleIDs = Set(visibleItems.map(\.id))
+        isolateCurrentTab()
+    }
+
+    /// Keep selection, playback and the viewer inside the active tab, and drop
+    /// anything that refers to a file the current listing no longer contains.
+    private func isolateCurrentTab() {
+        let visibleIDs = Set(orderedItems.map(\.id))
         selectedItemIDs.formIntersection(visibleIDs)
 
-        if let playingVideoID, !visibleIDs.contains(playingVideoID) {
+        if libraryTab != .visual {
+            playingVideoID = nil
+            viewerItemID = nil
+        } else if let playingVideoID, !visibleIDs.contains(playingVideoID) {
             self.playingVideoID = nil
         }
-        if let playingAudioID, !visibleIDs.contains(playingAudioID) {
+
+        if libraryTab != .audio {
+            playingAudioID = nil
+        } else if let playingAudioID, !visibleIDs.contains(playingAudioID) {
             self.playingAudioID = nil
         }
+
         if let viewerItemID, !visibleIDs.contains(viewerItemID) {
             self.viewerItemID = nil
         }
@@ -405,12 +533,84 @@ final class BrowserModel {
         }
     }
 
+    /// If the restored tab is empty for this folder but the other is not, show
+    /// the tab that actually has files.
+    private func preferPopulatedTab() {
+        let hasVisual = mediaItems.contains { $0.type == .image || $0.type == .video }
+        let hasAudio = mediaItems.contains { $0.type == .audio }
+        switch libraryTab {
+        case .visual where !hasVisual && hasAudio:
+            libraryTab = .audio
+        case .audio where !hasAudio && hasVisual:
+            libraryTab = .visual
+        default:
+            break
+        }
+    }
+
+    private func sortedItems(_ items: [MediaItem]) -> [MediaItem] {
+        items.sorted { lhs, rhs in
+            if let result = compare(lhs, rhs, by: sortKey), result != .orderedSame {
+                return sortAscending ? result == .orderedAscending : result == .orderedDescending
+            }
+            let name = lhs.name.localizedStandardCompare(rhs.name)
+            if name != .orderedSame {
+                return name == .orderedAscending
+            }
+            return lhs.id < rhs.id
+        }
+    }
+
+    /// Primary comparison for `sortKey`. Returns `nil` when both values are
+    /// missing so the caller can fall through to a name tie-breaker. Missing
+    /// dates/sizes always sort last, regardless of direction.
+    private func compare(_ lhs: MediaItem, _ rhs: MediaItem, by key: MediaSortKey) -> ComparisonResult? {
+        switch key {
+        case .name:
+            return lhs.name.localizedStandardCompare(rhs.name)
+        case .modified:
+            return compareOptional(lhs.modifiedAt, rhs.modifiedAt)
+        case .size:
+            return compareOptional(lhs.fileSize, rhs.fileSize)
+        case .kind:
+            return compareOptional(Optional(kindRank(lhs.type)), Optional(kindRank(rhs.type)))
+        }
+    }
+
+    private func compareOptional<T: Comparable>(_ lhs: T?, _ rhs: T?) -> ComparisonResult? {
+        switch (lhs, rhs) {
+        case (nil, nil):
+            return nil
+        case (nil, _):
+            return sortAscending ? .orderedDescending : .orderedAscending
+        case (_, nil):
+            return sortAscending ? .orderedAscending : .orderedDescending
+        case (let a?, let b?):
+            if a < b { return .orderedAscending }
+            if a > b { return .orderedDescending }
+            return .orderedSame
+        }
+    }
+
+    private func kindRank(_ type: MediaType) -> Int {
+        switch type {
+        case .image: 0
+        case .video: 1
+        case .audio: 2
+        }
+    }
+
     // MARK: - Selection
 
-    /// The items in visual order: the grid (images and videos) followed by the
-    /// audio list. Selection and keyboard navigation walk this sequence so Up/Down
-    /// can carry the cursor between the two sections.
-    var orderedItems: [MediaItem] { visualItems + audioItems }
+    /// Items in the active tab, in the current sort order. Selection, keyboard
+    /// navigation and Select All walk this list so they never cross into the
+    /// hidden tab.
+    var orderedItems: [MediaItem] {
+        switch libraryTab {
+        case .visual: visualItems
+        case .audio: audioItems
+        }
+    }
 
     /// Update the selection for a click on `item`.
     ///
@@ -464,33 +664,24 @@ final class BrowserModel {
         focusedItemID = nil
     }
 
-    /// Move the keyboard cursor through `orderedItems`.
+    /// Move the keyboard cursor through the active tab.
     ///
-    /// Left/Right step by one; Up/Down step by a full grid row while in the visual
-    /// grid and by one while in the single-column audio list. Movement clamps at
+    /// Left/Right step by one; Up/Down step by a full row. Movement clamps at
     /// either end rather than wrapping, matching Finder.
-    func moveSelection(
-        _ direction: MoveDirection,
-        columns: Int,
-        audioColumns: Int = 1,
-        extending: Bool
-    ) {
+    func moveSelection(_ direction: MoveDirection, columns: Int, extending: Bool) {
         let ordered = orderedItems
         guard !ordered.isEmpty else { return }
 
         let cols = max(1, columns)
-        let audioCols = max(1, audioColumns)
-        let visualCount = visualItems.count
         let currentIndex = focusedItemID
             .flatMap { id in ordered.firstIndex { $0.id == id } } ?? 0
-        let inAudio = currentIndex >= visualCount
 
         var target: Int
         switch direction {
         case .left: target = currentIndex - 1
         case .right: target = currentIndex + 1
-        case .up: target = inAudio ? currentIndex - audioCols : currentIndex - cols
-        case .down: target = inAudio ? currentIndex + audioCols : currentIndex + cols
+        case .up: target = currentIndex - cols
+        case .down: target = currentIndex + cols
         }
         target = min(max(target, 0), ordered.count - 1)
 
@@ -585,7 +776,7 @@ final class BrowserModel {
 
         mediaItems.removeAll { trashedIDs.contains($0.id) }
         selectedItemIDs.subtract(trashedIDs)
-        applySearchFilter()
+        rebuildVisibleItems()
 
         let newOrdered = orderedItems
         if newOrdered.isEmpty {

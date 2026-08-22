@@ -23,13 +23,21 @@ struct MediaBrowserApp: App {
                         model.zoomIn()
                     }
                     .keyboardShortcut("+")
-                    .disabled(model.thumbnailSize >= BrowserModel.maxThumbnailSize || model.viewerItemID != nil)
+                    .disabled(
+                        model.libraryTab != .visual
+                            || model.thumbnailSize >= BrowserModel.maxThumbnailSize
+                            || model.viewerItemID != nil
+                    )
 
                     Button("Zoom Out") {
                         model.zoomOut()
                     }
                     .keyboardShortcut("-")
-                    .disabled(model.thumbnailSize <= BrowserModel.minThumbnailSize || model.viewerItemID != nil)
+                    .disabled(
+                        model.libraryTab != .visual
+                            || model.thumbnailSize <= BrowserModel.minThumbnailSize
+                            || model.viewerItemID != nil
+                    )
                 }
             }
 
