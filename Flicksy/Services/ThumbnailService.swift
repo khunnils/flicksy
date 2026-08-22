@@ -31,15 +31,19 @@ actor ThumbnailService {
         case small = 256
         case medium = 512
         case large = 1024
-        /// Only requested by the full media viewer, which fills the window.
+        /// Fast first paint for the full media viewer.
         case extraLarge = 2048
+        /// High-resolution viewer rendition so 100% zoom stays sharp on typical
+        /// stills without decoding an unbounded original (spec section 17).
+        case viewer = 8192
 
         static func bucket(forTargetPixels pixels: CGFloat) -> SizeBucket {
             switch pixels {
             case ..<384: return .small
             case ..<768: return .medium
             case ..<1536: return .large
-            default: return .extraLarge
+            case ..<4096: return .extraLarge
+            default: return .viewer
             }
         }
     }

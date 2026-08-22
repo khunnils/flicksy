@@ -35,6 +35,14 @@ struct MediaViewer: View {
             chrome
             shortcuts
         }
+        .contextMenu {
+            Button("Reveal in Finder") {
+                model.revealInFinder(clicked: item)
+            }
+            Button("Copy Path") {
+                model.copyPath(clicked: item)
+            }
+        }
         .task(id: item.id) {
             preparePlayback()
         }
@@ -86,8 +94,18 @@ struct MediaViewer: View {
 
     private var chrome: some View {
         VStack {
-            HStack {
+            HStack(spacing: 12) {
                 Spacer()
+                Button {
+                    NSApplication.shared.keyWindow?.toggleFullScreen(nil)
+                } label: {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.white.opacity(0.85), .black.opacity(0.4))
+                }
+                .buttonStyle(.plain)
+                .help("Toggle Full Screen (F)")
+
                 Button {
                     model.closeViewer()
                 } label: {
@@ -102,6 +120,7 @@ struct MediaViewer: View {
             .padding(16)
 
             Spacer()
+                .allowsHitTesting(false)
 
             HStack(spacing: 20) {
                 navigationButton(
@@ -159,13 +178,17 @@ struct MediaViewer: View {
     /// from accessibility, they exist purely to register key equivalents.
     private var shortcuts: some View {
         ZStack {
-            // Space closes the preview, matching Finder's Quick Look.
-            Button("Close") {
-                model.closeViewer()
+            // Space plays/pauses video; on a still it closes, like Quick Look
+            // (spec section 16).
+            Button("Space") {
+                if playback != nil {
+                    playback?.togglePlayPause()
+                } else {
+                    model.closeViewer()
+                }
             }
             .keyboardShortcut(.space, modifiers: [])
 
-            // Enter starts/stops playback of the previewed video.
             Button("Play/Pause") {
                 playback?.togglePlayPause()
             }
@@ -185,24 +208,21 @@ struct MediaViewer: View {
 
 // MARK: - Image
 
-/// Fit-to-window image display.
-///
-/// Loads a larger rendition than the grid uses, but still through ImageIO's
-/// downsampling path rather than a full-resolution decode (spec section 23,
-/// rule 1). Zoom and pan arrive in Milestone 4.
+/// Full-viewer still. A 2048 px rendition appears first so the window is not
+/// blank while the sharper 8192 px image (enough for 100% on typical photos)
+/// finishes decoding off the main thread (spec sections 17 and 23).
 private struct ViewerImage: View {
     let item: MediaItem
 
     @State private var image: NSImage?
+    @State private var nativeSize: CGSize = .zero
     @State private var didFail = false
 
     var body: some View {
         Group {
             if let image {
-                Image(nsImage: image)
-                    .resizable()
-                    .interpolation(.high)
-                    .scaledToFit()
+                ZoomableImage(image: image, nativeSize: displaySize)
+                    .id(item.id)
             } else if didFail {
                 PreviewUnavailable()
             } else {
@@ -210,13 +230,37 @@ private struct ViewerImage: View {
             }
         }
         .task(id: item.url.path) {
-            didFail = false
-            let result = await ThumbnailService.shared.thumbnail(for: item.url, targetPixels: 2048)
-            guard !Task.isCancelled else { return }
-            if let result {
-                image = result.image
-            } else {
-                didFail = true
+            await load()
+        }
+    }
+
+    private var displaySize: CGSize {
+        nativeSize.width > 0 ? nativeSize : (image?.size ?? .zero)
+    }
+
+    private func load() async {
+        didFail = false
+        image = nil
+        nativeSize = .zero
+
+        let preview = await ThumbnailService.shared.thumbnail(for: item.url, targetPixels: 2048)
+        guard !Task.isCancelled else { return }
+        if let preview {
+            image = preview.image
+            if let width = preview.pixelWidth, let height = preview.pixelHeight {
+                nativeSize = CGSize(width: width, height: height)
+            }
+        } else {
+            didFail = true
+            return
+        }
+
+        let full = await ThumbnailService.shared.thumbnail(for: item.url, targetPixels: 8192)
+        guard !Task.isCancelled else { return }
+        if let full {
+            image = full.image
+            if let width = full.pixelWidth, let height = full.pixelHeight {
+                nativeSize = CGSize(width: width, height: height)
             }
         }
     }

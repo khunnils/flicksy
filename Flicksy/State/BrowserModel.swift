@@ -3,6 +3,7 @@
 //  MediaBrowser
 //
 
+import AppKit
 import Foundation
 import Observation
 
@@ -201,6 +202,66 @@ final class BrowserModel {
             setMediaItems([])
         }
         rescanRoots()
+    }
+
+    // MARK: - Finder / pasteboard
+
+    /// Items a context-menu or keyboard command should act on. Right-clicking an
+    /// unselected item acts on that item alone (and selects it); right-clicking
+    /// inside a selection acts on every selected item.
+    func itemsForAction(clicked item: MediaItem?) -> [MediaItem] {
+        if let item {
+            if selectedItemIDs.contains(item.id) {
+                return orderedItems.filter { selectedItemIDs.contains($0.id) }
+            }
+            selectItem(item)
+            return [item]
+        }
+        if let viewerItem {
+            return [viewerItem]
+        }
+        return orderedItems.filter { selectedItemIDs.contains($0.id) }
+    }
+
+    func openFromContextMenu(_ item: MediaItem) {
+        selectItem(item)
+        switch item.type {
+        case .image, .video:
+            openViewer(item)
+        case .audio:
+            playingAudioID = item.id
+        }
+    }
+
+    func revealInFinder(clicked item: MediaItem? = nil) {
+        let urls = itemsForAction(clicked: item).map(\.url)
+        guard !urls.isEmpty else { return }
+        NSWorkspace.shared.activateFileViewerSelecting(urls)
+    }
+
+    func copyPath(clicked item: MediaItem? = nil) {
+        let urls = itemsForAction(clicked: item).map(\.url)
+        guard !urls.isEmpty else { return }
+        let string = urls.map(\.path).joined(separator: "\n")
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(string, forType: .string)
+    }
+
+    /// Copy the selected files themselves so they can be pasted into Finder.
+    func copySelectedFiles(clicked item: MediaItem? = nil) {
+        let urls = itemsForAction(clicked: item).map { $0.url as NSURL }
+        guard !urls.isEmpty else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.writeObjects(urls)
+    }
+
+    /// URLs to put on the pasteboard for a drag starting at `item`.
+    func prepareDrag(from item: MediaItem) -> [URL] {
+        if selectedItemIDs.contains(item.id) {
+            return orderedItems.filter { selectedItemIDs.contains($0.id) }.map(\.url)
+        }
+        selectItem(item)
+        return [item.url]
     }
 
     // MARK: - Scanning

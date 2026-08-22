@@ -7,12 +7,12 @@ import AVKit
 import SwiftUI
 
 /// A grid cell for a video: a poster frame that can be swapped for a live
-/// `AVPlayer` on demand.
+/// `AVPlayer` on demand, or scrubbed by hovering (spec sections 11–13).
 ///
-/// No playback resources exist until the user presses play (spec sections 11 and
-/// 12). The cell then claims `BrowserModel.playingVideoID`; because that is a
-/// single value, claiming it implicitly evicts whichever cell was playing before,
-/// so at most one `AVPlayer` is ever alive in the grid.
+/// No playback resources exist until the user presses play. The cell then claims
+/// `BrowserModel.playingVideoID`; because that is a single value, claiming it
+/// implicitly evicts whichever cell was playing before, so at most one
+/// `AVPlayer` is ever alive in the grid.
 struct VideoCell: View {
     let item: MediaItem
     let targetPixels: CGFloat
@@ -21,9 +21,13 @@ struct VideoCell: View {
     @Environment(BrowserModel.self) private var model
 
     @State private var poster: NSImage?
+    @State private var storyboard: VideoPreviewService.Storyboard?
     @State private var metadata: MediaMetadataService.Metadata?
     @State private var didFail = false
     @State private var playback: VideoPlayback?
+    @State private var hoverFraction: Double?
+    @State private var hoverWidth: CGFloat = 0
+    @State private var shouldLoadStoryboard = false
 
     private var isActive: Bool { model.playingVideoID == item.id }
 
@@ -38,11 +42,15 @@ struct VideoCell: View {
 
             MediaCaption(title: item.name, subtitle: subtitle)
         }
+        .mediaItemInteractions(item, model: model, draggable: playback == nil)
         .task(id: posterTaskID) {
             await loadPoster()
         }
         .task(id: item.url.path) {
             await loadMetadata()
+        }
+        .task(id: storyboardTaskID) {
+            await loadStoryboard()
         }
         .onChange(of: isActive) { _, nowActive in
             if nowActive {
@@ -65,8 +73,8 @@ struct VideoCell: View {
     private var content: some View {
         if let playback {
             VideoPlayerView(player: playback.player, controlsStyle: .inline, refusesKeyboardFocus: true)
-        } else if let poster {
-            posterView(poster)
+        } else if poster != nil || storyboard != nil {
+            scrubbablePoster
         } else if didFail {
             PreviewUnavailable()
         } else {
@@ -75,28 +83,90 @@ struct VideoCell: View {
         }
     }
 
-    private func posterView(_ image: NSImage) -> some View {
-        Image(nsImage: image)
-            .resizable()
-            .interpolation(.medium)
-            .scaledToFit()
-            .padding(2)
-            .overlay {
-                Button {
-                    model.selectItem(item)
-                    model.playingVideoID = item.id
-                } label: {
-                    Image(systemName: "play.circle.fill")
-                        .font(.system(size: 34))
-                        .foregroundStyle(.white, .black.opacity(0.45))
-                        .shadow(radius: 4)
-                }
-                .buttonStyle(.plain)
-                .help("Play inline")
+    /// Poster or hover-scrub frame, with a play button. Horizontal mouse position
+    /// selects the nearest cached storyboard frame rather than seeking a player
+    /// (spec section 13).
+    private var scrubbablePoster: some View {
+        ZStack(alignment: .bottomLeading) {
+            if let frame = displayedFrame {
+                Image(nsImage: frame)
+                    .resizable()
+                    .interpolation(.medium)
+                    .scaledToFit()
+                    .padding(2)
             }
-            // Clicking the frame selects; double-clicking opens the focused viewer
-            // (spec section 16).
-            .selectableCell(item, model: model)
+
+            if let hoverFraction {
+                Text(hoverTimecode(hoverFraction))
+                    .font(.caption2.monospacedDigit().weight(.medium))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(.black.opacity(0.55), in: Capsule())
+                    .padding(8)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.width
+        } action: { width in
+            hoverWidth = width
+        }
+        .onContinuousHover(coordinateSpace: .local) { phase in
+            switch phase {
+            case .active(let location):
+                shouldLoadStoryboard = true
+                guard hoverWidth > 0 else { return }
+                hoverFraction = min(max(location.x / hoverWidth, 0), 1)
+            case .ended:
+                hoverFraction = nil
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if let hoverFraction {
+                GeometryReader { geo in
+                    Rectangle()
+                        .fill(.white.opacity(0.9))
+                        .frame(width: 2, height: geo.size.height)
+                        .position(
+                            x: min(max(geo.size.width * hoverFraction, 1), geo.size.width - 1),
+                            y: geo.size.height / 2
+                        )
+                }
+                .frame(height: 3)
+                .allowsHitTesting(false)
+            }
+        }
+        .overlay {
+            Button {
+                model.selectItem(item)
+                model.playingVideoID = item.id
+            } label: {
+                Image(systemName: "play.circle.fill")
+                    .font(.system(size: 34))
+                    .foregroundStyle(.white, .black.opacity(0.45))
+                    .shadow(radius: 4)
+                    .opacity(hoverFraction == nil ? 1 : 0.35)
+            }
+            .buttonStyle(.plain)
+            .help("Play inline")
+        }
+        // Clicking the frame selects; double-clicking opens the focused viewer
+        // (spec section 16).
+        .selectableCell(item, model: model)
+    }
+
+    private var displayedFrame: NSImage? {
+        if let hoverFraction, let frames = storyboard?.frames, !frames.isEmpty {
+            let index = min(frames.count - 1, max(0, Int(hoverFraction * Double(frames.count))))
+            return frames[index]
+        }
+        return poster
+    }
+
+    private func hoverTimecode(_ fraction: Double) -> String {
+        let duration = storyboard?.duration ?? metadata?.duration ?? 0
+        return MediaFormatting.clock(duration * fraction) ?? "0:00"
     }
 
     private var subtitle: String? {
@@ -109,6 +179,10 @@ struct VideoCell: View {
     /// Re-run poster generation when either the file or the size bucket changes.
     private var posterTaskID: String {
         "\(item.url.path)|\(Int(targetPixels))"
+    }
+
+    private var storyboardTaskID: String {
+        shouldLoadStoryboard ? "\(item.url.path)|sb|\(Int(targetPixels))" : "idle"
     }
 
     // MARK: - Loading
@@ -124,6 +198,13 @@ struct VideoCell: View {
         }
     }
 
+    private func loadStoryboard() async {
+        guard shouldLoadStoryboard else { return }
+        let result = await VideoPreviewService.shared.storyboard(for: item.url, targetPixels: targetPixels)
+        guard !Task.isCancelled else { return }
+        storyboard = result
+    }
+
     private func loadMetadata() async {
         let result = await MediaMetadataService.shared.metadata(for: item.url)
         guard !Task.isCancelled else { return }
@@ -134,6 +215,7 @@ struct VideoCell: View {
 
     private func startPlayback() {
         guard playback == nil else { return }
+        hoverFraction = nil
         let controller = VideoPlayback(url: item.url)
         playback = controller
         controller.play()

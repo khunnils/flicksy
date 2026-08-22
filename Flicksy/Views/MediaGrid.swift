@@ -38,12 +38,14 @@ struct MediaGrid: View {
                         targetPixels: targetPixels,
                         cardAspectRatio: cardAspectRatio
                     )
+                    .id(item.id)
                 case .video:
                     VideoCell(
                         item: item,
                         targetPixels: targetPixels,
                         cardAspectRatio: cardAspectRatio
                     )
+                    .id(item.id)
                 case .audio:
                     EmptyView() // Audio is rendered in its own full-width section.
                 }

@@ -32,6 +32,7 @@ struct ImageCell: View {
 
             MediaCaption(title: item.name, subtitle: subtitle)
         }
+        .mediaItemInteractions(item, model: model)
         .task(id: taskID) {
             await loadThumbnail()
         }

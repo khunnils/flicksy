@@ -62,6 +62,7 @@ struct AudioRow: View {
                               lineWidth: isSelected ? 1 : 0.5)
         )
         .selectableCell(item, model: model)
+        .mediaItemInteractions(item, model: model)
         .task(id: item.url.path) {
             await loadWaveform()
         }

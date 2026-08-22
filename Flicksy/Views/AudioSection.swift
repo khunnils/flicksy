@@ -22,12 +22,14 @@ struct AudioSection: View {
             ) {
                 ForEach(items) { item in
                     AudioIconCell(item: item)
+                        .id(item.id)
                 }
             }
         case .waveforms:
             LazyVStack(spacing: 8) {
                 ForEach(items) { item in
                     AudioRow(item: item)
+                        .id(item.id)
                 }
             }
         }

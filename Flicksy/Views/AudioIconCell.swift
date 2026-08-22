@@ -47,6 +47,7 @@ struct AudioIconCell: View {
 
             MediaCaption(title: item.name, subtitle: subtitle)
         }
+        .mediaItemInteractions(item, model: model)
         .animation(.easeOut(duration: 0.12), value: showsPlaybackControl)
         .task(id: item.url.path) {
             metadata = await MediaMetadataService.shared.metadata(for: item.url)

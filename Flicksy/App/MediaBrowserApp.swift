@@ -23,13 +23,13 @@ struct MediaBrowserApp: App {
                         model.zoomIn()
                     }
                     .keyboardShortcut("+")
-                    .disabled(model.thumbnailSize >= BrowserModel.maxThumbnailSize)
+                    .disabled(model.thumbnailSize >= BrowserModel.maxThumbnailSize || model.viewerItemID != nil)
 
                     Button("Zoom Out") {
                         model.zoomOut()
                     }
                     .keyboardShortcut("-")
-                    .disabled(model.thumbnailSize <= BrowserModel.minThumbnailSize)
+                    .disabled(model.thumbnailSize <= BrowserModel.minThumbnailSize || model.viewerItemID != nil)
                 }
             }
 
@@ -50,6 +50,24 @@ struct MediaBrowserApp: App {
                     }
                     .keyboardShortcut("a", modifiers: .command)
                     .disabled(model.orderedItems.isEmpty || model.viewerItemID != nil)
+
+                    Button("Copy") {
+                        model.copySelectedFiles()
+                    }
+                    .keyboardShortcut("c", modifiers: .command)
+                    .disabled(model.selectedItemIDs.isEmpty && model.viewerItemID == nil)
+
+                    Button("Copy Path") {
+                        model.copyPath()
+                    }
+                    .keyboardShortcut("c", modifiers: [.command, .option])
+                    .disabled(model.selectedItemIDs.isEmpty && model.viewerItemID == nil)
+
+                    Button("Reveal in Finder") {
+                        model.revealInFinder()
+                    }
+                    .keyboardShortcut("r", modifiers: [.command, .option])
+                    .disabled(model.selectedItemIDs.isEmpty && model.viewerItemID == nil)
 
                     Button("Move to Trash") {
                         model.moveSelectedItemsToTrash()
