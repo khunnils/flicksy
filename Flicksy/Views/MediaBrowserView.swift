@@ -15,11 +15,17 @@ struct MediaBrowserView: View {
     /// navigation while it is the focused pane.
     @FocusState private var browserFocused: Bool
 
+    /// Search has its own focus state so keystrokes edit the query instead of
+    /// triggering grid navigation and media commands.
+    @FocusState private var searchFieldFocused: Bool
+
     /// Number of columns the visual grid currently lays out, derived from the
     /// available width and the thumbnail size. Drives Up/Down arrow movement.
     @State private var columns: Int = 1
 
     var body: some View {
+        @Bindable var model = model
+
         Group {
             if model.selectedFolderID == nil {
                 ContentUnavailableView(
@@ -37,6 +43,12 @@ struct MediaBrowserView: View {
                         description: Text("This folder does not contain any supported media.")
                     )
                 }
+            } else if model.hasActiveSearch && model.orderedItems.isEmpty {
+                ContentUnavailableView(
+                    "No Results",
+                    systemImage: "magnifyingglass",
+                    description: Text("No media matches \u{201c}\(model.searchQuery)\u{201d}.")
+                )
             } else {
                 content
             }
@@ -46,7 +58,17 @@ struct MediaBrowserView: View {
         .focusable(model.selectedFolderID != nil)
         .focusEffectDisabled()
         .focused($browserFocused)
+        .searchable(
+            text: $model.searchQuery,
+            isPresented: $model.isSearchPresented,
+            placement: .toolbar,
+            prompt: "Search Media"
+        )
+        .searchFocused($searchFieldFocused)
         .onKeyPress { handleKey($0) }
+        .onChange(of: searchFieldFocused) { _, focused in
+            model.isSearchFieldFocused = focused
+        }
         .onChange(of: model.focusedItemID) { _, id in
             // Clicking or arrowing to an item pulls focus into the browser so its
             // key handling takes over from the sidebar.
@@ -95,7 +117,7 @@ struct MediaBrowserView: View {
     private func handleKey(_ press: KeyPress) -> KeyPress.Result {
         // While the viewer is open its own shortcuts (arrows, Space, Enter, Esc)
         // take over, so the grid stays out of the way.
-        guard model.viewerItemID == nil else { return .ignored }
+        guard model.viewerItemID == nil, !searchFieldFocused else { return .ignored }
 
         let extend = press.modifiers.contains(.shift)
         switch press.key {

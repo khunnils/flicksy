@@ -33,19 +33,39 @@ struct MediaBrowserApp: App {
                 }
             }
 
-            CommandGroup(replacing: .pasteboard) {
-                Button("Select All") {
-                    model.selectAll()
+            if model.isSearchFieldFocused {
+                // Preserve the system pasteboard commands while editing the
+                // search field so Command-A, Copy, and Paste stay native.
+                CommandGroup(after: .pasteboard) {
+                    findMediaCommand
                 }
-                .keyboardShortcut("a", modifiers: .command)
-                .disabled(model.orderedItems.isEmpty || model.viewerItemID != nil)
+            } else {
+                CommandGroup(replacing: .pasteboard) {
+                    findMediaCommand
 
-                Button("Move to Trash") {
-                    model.moveSelectedItemsToTrash()
+                    Divider()
+
+                    Button("Select All") {
+                        model.selectAll()
+                    }
+                    .keyboardShortcut("a", modifiers: .command)
+                    .disabled(model.orderedItems.isEmpty || model.viewerItemID != nil)
+
+                    Button("Move to Trash") {
+                        model.moveSelectedItemsToTrash()
+                    }
+                    .keyboardShortcut(.delete, modifiers: .command)
+                    .disabled(model.selectedItemIDs.isEmpty || model.viewerItemID != nil)
                 }
-                .keyboardShortcut(.delete, modifiers: .command)
-                .disabled(model.selectedItemIDs.isEmpty || model.viewerItemID != nil)
             }
         }
+    }
+
+    private var findMediaCommand: some View {
+        Button("Find Media") {
+            model.isSearchPresented = true
+        }
+        .keyboardShortcut("f", modifiers: .command)
+        .disabled(model.selectedFolderID == nil || model.viewerItemID != nil)
     }
 }

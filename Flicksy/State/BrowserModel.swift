@@ -28,6 +28,9 @@ final class BrowserModel {
     var selectedFolderID: MediaFolder.ID? {
         didSet {
             guard selectedFolderID != oldValue else { return }
+            searchQuery = ""
+            isSearchPresented = false
+            isSearchFieldFocused = false
             loadMediaForSelection()
         }
     }
@@ -35,10 +38,27 @@ final class BrowserModel {
     /// Media directly contained in the selected folder.
     private(set) var mediaItems: [MediaItem] = []
 
-    /// `mediaItems` split by presentation: images and videos share the grid while
-    /// audio gets full-width rows (spec section 8). These are stored rather than
-    /// computed because a folder may hold thousands of items and views read them
-    /// on every body evaluation.
+    /// The current search text. Filtering is cheap filename matching over the
+    /// already-loaded folder contents, so results update on every keystroke.
+    var searchQuery = "" {
+        didSet {
+            guard searchQuery != oldValue else { return }
+            applySearchFilter()
+        }
+    }
+
+    /// Drives programmatic activation of the native toolbar search field.
+    var isSearchPresented = false
+
+    /// Mirrored from the search field's focus state so browser-level commands do
+    /// not consume text-editing shortcuts while the user is typing.
+    var isSearchFieldFocused = false
+
+    var hasActiveSearch: Bool { !normalizedSearchQuery.isEmpty }
+
+    /// `mediaItems` filtered by `searchQuery` and split by presentation: images
+    /// and videos share the grid while audio gets full-width rows (spec section
+    /// 8). These are stored because views read them on every body evaluation.
     private(set) var visualItems: [MediaItem] = []
     private(set) var audioItems: [MediaItem] = []
 
@@ -216,14 +236,53 @@ final class BrowserModel {
     /// playback or viewer state that referred to the previous folder.
     private func setMediaItems(_ items: [MediaItem]) {
         mediaItems = items
-        visualItems = items.filter { $0.type == .image || $0.type == .video }
-        audioItems = items.filter { $0.type == .audio }
         playingVideoID = nil
         playingAudioID = nil
         viewerItemID = nil
         selectedItemIDs = []
         selectionAnchorID = nil
         focusedItemID = nil
+        applySearchFilter()
+    }
+
+    // MARK: - Search
+
+    private var normalizedSearchQuery: String {
+        searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Rebuild the visible sections and ensure no interaction state refers to an
+    /// item hidden by the new query.
+    private func applySearchFilter() {
+        let query = normalizedSearchQuery
+        let visibleItems = query.isEmpty
+            ? mediaItems
+            : mediaItems.filter { $0.name.localizedStandardContains(query) }
+
+        visualItems = visibleItems.filter { $0.type == .image || $0.type == .video }
+        audioItems = visibleItems.filter { $0.type == .audio }
+
+        let visibleIDs = Set(visibleItems.map(\.id))
+        selectedItemIDs.formIntersection(visibleIDs)
+
+        if let playingVideoID, !visibleIDs.contains(playingVideoID) {
+            self.playingVideoID = nil
+        }
+        if let playingAudioID, !visibleIDs.contains(playingAudioID) {
+            self.playingAudioID = nil
+        }
+        if let viewerItemID, !visibleIDs.contains(viewerItemID) {
+            self.viewerItemID = nil
+        }
+
+        if let focusedItemID, !visibleIDs.contains(focusedItemID) {
+            self.focusedItemID = orderedItems.first {
+                selectedItemIDs.contains($0.id)
+            }?.id
+        }
+        if let selectionAnchorID, !visibleIDs.contains(selectionAnchorID) {
+            self.selectionAnchorID = focusedItemID
+        }
     }
 
     // MARK: - Selection
@@ -399,11 +458,10 @@ final class BrowserModel {
         if let viewerItemID, trashedIDs.contains(viewerItemID) { self.viewerItemID = nil }
 
         mediaItems.removeAll { trashedIDs.contains($0.id) }
-        visualItems.removeAll { trashedIDs.contains($0.id) }
-        audioItems.removeAll { trashedIDs.contains($0.id) }
         selectedItemIDs.subtract(trashedIDs)
+        applySearchFilter()
 
-        let newOrdered = visualItems + audioItems
+        let newOrdered = orderedItems
         if newOrdered.isEmpty {
             focusedItemID = nil
             selectionAnchorID = nil
