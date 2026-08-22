@@ -31,19 +31,50 @@ actor WaveformService {
     /// not be decoded — the row then shows an unavailable state while the rest of
     /// the folder keeps browsing normally (spec section 24).
     func waveform(for url: URL) async -> [Float]? {
-        let key = url.path
+        let key = PersistentMediaCache.key(for: url, variant: "waveform-\(Self.resolution)")
 
         if let cached = cache[key] { return cached }
-        if let existing = inFlight[key] { return await existing.value }
+        if let existing = inFlight[key] {
+            return await withTaskCancellationHandler {
+                await existing.value
+            } onCancel: {
+                existing.cancel()
+            }
+        }
 
         let task = Task<[Float]?, Never>.detached(priority: .utility) {
-            await Self.generate(url: url, resolution: Self.resolution)
+            if let record = PersistentMediaCache.load(
+                PersistentMediaCache.WaveformRecord.self,
+                namespace: "waveforms",
+                key: key
+            ) {
+                return record.peaks
+            }
+
+            guard !Task.isCancelled,
+                  let peaks = await Self.generate(url: url, resolution: Self.resolution)
+            else { return nil }
+
+            if !Task.isCancelled {
+                PersistentMediaCache.store(
+                    PersistentMediaCache.WaveformRecord(peaks: peaks),
+                    namespace: "waveforms",
+                    key: key
+                )
+            }
+            return peaks
         }
         inFlight[key] = task
 
-        let result = await task.value
+        let result = await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            task.cancel()
+        }
         inFlight[key] = nil
-        cache[key] = result
+        if !Task.isCancelled {
+            cache[key] = result
+        }
         return result
     }
 

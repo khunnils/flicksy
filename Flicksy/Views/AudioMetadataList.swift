@@ -106,7 +106,7 @@ private struct AudioMetadataRow: View {
         .contentShape(Rectangle())
         .selectableCell(item, model: model)
         .mediaItemInteractions(item, model: model)
-        .task(id: item.url.path) {
+        .task(id: item.contentVersion) {
             metadata = await MediaMetadataService.shared.metadata(for: item.url)
         }
         .onChange(of: isActive) { _, nowActive in

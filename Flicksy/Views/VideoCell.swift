@@ -46,7 +46,7 @@ struct VideoCell: View {
         .task(id: posterTaskID) {
             await loadPoster()
         }
-        .task(id: item.url.path) {
+        .task(id: item.contentVersion) {
             await loadMetadata()
         }
         .task(id: storyboardTaskID) {
@@ -178,11 +178,11 @@ struct VideoCell: View {
 
     /// Re-run poster generation when either the file or the size bucket changes.
     private var posterTaskID: String {
-        "\(item.url.path)|\(Int(targetPixels))"
+        "\(item.contentVersion)|\(Int(targetPixels))"
     }
 
     private var storyboardTaskID: String {
-        shouldLoadStoryboard ? "\(item.url.path)|sb|\(Int(targetPixels))" : "idle"
+        shouldLoadStoryboard ? "\(item.contentVersion)|sb|\(Int(targetPixels))" : "idle"
     }
 
     // MARK: - Loading

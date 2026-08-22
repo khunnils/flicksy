@@ -6,8 +6,8 @@
 import AppKit
 import SwiftUI
 
-/// Shared visual chrome for grid cells. Unselected media sits directly on the
-/// browser surface; selection adds only a quiet, neutral highlight.
+/// Shared visual chrome for grid cells. Selection uses layered neutral edges so
+/// it stays visible over light or dark media without competing with the image.
 struct MediaCardBackground<Content: View>: View {
     var isSelected: Bool = false
     @ViewBuilder var content: Content
@@ -15,12 +15,31 @@ struct MediaCardBackground<Content: View>: View {
     var body: some View {
         content
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(isSelected ? AnyShapeStyle(.quaternary.opacity(0.5)) : AnyShapeStyle(.clear))
+            .background(
+                isSelected
+                    ? AnyShapeStyle(Color.primary.opacity(0.055))
+                    : AnyShapeStyle(.clear)
+            )
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .strokeBorder(isSelected ? AnyShapeStyle(.separator) : AnyShapeStyle(.clear),
-                                  lineWidth: isSelected ? 1 : 0)
+                    .strokeBorder(
+                        isSelected ? AnyShapeStyle(Color.primary.opacity(0.52)) : AnyShapeStyle(.clear),
+                        lineWidth: isSelected ? 1.5 : 0
+                    )
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 6.5, style: .continuous)
+                    .inset(by: 2)
+                    .strokeBorder(
+                        isSelected ? Color.white.opacity(0.38) : .clear,
+                        lineWidth: isSelected ? 0.75 : 0
+                    )
+            }
+            .shadow(
+                color: isSelected ? Color.black.opacity(0.2) : .clear,
+                radius: isSelected ? 4 : 0,
+                y: isSelected ? 1 : 0
             )
     }
 }

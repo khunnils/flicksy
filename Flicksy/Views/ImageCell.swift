@@ -61,7 +61,7 @@ struct ImageCell: View {
 
     /// Re-run the load when either the file or the requested size bucket changes.
     private var taskID: String {
-        "\(item.url.path)|\(Int(targetPixels))"
+        "\(item.contentVersion)|\(Int(targetPixels))"
     }
 
     private func loadThumbnail() async {

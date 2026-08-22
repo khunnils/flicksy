@@ -70,23 +70,59 @@ actor ThumbnailService {
     /// "Preview unavailable" state.
     func thumbnail(for url: URL, targetPixels: CGFloat) async -> Thumbnail? {
         let bucket = SizeBucket.bucket(forTargetPixels: targetPixels)
-        let key = "\(url.path)|\(bucket.rawValue)" as NSString
+        let diskKey = PersistentMediaCache.key(for: url, variant: "image-thumbnail-\(bucket.rawValue)")
+        let key = diskKey as NSString
 
         if let cached = cache.object(forKey: key) {
             return cached.thumbnail
         }
 
         if let existing = inFlight[key] {
-            return await existing.value
+            return await withTaskCancellationHandler {
+                await existing.value
+            } onCancel: {
+                existing.cancel()
+            }
         }
 
         let maxPixel = bucket.rawValue
-        let task = Task.detached(priority: .utility) {
-            Self.generate(url: url, maxPixel: maxPixel)
+        let task = Task<Thumbnail?, Never>.detached(priority: .utility) {
+            if let record = PersistentMediaCache.load(
+                PersistentMediaCache.ImageRecord.self,
+                namespace: "images",
+                key: diskKey
+            ), let image = PersistentMediaCache.decodedImage(from: record.imageData) {
+                return Thumbnail(
+                    image: image,
+                    pixelWidth: record.pixelWidth,
+                    pixelHeight: record.pixelHeight
+                )
+            }
+
+            guard !Task.isCancelled,
+                  let generated = Self.generate(url: url, maxPixel: maxPixel)
+            else { return nil }
+
+            if !Task.isCancelled, let data = PersistentMediaCache.encodedImage(generated.image) {
+                PersistentMediaCache.store(
+                    PersistentMediaCache.ImageRecord(
+                        imageData: data,
+                        pixelWidth: generated.pixelWidth,
+                        pixelHeight: generated.pixelHeight
+                    ),
+                    namespace: "images",
+                    key: diskKey
+                )
+            }
+            return generated
         }
         inFlight[key] = task
 
-        let result = await task.value
+        let result = await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            task.cancel()
+        }
         inFlight[key] = nil
 
         if let result {
@@ -131,8 +167,10 @@ actor ThumbnailService {
         guard let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any] else {
             return (nil, nil)
         }
-        let width = properties[kCGImagePropertyPixelWidth] as? Int
-        let height = properties[kCGImagePropertyPixelHeight] as? Int
-        return (width, height)
+        guard let width = (properties[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue,
+              let height = (properties[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue
+        else { return (nil, nil) }
+        let orientation = (properties[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1
+        return (5...8).contains(orientation) ? (height, width) : (width, height)
     }
 }

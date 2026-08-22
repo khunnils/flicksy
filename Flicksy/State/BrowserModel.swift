@@ -151,6 +151,15 @@ final class BrowserModel {
         }
     }
 
+    func toggleLibraryTab() {
+        switch libraryTab {
+        case .visual:
+            libraryTab = .audio
+        case .audio:
+            libraryTab = .visual
+        }
+    }
+
     /// Shared sort, applied to whichever tab is visible.
     var sortKey: MediaSortKey = .name {
         didSet {
@@ -263,10 +272,16 @@ final class BrowserModel {
     private let rootStore = RootFolderStore()
     private var scanTask: Task<Void, Never>?
     private var mediaTask: Task<Void, Never>?
+    private var fileSystemMonitor: FileSystemMonitor?
+    private var monitorRefreshTask: Task<Void, Never>?
+    private var activeScanID: UUID?
+    private var activeMediaLoadID: UUID?
 
     // MARK: - Lifecycle
 
     init() {
+        PersistentMediaCache.scheduleMaintenance()
+
         let storedSize = UserDefaults.standard.object(forKey: Self.thumbnailSizeKey) as? Double
         thumbnailSize = storedSize.map(Self.clampedThumbnailSize) ?? Self.defaultThumbnailSize
 
@@ -295,6 +310,7 @@ final class BrowserModel {
         if !failures.isEmpty {
             loadError = failures.first
         }
+        restartFilesystemMonitoring()
         rescanRoots()
     }
 
@@ -305,6 +321,7 @@ final class BrowserModel {
     func addRootFolder() {
         guard rootStore.addFolder() != nil else { return }
         loadError = nil
+        restartFilesystemMonitoring()
         rescanRoots()
     }
 
@@ -315,6 +332,7 @@ final class BrowserModel {
             selectedFolderID = nil
             setMediaItems([])
         }
+        restartFilesystemMonitoring()
         rescanRoots()
     }
 
@@ -380,10 +398,38 @@ final class BrowserModel {
 
     // MARK: - Scanning
 
+    private func restartFilesystemMonitoring() {
+        fileSystemMonitor = FileSystemMonitor(urls: rootStore.urls) { [weak self] in
+            self?.filesystemDidChange()
+        }
+    }
+
+    /// Editors often emit several rename/write events for one save. Coalesce the
+    /// burst so large roots are scanned once, and cancel an obsolete pending pass
+    /// if more changes arrive before it starts.
+    private func filesystemDidChange() {
+        monitorRefreshTask?.cancel()
+        monitorRefreshTask = Task {
+            try? await Task.sleep(for: .milliseconds(450))
+            guard !Task.isCancelled else { return }
+            rescanRoots()
+            loadMediaForSelection()
+        }
+    }
+
     private func rescanRoots() {
         scanTask?.cancel()
         let urls = rootStore.urls
+        let scanID = UUID()
+        activeScanID = scanID
+        isScanning = true
         scanTask = Task {
+            defer {
+                if activeScanID == scanID {
+                    activeScanID = nil
+                    isScanning = false
+                }
+            }
             var trees: [MediaFolder] = []
             do {
                 for url in urls {
@@ -409,15 +455,24 @@ final class BrowserModel {
 
     private func loadMediaForSelection() {
         mediaTask?.cancel()
+        activeMediaLoadID = nil
         guard let id = selectedFolderID else {
+            isLoadingMedia = false
             setMediaItems([])
             return
         }
 
         let url = URL(fileURLWithPath: id)
+        let loadID = UUID()
+        activeMediaLoadID = loadID
         isLoadingMedia = true
         mediaTask = Task {
-            defer { isLoadingMedia = false }
+            defer {
+                if activeMediaLoadID == loadID {
+                    activeMediaLoadID = nil
+                    isLoadingMedia = false
+                }
+            }
             do {
                 let items = try await FolderScanner.mediaItems(in: url)
                 guard !Task.isCancelled else { return }

@@ -37,19 +37,31 @@ actor MediaMetadataService {
     /// fields so the caller simply omits the detail rather than failing the row
     /// (spec section 24).
     func metadata(for url: URL) async -> Metadata {
-        let key = url.path
+        let key = PersistentMediaCache.key(for: url, variant: "media-metadata")
 
         if let cached = cache[key] { return cached }
-        if let existing = inFlight[key] { return await existing.value }
+        if let existing = inFlight[key] {
+            return await withTaskCancellationHandler {
+                await existing.value
+            } onCancel: {
+                existing.cancel()
+            }
+        }
 
         let task = Task<Metadata, Never>.detached(priority: .utility) {
             await Self.load(url: url)
         }
         inFlight[key] = task
 
-        let result = await task.value
+        let result = await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            task.cancel()
+        }
         inFlight[key] = nil
-        cache[key] = result
+        if !Task.isCancelled {
+            cache[key] = result
+        }
         return result
     }
 

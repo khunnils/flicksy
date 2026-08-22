@@ -63,10 +63,10 @@ struct AudioRow: View {
         )
         .selectableCell(item, model: model)
         .mediaItemInteractions(item, model: model)
-        .task(id: item.url.path) {
+        .task(id: item.contentVersion) {
             await loadWaveform()
         }
-        .task(id: item.url.path) {
+        .task(id: item.contentVersion) {
             await loadMetadata()
         }
         .onChange(of: isActive) { _, nowActive in

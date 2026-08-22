@@ -19,9 +19,13 @@ struct MediaBrowserView: View {
     /// triggering grid navigation and media commands.
     @FocusState private var searchFieldFocused: Bool
 
-    /// Number of columns the visual grid currently lays out, derived from the
-    /// available width and the thumbnail size. Drives Up/Down arrow movement.
-    @State private var columns: Int = 1
+    /// Available browser width, retained so keyboard navigation can derive the
+    /// current column count after toolbar or pinch zoom changes the tile size.
+    @State private var browserWidth: CGFloat = 0
+
+    /// Live magnification while a trackpad pinch is in progress. The persisted
+    /// thumbnail size is committed only when the gesture ends.
+    @GestureState private var gridMagnification: CGFloat = 1
 
     var body: some View {
         @Bindable var model = model
@@ -88,6 +92,7 @@ struct MediaBrowserView: View {
                     )
                 } else {
                     scrollingPane(visualGrid)
+                        .simultaneousGesture(gridMagnifyGesture)
                 }
             case .audio:
                 if model.audioItems.isEmpty {
@@ -110,7 +115,7 @@ struct MediaBrowserView: View {
                     .padding(16)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width in
-                        columns = columnCount(forWidth: width)
+                        browserWidth = width
                     }
             }
             .onChange(of: model.focusedItemID) { _, id in
@@ -125,9 +130,27 @@ struct MediaBrowserView: View {
     private var visualGrid: some View {
         MediaGrid(
             items: model.visualItems,
-            thumbnailSize: CGFloat(model.thumbnailSize),
+            thumbnailSize: effectiveThumbnailSize,
             cardAspectRatio: CGFloat(model.cardAspectRatio)
         )
+    }
+
+    private var effectiveThumbnailSize: CGFloat {
+        CGFloat(BrowserModel.clampedThumbnailSize(
+            model.thumbnailSize * Double(gridMagnification)
+        ))
+    }
+
+    private var gridMagnifyGesture: some Gesture {
+        MagnifyGesture()
+            .updating($gridMagnification) { value, state, _ in
+                state = value.magnification
+            }
+            .onEnded { value in
+                model.thumbnailSize = BrowserModel.clampedThumbnailSize(
+                    model.thumbnailSize * Double(value.magnification)
+                )
+            }
     }
 
     private var audioList: some View {
@@ -160,7 +183,7 @@ struct MediaBrowserView: View {
     private var navigationColumns: Int {
         switch model.libraryTab {
         case .visual:
-            columns
+            columnCount(forWidth: browserWidth)
         case .audio:
             1
         }

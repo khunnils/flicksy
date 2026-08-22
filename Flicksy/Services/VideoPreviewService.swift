@@ -79,23 +79,55 @@ actor VideoPreviewService {
     /// unavailable" state.
     func posterFrame(for url: URL, targetPixels: CGFloat) async -> NSImage? {
         let bucket = SizeBucket.bucket(forTargetPixels: targetPixels)
-        let key = "\(url.path)|\(bucket.rawValue)" as NSString
+        let diskKey = PersistentMediaCache.key(for: url, variant: "video-poster-\(bucket.rawValue)")
+        let key = diskKey as NSString
 
         if let cached = cache.object(forKey: key) {
             return cached.image
         }
 
         if let existing = inFlight[key] {
-            return await existing.value
+            return await withTaskCancellationHandler {
+                await existing.value
+            } onCancel: {
+                existing.cancel()
+            }
         }
 
         let maxPixel = CGFloat(bucket.rawValue)
         let task = Task<NSImage?, Never>.detached(priority: .utility) {
-            await Self.generate(url: url, maxPixel: maxPixel)
+            if let record = PersistentMediaCache.load(
+                PersistentMediaCache.ImageRecord.self,
+                namespace: "video-posters",
+                key: diskKey
+            ), let image = PersistentMediaCache.decodedImage(from: record.imageData) {
+                return image
+            }
+
+            guard !Task.isCancelled,
+                  let image = await Self.generate(url: url, maxPixel: maxPixel)
+            else { return nil }
+
+            if !Task.isCancelled, let data = PersistentMediaCache.encodedImage(image) {
+                PersistentMediaCache.store(
+                    PersistentMediaCache.ImageRecord(
+                        imageData: data,
+                        pixelWidth: nil,
+                        pixelHeight: nil
+                    ),
+                    namespace: "video-posters",
+                    key: diskKey
+                )
+            }
+            return image
         }
         inFlight[key] = task
 
-        let result = await task.value
+        let result = await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            task.cancel()
+        }
         inFlight[key] = nil
 
         if let result {
@@ -110,7 +142,8 @@ actor VideoPreviewService {
     /// when a cell first asks — never during the folder scan (spec section 13).
     func storyboard(for url: URL, targetPixels: CGFloat) async -> Storyboard? {
         let bucket = SizeBucket.bucket(forTargetPixels: targetPixels)
-        let key = "\(url.path)|sb|\(bucket.rawValue)" as NSString
+        let diskKey = PersistentMediaCache.key(for: url, variant: "video-storyboard-\(bucket.rawValue)")
+        let key = diskKey as NSString
 
         if let cached = storyboardCache.object(forKey: key) {
             return cached.storyboard
@@ -119,16 +152,52 @@ actor VideoPreviewService {
             return nil
         }
         if let existing = storyboardInFlight[key] {
-            return await existing.value
+            return await withTaskCancellationHandler {
+                await existing.value
+            } onCancel: {
+                existing.cancel()
+            }
         }
 
         let maxPixel = CGFloat(bucket.rawValue)
         let task = Task<Storyboard?, Never>.detached(priority: .utility) {
-            await Self.generateStoryboard(url: url, maxPixel: maxPixel)
+            if let record = PersistentMediaCache.load(
+                PersistentMediaCache.StoryboardRecord.self,
+                namespace: "video-storyboards",
+                key: diskKey
+            ) {
+                let frames = record.frames.compactMap(PersistentMediaCache.decodedImage(from:))
+                if frames.count == record.frames.count, !frames.isEmpty {
+                    return Storyboard(frames: frames, duration: record.duration)
+                }
+            }
+
+            guard !Task.isCancelled,
+                  let storyboard = await Self.generateStoryboard(url: url, maxPixel: maxPixel)
+            else { return nil }
+
+            if !Task.isCancelled {
+                let frames = storyboard.frames.compactMap(PersistentMediaCache.encodedImage(_:))
+                if frames.count == storyboard.frames.count {
+                    PersistentMediaCache.store(
+                        PersistentMediaCache.StoryboardRecord(
+                            frames: frames,
+                            duration: storyboard.duration
+                        ),
+                        namespace: "video-storyboards",
+                        key: diskKey
+                    )
+                }
+            }
+            return storyboard
         }
         storyboardInFlight[key] = task
 
-        let result = await task.value
+        let result = await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            task.cancel()
+        }
         storyboardInFlight[key] = nil
 
         if let result {
@@ -136,7 +205,7 @@ actor VideoPreviewService {
                 partial + Int(image.size.width * image.size.height) * 4
             }
             storyboardCache.setObject(StoryboardBox(result), forKey: key, cost: cost)
-        } else {
+        } else if !Task.isCancelled {
             storyboardFailures.insert(key)
         }
         return result

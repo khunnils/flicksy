@@ -43,9 +43,11 @@ struct AudioViewModeControl: View {
         Picker("Audio View", selection: $model.audioViewMode) {
             Image(systemName: "list.bullet")
                 .accessibilityLabel("List View")
+                .help("List View")
                 .tag(AudioViewMode.list)
             Image(systemName: "waveform")
                 .accessibilityLabel("Waveform View")
+                .help("Waveform View")
                 .tag(AudioViewMode.waveforms)
         }
         .pickerStyle(.segmented)
@@ -65,13 +67,16 @@ struct LibraryTabPicker: View {
 
         Picker("Library", selection: $model.libraryTab) {
             ForEach(MediaLibraryTab.allCases) { tab in
-                Text(tab.title).tag(tab)
+                Image(systemName: tab.systemImage)
+                    .accessibilityLabel(tab.title)
+                    .help(tab.title)
+                    .tag(tab)
             }
         }
         .pickerStyle(.segmented)
         .labelsHidden()
         .help("Switch between Images & Video and Audio")
         .accessibilityLabel("Library")
-        .frame(minWidth: 220)
+        .frame(width: 92)
     }
 }

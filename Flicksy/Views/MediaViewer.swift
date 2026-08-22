@@ -43,7 +43,7 @@ struct MediaViewer: View {
                 model.copyPath(clicked: item)
             }
         }
-        .task(id: item.id) {
+        .task(id: item.contentVersion) {
             preparePlayback()
         }
         .onDisappear {
@@ -229,7 +229,7 @@ private struct ViewerImage: View {
                 ProgressView()
             }
         }
-        .task(id: item.url.path) {
+        .task(id: item.contentVersion) {
             await load()
         }
     }

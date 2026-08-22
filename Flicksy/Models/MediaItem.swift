@@ -17,6 +17,14 @@ struct MediaItem: Identifiable, Hashable, Sendable {
     /// how `MediaFolder` keys on its path.
     var id: String { url.path }
 
+    /// Changes when a file is replaced or rewritten in place while keeping the
+    /// same path. Async view tasks use this to discard stale previews/metadata.
+    nonisolated var contentVersion: String {
+        let size = fileSize ?? -1
+        let modified = modifiedAt?.timeIntervalSinceReferenceDate.bitPattern ?? 0
+        return "\(url.path)|\(size)|\(modified)"
+    }
+
     let url: URL
     let type: MediaType
     let name: String

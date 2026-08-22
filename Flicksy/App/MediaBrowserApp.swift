@@ -19,6 +19,14 @@ struct MediaBrowserApp: App {
         .commands {
             CommandGroup(after: .toolbar) {
                 Section {
+                    Button("Toggle Images & Video / Audio") {
+                        model.toggleLibraryTab()
+                    }
+                    .keyboardShortcut(.tab, modifiers: [.control])
+                    .disabled(model.viewerItemID != nil)
+
+                    Divider()
+
                     Button("Zoom In") {
                         model.zoomIn()
                     }
