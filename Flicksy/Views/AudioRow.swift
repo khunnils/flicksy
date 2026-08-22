@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// A full-width audio row: name, running time, and an interactive waveform
-/// (spec sections 8, 14 and 15). Audio is never shown as a square card.
+/// (spec sections 8, 14 and 15).
 ///
 /// No player exists until the user presses play or clicks the waveform. The row
 /// then claims `BrowserModel.playingAudioID`; because that is a single value,
@@ -58,8 +58,8 @@ struct AudioRow: View {
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(isSelected ? AnyShapeStyle(.separator) : AnyShapeStyle(.clear),
-                              lineWidth: isSelected ? 1 : 0)
+                .strokeBorder(AnyShapeStyle(.separator),
+                              lineWidth: isSelected ? 1 : 0.5)
         )
         .selectableCell(item, model: model)
         .task(id: item.url.path) {
@@ -89,7 +89,7 @@ struct AudioRow: View {
         } label: {
             Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
                 .font(.system(size: 28))
-                .foregroundStyle(.tint)
+                .foregroundStyle(.secondary)
         }
         .buttonStyle(.plain)
         .help(isPlaying ? "Pause" : "Play")

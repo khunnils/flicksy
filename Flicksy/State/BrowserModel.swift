@@ -11,6 +11,12 @@ enum MoveDirection {
     case left, right, up, down
 }
 
+/// The two presentations available for audio media.
+enum AudioViewMode: String, CaseIterable {
+    case icons
+    case waveforms
+}
+
 /// The single source of truth for the browser UI.
 ///
 /// Deliberately kept to plain `@Observable` state with no additional architectural
@@ -55,6 +61,14 @@ final class BrowserModel {
     var isSearchFieldFocused = false
 
     var hasActiveSearch: Bool { !normalizedSearchQuery.isEmpty }
+
+    /// Audio defaults to compact Finder-style icons; a user's explicit choice is
+    /// retained between launches.
+    var audioViewMode: AudioViewMode {
+        didSet {
+            UserDefaults.standard.set(audioViewMode.rawValue, forKey: Self.audioViewModeKey)
+        }
+    }
 
     /// `mediaItems` filtered by `searchQuery` and split by presentation: images
     /// and videos share the grid while audio gets full-width rows (spec section
@@ -138,6 +152,7 @@ final class BrowserModel {
     }
 
     private static let thumbnailSizeKey = "thumbnailSize"
+    private static let audioViewModeKey = "audioViewMode"
 
     private let rootStore = RootFolderStore()
     private var scanTask: Task<Void, Never>?
@@ -148,6 +163,10 @@ final class BrowserModel {
     init() {
         let storedSize = UserDefaults.standard.object(forKey: Self.thumbnailSizeKey) as? Double
         thumbnailSize = storedSize.map(Self.clampedThumbnailSize) ?? Self.defaultThumbnailSize
+
+        let storedAudioMode = UserDefaults.standard.string(forKey: Self.audioViewModeKey)
+            .flatMap(AudioViewMode.init(rawValue:))
+        audioViewMode = storedAudioMode ?? .icons
     }
 
     /// Restore persisted root folders and scan them. Call once when the UI appears.
@@ -349,11 +368,17 @@ final class BrowserModel {
     /// Left/Right step by one; Up/Down step by a full grid row while in the visual
     /// grid and by one while in the single-column audio list. Movement clamps at
     /// either end rather than wrapping, matching Finder.
-    func moveSelection(_ direction: MoveDirection, columns: Int, extending: Bool) {
+    func moveSelection(
+        _ direction: MoveDirection,
+        columns: Int,
+        audioColumns: Int = 1,
+        extending: Bool
+    ) {
         let ordered = orderedItems
         guard !ordered.isEmpty else { return }
 
         let cols = max(1, columns)
+        let audioCols = max(1, audioColumns)
         let visualCount = visualItems.count
         let currentIndex = focusedItemID
             .flatMap { id in ordered.firstIndex { $0.id == id } } ?? 0
@@ -363,8 +388,8 @@ final class BrowserModel {
         switch direction {
         case .left: target = currentIndex - 1
         case .right: target = currentIndex + 1
-        case .up: target = inAudio ? currentIndex - 1 : currentIndex - cols
-        case .down: target = inAudio ? currentIndex + 1 : currentIndex + cols
+        case .up: target = inAudio ? currentIndex - audioCols : currentIndex - cols
+        case .down: target = inAudio ? currentIndex + audioCols : currentIndex + cols
         }
         target = min(max(target, 0), ordered.count - 1)
 

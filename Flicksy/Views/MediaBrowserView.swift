@@ -23,6 +23,10 @@ struct MediaBrowserView: View {
     /// available width and the thumbnail size. Drives Up/Down arrow movement.
     @State private var columns: Int = 1
 
+    /// Number of columns in the compact audio layout, used for row-wise keyboard
+    /// navigation. Waveform mode always behaves as a single column.
+    @State private var audioColumns: Int = 1
+
     var body: some View {
         @Bindable var model = model
 
@@ -87,14 +91,13 @@ struct MediaBrowserView: View {
                     }
 
                     if !model.audioItems.isEmpty {
-                        section(title: "AUDIO") {
-                            AudioSection(items: model.audioItems)
-                        }
+                        audioSection
                     }
                 }
                 .padding(16)
                 .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width in
                     columns = columnCount(forWidth: width)
+                    audioColumns = audioColumnCount(forWidth: width)
                 }
             }
             .onChange(of: model.focusedItemID) { _, id in
@@ -114,6 +117,13 @@ struct MediaBrowserView: View {
         return max(1, Int((available + spacing) / (itemWidth + spacing)))
     }
 
+    private func audioColumnCount(forWidth width: CGFloat) -> Int {
+        let spacing: CGFloat = 12
+        let minimumItemWidth: CGFloat = 104
+        let available = max(0, width - 32)
+        return max(1, Int((available + spacing) / (minimumItemWidth + spacing)))
+    }
+
     private func handleKey(_ press: KeyPress) -> KeyPress.Result {
         // While the viewer is open its own shortcuts (arrows, Space, Enter, Esc)
         // take over, so the grid stays out of the way.
@@ -122,13 +132,13 @@ struct MediaBrowserView: View {
         let extend = press.modifiers.contains(.shift)
         switch press.key {
         case .leftArrow:
-            model.moveSelection(.left, columns: columns, extending: extend)
+            model.moveSelection(.left, columns: columns, audioColumns: activeAudioColumns, extending: extend)
         case .rightArrow:
-            model.moveSelection(.right, columns: columns, extending: extend)
+            model.moveSelection(.right, columns: columns, audioColumns: activeAudioColumns, extending: extend)
         case .upArrow:
-            model.moveSelection(.up, columns: columns, extending: extend)
+            model.moveSelection(.up, columns: columns, audioColumns: activeAudioColumns, extending: extend)
         case .downArrow:
-            model.moveSelection(.down, columns: columns, extending: extend)
+            model.moveSelection(.down, columns: columns, audioColumns: activeAudioColumns, extending: extend)
         case .space:
             model.openPreview()
         case .return:
@@ -139,6 +149,43 @@ struct MediaBrowserView: View {
             return .ignored
         }
         return .handled
+    }
+
+    private var activeAudioColumns: Int {
+        model.audioViewMode == .icons ? audioColumns : 1
+    }
+
+    @ViewBuilder
+    private var audioSection: some View {
+        @Bindable var model = model
+
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("AUDIO")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Picker("Audio View", selection: $model.audioViewMode) {
+                    Image(systemName: "square.grid.2x2")
+                        .accessibilityLabel("Icon View")
+                        .tag(AudioViewMode.icons)
+                    Image(systemName: "waveform")
+                        .accessibilityLabel("Waveform View")
+                        .tag(AudioViewMode.waveforms)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .controlSize(.small)
+                .frame(width: 76)
+                .help("Audio view")
+            }
+
+            Divider()
+
+            AudioSection(items: model.audioItems, viewMode: model.audioViewMode)
+        }
     }
 
     @ViewBuilder
