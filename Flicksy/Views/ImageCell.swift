@@ -13,11 +13,11 @@ import SwiftUI
 struct ImageCell: View {
     let item: MediaItem
     let targetPixels: CGFloat
+    let cardAspectRatio: CGFloat
 
     @Environment(BrowserModel.self) private var model
 
     @State private var image: NSImage?
-    @State private var pixelSize: (width: Int, height: Int)?
     @State private var didFail = false
 
     private var isSelected: Bool { model.selectedItemIDs.contains(item.id) }
@@ -27,7 +27,7 @@ struct ImageCell: View {
             MediaCardBackground(isSelected: isSelected) {
                 content
             }
-            .aspectRatio(1, contentMode: .fit)
+            .aspectRatio(cardAspectRatio, contentMode: .fit)
             .selectableCell(item, model: model)
 
             MediaCaption(title: item.name, subtitle: subtitle)
@@ -54,10 +54,8 @@ struct ImageCell: View {
     }
 
     private var subtitle: String? {
-        if let pixelSize {
-            return "\(pixelSize.width)×\(pixelSize.height)"
-        }
-        return MediaFormatting.fileSize(item.fileSize)
+        MediaFormatting.dimensions(width: item.width, height: item.height)
+            ?? MediaFormatting.fileSize(item.fileSize)
     }
 
     /// Re-run the load when either the file or the requested size bucket changes.
@@ -71,9 +69,6 @@ struct ImageCell: View {
         guard !Task.isCancelled else { return }
         if let result {
             image = result.image
-            if let w = result.pixelWidth, let h = result.pixelHeight {
-                pixelSize = (w, h)
-            }
         } else {
             didFail = true
         }

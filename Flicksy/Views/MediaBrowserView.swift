@@ -86,7 +86,11 @@ struct MediaBrowserView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     if !model.visualItems.isEmpty {
                         section(title: "IMAGES & VIDEO") {
-                            MediaGrid(items: model.visualItems, thumbnailSize: CGFloat(model.thumbnailSize))
+                            MediaGrid(
+                                items: model.visualItems,
+                                thumbnailSize: CGFloat(model.thumbnailSize),
+                                cardAspectRatio: CGFloat(model.cardAspectRatio)
+                            )
                         }
                     }
 

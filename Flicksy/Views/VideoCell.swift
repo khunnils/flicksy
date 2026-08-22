@@ -16,6 +16,7 @@ import SwiftUI
 struct VideoCell: View {
     let item: MediaItem
     let targetPixels: CGFloat
+    let cardAspectRatio: CGFloat
 
     @Environment(BrowserModel.self) private var model
 
@@ -33,7 +34,7 @@ struct VideoCell: View {
             MediaCardBackground(isSelected: isSelected) {
                 content
             }
-            .aspectRatio(1, contentMode: .fit)
+            .aspectRatio(cardAspectRatio, contentMode: .fit)
 
             MediaCaption(title: item.name, subtitle: subtitle)
         }

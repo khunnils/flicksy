@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import ImageIO
 import UniformTypeIdentifiers
 
 /// Filesystem scanning for the smart sidebar and the media grid.
@@ -115,10 +116,20 @@ enum FolderScanner {
                   let type = MediaType(contentType: contentType)
             else { continue }
 
+            let pixelSize: (Int?, Int?)
+            switch type {
+            case .image:
+                pixelSize = imagePixelSize(at: url)
+            case .video, .audio:
+                pixelSize = (nil, nil)
+            }
+
             items.append(MediaItem(
                 url: url,
                 type: type,
                 name: url.lastPathComponent,
+                width: pixelSize.0,
+                height: pixelSize.1,
                 fileSize: values.fileSize.map(Int64.init),
                 modifiedAt: values.contentModificationDate
             ))
@@ -126,5 +137,23 @@ enum FolderScanner {
 
         items.sort { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
         return items
+    }
+
+    /// Read display-oriented dimensions from ImageIO metadata without decoding
+    /// the image. EXIF orientations 5–8 rotate the stored pixels by 90 degrees,
+    /// so their width and height must be swapped for layout decisions.
+    nonisolated private static func imagePixelSize(at url: URL) -> (Int?, Int?) {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let width = (properties[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue,
+              let height = (properties[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue,
+              width > 0,
+              height > 0
+        else {
+            return (nil, nil)
+        }
+
+        let orientation = (properties[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1
+        return (5...8).contains(orientation) ? (height, width) : (width, height)
     }
 }

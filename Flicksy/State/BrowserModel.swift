@@ -76,6 +76,11 @@ final class BrowserModel {
     private(set) var visualItems: [MediaItem] = []
     private(set) var audioItems: [MediaItem] = []
 
+    /// Shared width-to-height ratio for every card in the visual grid. It is
+    /// derived from all images in the selected folder (not search results), so
+    /// filtering never causes the grid to reflow.
+    private(set) var cardAspectRatio: Double = 1
+
     /// The one grid cell permitted to hold a live `AVPlayer`.
     ///
     /// Playing a video assigns this, which implicitly tears down whatever was
@@ -255,6 +260,7 @@ final class BrowserModel {
     /// playback or viewer state that referred to the previous folder.
     private func setMediaItems(_ items: [MediaItem]) {
         mediaItems = items
+        cardAspectRatio = Self.cardAspectRatio(for: items)
         playingVideoID = nil
         playingAudioID = nil
         viewerItemID = nil
@@ -262,6 +268,40 @@ final class BrowserModel {
         selectionAnchorID = nil
         focusedItemID = nil
         applySearchFilter()
+    }
+
+    /// Use the median image ratio when every image is landscape. Missing or
+    /// invalid dimensions, square/portrait images, and video-only folders all
+    /// deliberately fall back to square cards.
+    nonisolated static func cardAspectRatio(for items: [MediaItem]) -> Double {
+        let images = items.compactMap { item -> MediaItem? in
+            switch item.type {
+            case .image: item
+            case .video, .audio: nil
+            }
+        }
+        guard !images.isEmpty else { return 1 }
+
+        var ratios: [Double] = []
+        ratios.reserveCapacity(images.count)
+
+        for image in images {
+            guard let width = image.width,
+                  let height = image.height,
+                  width > height,
+                  height > 0
+            else {
+                return 1
+            }
+            ratios.append(Double(width) / Double(height))
+        }
+
+        ratios.sort()
+        let middle = ratios.count / 2
+        if ratios.count.isMultiple(of: 2) {
+            return (ratios[middle - 1] + ratios[middle]) / 2
+        }
+        return ratios[middle]
     }
 
     // MARK: - Search

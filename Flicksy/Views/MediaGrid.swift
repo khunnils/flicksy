@@ -12,6 +12,7 @@ import SwiftUI
 struct MediaGrid: View {
     let items: [MediaItem]
     let thumbnailSize: CGFloat
+    let cardAspectRatio: CGFloat
 
     private var gridColumns: [GridItem] {
         [GridItem(.adaptive(minimum: thumbnailSize), spacing: 12)]
@@ -32,9 +33,17 @@ struct MediaGrid: View {
             ForEach(items) { item in
                 switch item.type {
                 case .image:
-                    ImageCell(item: item, targetPixels: targetPixels)
+                    ImageCell(
+                        item: item,
+                        targetPixels: targetPixels,
+                        cardAspectRatio: cardAspectRatio
+                    )
                 case .video:
-                    VideoCell(item: item, targetPixels: targetPixels)
+                    VideoCell(
+                        item: item,
+                        targetPixels: targetPixels,
+                        cardAspectRatio: cardAspectRatio
+                    )
                 case .audio:
                     EmptyView() // Audio is rendered in its own full-width section.
                 }
