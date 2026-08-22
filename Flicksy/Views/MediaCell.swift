@@ -147,6 +147,31 @@ enum MediaFormatting {
         return "\(width)×\(height)"
     }
 
+    static func bitRate(_ bitsPerSecond: Int?) -> String? {
+        guard let bitsPerSecond, bitsPerSecond > 0 else { return nil }
+        if bitsPerSecond >= 1_000_000 {
+            return String(format: "%.1f Mbps", Double(bitsPerSecond) / 1_000_000)
+        }
+        return "\(Int((Double(bitsPerSecond) / 1_000).rounded())) kbps"
+    }
+
+    static func sampleRate(_ samplesPerSecond: Double?) -> String? {
+        guard let samplesPerSecond, samplesPerSecond.isFinite, samplesPerSecond > 0 else { return nil }
+        let kilohertz = samplesPerSecond / 1_000
+        return kilohertz.rounded() == kilohertz
+            ? String(format: "%.0f kHz", kilohertz)
+            : String(format: "%.1f kHz", kilohertz)
+    }
+
+    static func channels(_ count: Int?) -> String? {
+        guard let count, count > 0 else { return nil }
+        switch count {
+        case 1: return "Mono"
+        case 2: return "Stereo"
+        default: return "\(count) ch"
+        }
+    }
+
     /// Joins the caption details that are available, e.g. `8.3s · 1920×1080`.
     static func detailLine(_ parts: [String?]) -> String? {
         let available = parts.compactMap { $0 }

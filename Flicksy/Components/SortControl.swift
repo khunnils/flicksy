@@ -33,7 +33,7 @@ struct SortControl: View {
     }
 }
 
-/// Icon vs waveform layout, shown while the Audio tab is active.
+/// List or waveform layout, shown while the Audio tab is active.
 struct AudioViewModeControl: View {
     @Environment(BrowserModel.self) private var model
 
@@ -41,9 +41,9 @@ struct AudioViewModeControl: View {
         @Bindable var model = model
 
         Picker("Audio View", selection: $model.audioViewMode) {
-            Image(systemName: "square.grid.2x2")
-                .accessibilityLabel("Icon View")
-                .tag(AudioViewMode.icons)
+            Image(systemName: "list.bullet")
+                .accessibilityLabel("List View")
+                .tag(AudioViewMode.list)
             Image(systemName: "waveform")
                 .accessibilityLabel("Waveform View")
                 .tag(AudioViewMode.waveforms)

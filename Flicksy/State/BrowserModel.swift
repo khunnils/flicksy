@@ -12,14 +12,14 @@ enum MoveDirection {
     case left, right, up, down
 }
 
-/// The two presentations available for audio media.
+/// The presentations available for audio media.
 enum AudioViewMode: String, CaseIterable {
-    case icons
+    case list
     case waveforms
 }
 
 /// The two library panes. Images and video share a visual grid; audio has its
-/// own icon/waveform view so the two are never mixed in one scrolling list.
+/// own list/waveform view so the two are never mixed in one scrolling list.
 enum MediaLibraryTab: String, CaseIterable, Identifiable {
     case visual
     case audio
@@ -133,7 +133,7 @@ final class BrowserModel {
 
     var hasActiveSearch: Bool { !normalizedSearchQuery.isEmpty }
 
-    /// Audio defaults to compact Finder-style icons; a user's explicit choice is
+    /// Audio defaults to a metadata-rich list; a user's explicit choice is
     /// retained between launches.
     var audioViewMode: AudioViewMode {
         didSet {
@@ -272,7 +272,7 @@ final class BrowserModel {
 
         let storedAudioMode = UserDefaults.standard.string(forKey: Self.audioViewModeKey)
             .flatMap(AudioViewMode.init(rawValue:))
-        audioViewMode = storedAudioMode ?? .icons
+        audioViewMode = storedAudioMode ?? .list
 
         let storedTab = UserDefaults.standard.string(forKey: Self.libraryTabKey)
             .flatMap(MediaLibraryTab.init(rawValue:))

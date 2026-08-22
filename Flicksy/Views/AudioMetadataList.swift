@@ -1,0 +1,169 @@
+//
+//  AudioMetadataList.swift
+//  MediaBrowser
+//
+
+import SwiftUI
+
+/// Finder-style audio list with stable, scannable metadata columns. A horizontal
+/// scroll view preserves the columns when the detail pane is narrow.
+struct AudioMetadataList: View {
+    let items: [MediaItem]
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            LazyVStack(spacing: 0) {
+                header
+
+                Divider()
+
+                ForEach(items) { item in
+                    AudioMetadataRow(item: item)
+                        .id(item.id)
+                }
+            }
+            .frame(minWidth: AudioListColumns.totalWidth, alignment: .leading)
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: AudioListColumns.spacing) {
+            Color.clear.frame(width: AudioListColumns.play)
+            columnHeader("Name", width: AudioListColumns.name, alignment: .leading)
+            columnHeader("Duration", width: AudioListColumns.duration)
+            columnHeader("Bit Rate", width: AudioListColumns.bitRate)
+            columnHeader("Sample Rate", width: AudioListColumns.sampleRate)
+            columnHeader("Channels", width: AudioListColumns.channels)
+            columnHeader("Size", width: AudioListColumns.size)
+        }
+        .padding(.horizontal, AudioListColumns.horizontalPadding)
+        .padding(.vertical, 7)
+    }
+
+    private func columnHeader(
+        _ title: String,
+        width: CGFloat,
+        alignment: Alignment = .trailing
+    ) -> some View {
+        Text(title)
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .frame(width: width, alignment: alignment)
+    }
+}
+
+private enum AudioListColumns {
+    static let play: CGFloat = 28
+    static let name: CGFloat = 280
+    static let duration: CGFloat = 80
+    static let bitRate: CGFloat = 90
+    static let sampleRate: CGFloat = 100
+    static let channels: CGFloat = 80
+    static let size: CGFloat = 90
+    static let spacing: CGFloat = 12
+    static let horizontalPadding: CGFloat = 8
+
+    static let totalWidth = play + name + duration + bitRate + sampleRate
+        + channels + size + spacing * 6 + horizontalPadding * 2
+}
+
+private struct AudioMetadataRow: View {
+    let item: MediaItem
+
+    @Environment(BrowserModel.self) private var model
+
+    @State private var metadata: MediaMetadataService.Metadata?
+    @State private var playback: AudioPlayback?
+
+    private var isActive: Bool { model.playingAudioID == item.id }
+    private var isSelected: Bool { model.selectedItemIDs.contains(item.id) }
+    private var isPlaying: Bool { playback?.isPlaying ?? false }
+
+    var body: some View {
+        HStack(spacing: AudioListColumns.spacing) {
+            playButton
+                .frame(width: AudioListColumns.play)
+
+            Text(item.name)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .frame(width: AudioListColumns.name, alignment: .leading)
+
+            value(MediaFormatting.clock(metadata?.duration), width: AudioListColumns.duration)
+            value(MediaFormatting.bitRate(metadata?.bitRate), width: AudioListColumns.bitRate)
+            value(MediaFormatting.sampleRate(metadata?.sampleRate), width: AudioListColumns.sampleRate)
+            value(MediaFormatting.channels(metadata?.channelCount), width: AudioListColumns.channels)
+            value(MediaFormatting.fileSize(item.fileSize), width: AudioListColumns.size)
+        }
+        .font(.callout)
+        .padding(.horizontal, AudioListColumns.horizontalPadding)
+        .padding(.vertical, 6)
+        .background(isSelected ? AnyShapeStyle(.quaternary.opacity(0.5)) : AnyShapeStyle(.clear))
+        .overlay(alignment: .bottom) {
+            Divider()
+        }
+        .contentShape(Rectangle())
+        .selectableCell(item, model: model)
+        .mediaItemInteractions(item, model: model)
+        .task(id: item.url.path) {
+            metadata = await MediaMetadataService.shared.metadata(for: item.url)
+        }
+        .onChange(of: isActive) { _, nowActive in
+            if nowActive {
+                startPlayback()
+            } else {
+                stopPlayback()
+            }
+        }
+        .onDisappear {
+            stopPlayback()
+            if isActive {
+                model.playingAudioID = nil
+            }
+        }
+    }
+
+    private var playButton: some View {
+        Button {
+            togglePlayback()
+        } label: {
+            Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle")
+                .font(.system(size: 18))
+                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+        .help(isPlaying ? "Pause" : "Play")
+    }
+
+    private func value(_ text: String?, width: CGFloat) -> some View {
+        Text(text ?? "—")
+            .foregroundStyle(text == nil ? .tertiary : .secondary)
+            .lineLimit(1)
+            .frame(width: width, alignment: .trailing)
+    }
+
+    private func togglePlayback() {
+        model.selectItem(item)
+        guard let playback, isActive else {
+            if isActive {
+                startPlayback()
+            } else {
+                model.playingAudioID = item.id
+            }
+            return
+        }
+        playback.togglePlayPause()
+    }
+
+    private func startPlayback() {
+        let controller = playback ?? AudioPlayback(url: item.url, duration: metadata?.duration)
+        playback = controller
+        controller.play()
+    }
+
+    private func stopPlayback() {
+        playback?.tearDown()
+        playback = nil
+    }
+}

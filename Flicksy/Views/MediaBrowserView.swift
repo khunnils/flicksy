@@ -23,10 +23,6 @@ struct MediaBrowserView: View {
     /// available width and the thumbnail size. Drives Up/Down arrow movement.
     @State private var columns: Int = 1
 
-    /// Number of columns in the compact audio layout, used for row-wise keyboard
-    /// navigation. Waveform mode always behaves as a single column.
-    @State private var audioColumns: Int = 1
-
     var body: some View {
         @Bindable var model = model
 
@@ -115,7 +111,6 @@ struct MediaBrowserView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width in
                         columns = columnCount(forWidth: width)
-                        audioColumns = audioColumnCount(forWidth: width)
                     }
             }
             .onChange(of: model.focusedItemID) { _, id in
@@ -162,19 +157,12 @@ struct MediaBrowserView: View {
         return max(1, Int((available + spacing) / (itemWidth + spacing)))
     }
 
-    private func audioColumnCount(forWidth width: CGFloat) -> Int {
-        let spacing: CGFloat = 12
-        let minimumItemWidth: CGFloat = 104
-        let available = max(0, width - 32)
-        return max(1, Int((available + spacing) / (minimumItemWidth + spacing)))
-    }
-
     private var navigationColumns: Int {
         switch model.libraryTab {
         case .visual:
             columns
         case .audio:
-            model.audioViewMode == .icons ? audioColumns : 1
+            1
         }
     }
 
