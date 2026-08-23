@@ -28,6 +28,7 @@ struct VideoCell: View {
     @State private var hoverFraction: Double?
     @State private var hoverWidth: CGFloat = 0
     @State private var shouldLoadStoryboard = false
+    @State private var cardSize: CGSize = .zero
 
     private var isActive: Bool { model.playingVideoID == item.id }
 
@@ -35,12 +36,16 @@ struct VideoCell: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            MediaCardBackground(isSelected: isSelected) {
+            MediaCardBackground(isSelected: isSelected && !hasVisualContent) {
                 content
             }
             .aspectRatio(cardAspectRatio, contentMode: .fit)
+            .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
+                cardSize = size
+            }
 
             MediaCaption(title: item.name, subtitle: subtitle)
+                .padding(.leading, captionLeadingInset)
         }
         .mediaItemInteractions(item, model: model, draggable: playback == nil)
         .task(id: posterTaskID) {
@@ -72,15 +77,40 @@ struct VideoCell: View {
     @ViewBuilder
     private var content: some View {
         if let playback {
-            VideoPlayerView(player: playback.player, controlsStyle: .inline, refusesKeyboardFocus: true)
+            MediaThumbnailSurface(aspectRatio: mediaAspectRatio, isSelected: isSelected) {
+                VideoPlayerView(player: playback.player, controlsStyle: .inline, refusesKeyboardFocus: true)
+            }
         } else if poster != nil || storyboard != nil {
-            scrubbablePoster
+            MediaThumbnailSurface(aspectRatio: mediaAspectRatio, isSelected: isSelected) {
+                scrubbablePoster
+            }
         } else if didFail {
             PreviewUnavailable()
         } else {
             ProgressView()
                 .controlSize(.small)
         }
+    }
+
+    private var hasVisualContent: Bool {
+        playback != nil || poster != nil || storyboard != nil
+    }
+
+    private var mediaAspectRatio: CGFloat {
+        if let frame = displayedFrame, frame.size.height > 0 {
+            return frame.size.width / frame.size.height
+        }
+        if let width = metadata?.width, let height = metadata?.height, height > 0 {
+            return CGFloat(width) / CGFloat(height)
+        }
+        return cardAspectRatio
+    }
+
+    private var captionLeadingInset: CGFloat {
+        MediaThumbnailLayout.contentLeadingInset(
+            aspectRatio: mediaAspectRatio,
+            container: cardSize
+        )
     }
 
     /// Poster or hover-scrub frame, with a play button. Horizontal mouse position
@@ -93,7 +123,6 @@ struct VideoCell: View {
                     .resizable()
                     .interpolation(.medium)
                     .scaledToFit()
-                    .padding(2)
             }
 
             if let hoverFraction {

@@ -44,6 +44,87 @@ struct MediaCardBackground<Content: View>: View {
     }
 }
 
+/// Centers media on a subtle mat whose inset remains identical on every edge,
+/// independent of the grid card's configured aspect ratio.
+struct MediaThumbnailSurface<Content: View>: View {
+    let aspectRatio: CGFloat
+    var isSelected: Bool = false
+    var inset: CGFloat = 7
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        GeometryReader { proxy in
+            let contentSize = fittedContentSize(in: proxy.size)
+
+            content
+                .frame(width: contentSize.width, height: contentSize.height)
+                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .padding(inset)
+                .background(
+                    isSelected
+                        ? AnyShapeStyle(Color.primary.opacity(0.09))
+                        : AnyShapeStyle(Color(white: 0.97)),
+                    in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(
+                            isSelected ? AnyShapeStyle(Color.primary.opacity(0.4)) : AnyShapeStyle(.clear),
+                            lineWidth: isSelected ? 1.5 : 0
+                        )
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 6.5, style: .continuous)
+                        .inset(by: 2)
+                        .strokeBorder(
+                            isSelected ? Color.white.opacity(0.38) : .clear,
+                            lineWidth: isSelected ? 0.75 : 0
+                        )
+                }
+                .shadow(
+                    color: isSelected ? Color.black.opacity(0.2) : .clear,
+                    radius: isSelected ? 4 : 0,
+                    y: isSelected ? 1 : 0
+                )
+                .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
+        }
+    }
+
+    private func fittedContentSize(in container: CGSize) -> CGSize {
+        MediaThumbnailLayout.fittedContentSize(
+            aspectRatio: aspectRatio,
+            inset: inset,
+            container: container
+        )
+    }
+}
+
+enum MediaThumbnailLayout {
+    static func fittedContentSize(
+        aspectRatio: CGFloat,
+        inset: CGFloat = 7,
+        container: CGSize
+    ) -> CGSize {
+        let availableWidth = max(0, container.width - inset * 2)
+        let availableHeight = max(0, container.height - inset * 2)
+        guard availableWidth > 0, availableHeight > 0, aspectRatio > 0 else {
+            return .zero
+        }
+
+        let width = min(availableWidth, availableHeight * aspectRatio)
+        return CGSize(width: width, height: width / aspectRatio)
+    }
+
+    static func contentLeadingInset(aspectRatio: CGFloat, container: CGSize) -> CGFloat {
+        let contentWidth = fittedContentSize(
+            aspectRatio: aspectRatio,
+            container: container
+        ).width
+        return max(0, (container.width - contentWidth) / 2)
+    }
+}
+
 extension View {
     /// Finder-style click-to-select behaviour for a media element.
     ///

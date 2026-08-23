@@ -19,18 +19,23 @@ struct ImageCell: View {
 
     @State private var image: NSImage?
     @State private var didFail = false
+    @State private var cardSize: CGSize = .zero
 
     private var isSelected: Bool { model.selectedItemIDs.contains(item.id) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            MediaCardBackground(isSelected: isSelected) {
+            MediaCardBackground(isSelected: isSelected && image == nil) {
                 content
             }
             .aspectRatio(cardAspectRatio, contentMode: .fit)
+            .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
+                cardSize = size
+            }
             .selectableCell(item, model: model)
 
             MediaCaption(title: item.name, subtitle: subtitle)
+                .padding(.leading, captionLeadingInset)
         }
         .mediaItemInteractions(item, model: model)
         .task(id: taskID) {
@@ -41,17 +46,33 @@ struct ImageCell: View {
     @ViewBuilder
     private var content: some View {
         if let image {
-            Image(nsImage: image)
-                .resizable()
-                .interpolation(.medium)
-                .scaledToFit()
-                .padding(2)
+            MediaThumbnailSurface(
+                aspectRatio: imageAspectRatio(image),
+                isSelected: isSelected
+            ) {
+                Image(nsImage: image)
+                    .resizable()
+                    .interpolation(.medium)
+                    .scaledToFit()
+            }
         } else if didFail {
             PreviewUnavailable()
         } else {
             ProgressView()
                 .controlSize(.small)
         }
+    }
+
+    private func imageAspectRatio(_ image: NSImage) -> CGFloat {
+        guard image.size.height > 0 else { return cardAspectRatio }
+        return image.size.width / image.size.height
+    }
+
+    private var captionLeadingInset: CGFloat {
+        MediaThumbnailLayout.contentLeadingInset(
+            aspectRatio: image.map(imageAspectRatio) ?? cardAspectRatio,
+            container: cardSize
+        )
     }
 
     private var subtitle: String? {
