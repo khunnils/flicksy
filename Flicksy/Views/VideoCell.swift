@@ -43,6 +43,7 @@ struct VideoCell: View {
             .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
                 cardSize = size
             }
+            .selectableCell(item, model: model)
 
             MediaCaption(title: item.name, subtitle: subtitle)
                 .padding(.leading, captionLeadingInset)
@@ -180,9 +181,6 @@ struct VideoCell: View {
             .buttonStyle(.plain)
             .help("Play inline")
         }
-        // Clicking the frame selects; double-clicking opens the focused viewer
-        // (spec section 16).
-        .selectableCell(item, model: model)
     }
 
     private var displayedFrame: NSImage? {
