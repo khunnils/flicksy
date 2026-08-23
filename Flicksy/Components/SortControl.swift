@@ -71,6 +71,7 @@ struct LibraryTabPicker: View {
                     .accessibilityLabel(tab.title)
                     .help(tab.title)
                     .tag(tab)
+                    .disabled(model.isClipboardSelected && tab == .audio)
             }
         }
         .pickerStyle(.segmented)

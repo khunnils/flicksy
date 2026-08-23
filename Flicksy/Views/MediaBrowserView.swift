@@ -31,15 +31,21 @@ struct MediaBrowserView: View {
         @Bindable var model = model
 
         Group {
-            if model.selectedFolderID == nil {
+            if !model.hasSelectedSource {
                 ContentUnavailableView(
-                    "No Folder Selected",
+                    "No Source Selected",
                     systemImage: "sidebar.left",
-                    description: Text("Select a folder in the sidebar to browse its media.")
+                    description: Text("Select Clipboard or a folder in the sidebar to browse media.")
                 )
             } else if model.mediaItems.isEmpty {
                 if model.isLoadingMedia {
                     ProgressView()
+                } else if model.isClipboardSelected {
+                    ContentUnavailableView(
+                        "Clipboard Is Empty",
+                        systemImage: "clipboard",
+                        description: Text("Copy an image while Flicksy is running. Recent clipboard images are saved here automatically.")
+                    )
                 } else {
                     ContentUnavailableView(
                         "No Media",
@@ -59,7 +65,7 @@ struct MediaBrowserView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
-        .focusable(model.selectedFolderID != nil)
+        .focusable(model.hasSelectedSource)
         .focusEffectDisabled()
         .focused($browserFocused)
         .searchable(

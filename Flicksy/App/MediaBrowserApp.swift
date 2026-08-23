@@ -100,6 +100,6 @@ struct MediaBrowserApp: App {
             model.isSearchPresented = true
         }
         .keyboardShortcut("f", modifiers: .command)
-        .disabled(model.selectedFolderID == nil || model.viewerItemID != nil)
+        .disabled(!model.hasSelectedSource || model.viewerItemID != nil)
     }
 }

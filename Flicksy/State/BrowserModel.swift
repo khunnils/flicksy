@@ -12,6 +12,13 @@ enum MoveDirection {
     case left, right, up, down
 }
 
+/// A sidebar selection can be a real media folder or Flicksy's app-owned virtual
+/// clipboard history.
+enum BrowserSource: Hashable {
+    case clipboard
+    case folder(MediaFolder.ID)
+}
+
 /// The presentations available for audio media.
 enum AudioViewMode: String, CaseIterable {
     case list
@@ -100,17 +107,23 @@ final class BrowserModel {
     /// One pruned tree per authorized root folder, shown in the sidebar.
     private(set) var rootTrees: [MediaFolder] = []
 
-    /// Selection is tracked by folder id (the folder's path) so it stays stable
-    /// across rescans that rebuild the tree nodes.
-    var selectedFolderID: MediaFolder.ID? {
+    /// Selection is typed so the virtual clipboard never has to masquerade as a
+    /// filesystem path.
+    var selectedSource: BrowserSource? {
         didSet {
-            guard selectedFolderID != oldValue else { return }
+            guard selectedSource != oldValue else { return }
             searchQuery = ""
             isSearchPresented = false
             isSearchFieldFocused = false
+            if selectedSource == .clipboard {
+                libraryTab = .visual
+            }
             loadMediaForSelection()
         }
     }
+
+    var hasSelectedSource: Bool { selectedSource != nil }
+    var isClipboardSelected: Bool { selectedSource == .clipboard }
 
     /// Media directly contained in the selected folder.
     private(set) var mediaItems: [MediaItem] = []
@@ -152,6 +165,10 @@ final class BrowserModel {
     }
 
     func toggleLibraryTab() {
+        guard !isClipboardSelected else {
+            libraryTab = .visual
+            return
+        }
         switch libraryTab {
         case .visual:
             libraryTab = .audio
@@ -228,6 +245,7 @@ final class BrowserModel {
 
     private(set) var isScanning = false
     private(set) var isLoadingMedia = false
+    private(set) var clipboardItemCount = 0
 
     /// A user-facing message when folders cannot be restored or read. Cleared once
     /// the situation is resolved (spec section 24).
@@ -270,12 +288,15 @@ final class BrowserModel {
     private static let sortAscendingKey = "sortAscending"
 
     private let rootStore = RootFolderStore()
+    private let clipboardStore = ClipboardHistoryStore()
     private var scanTask: Task<Void, Never>?
     private var mediaTask: Task<Void, Never>?
     private var fileSystemMonitor: FileSystemMonitor?
     private var monitorRefreshTask: Task<Void, Never>?
     private var activeScanID: UUID?
     private var activeMediaLoadID: UUID?
+    private var clipboardMonitorTask: Task<Void, Never>?
+    private var lastPasteboardChangeCount: Int?
 
     // MARK: - Lifecycle
 
@@ -312,6 +333,7 @@ final class BrowserModel {
         }
         restartFilesystemMonitoring()
         rescanRoots()
+        startClipboardMonitoring()
     }
 
     var hasRootFolders: Bool { !rootStore.urls.isEmpty }
@@ -328,8 +350,8 @@ final class BrowserModel {
     func removeRootFolder(id: MediaFolder.ID) {
         let url = URL(fileURLWithPath: id)
         rootStore.removeFolder(url)
-        if selectedFolderID == id {
-            selectedFolderID = nil
+        if selectedSource == .folder(id) {
+            selectedSource = nil
             setMediaItems([])
         }
         restartFilesystemMonitoring()
@@ -396,6 +418,61 @@ final class BrowserModel {
         return [item.url]
     }
 
+    // MARK: - Clipboard history
+
+    func clearClipboardHistory() {
+        Task {
+            do {
+                let items = try await clipboardStore.clear()
+                clipboardItemCount = 0
+                if isClipboardSelected {
+                    setMediaItems(items)
+                }
+            } catch {
+                loadError = "Clipboard history could not be cleared."
+            }
+        }
+    }
+
+    private func startClipboardMonitoring() {
+        guard clipboardMonitorTask == nil else { return }
+        clipboardMonitorTask = Task { [weak self] in
+            guard let self else { return }
+
+            let stored = await clipboardStore.items()
+            clipboardItemCount = stored.count
+            if isClipboardSelected {
+                setMediaItems(stored)
+            }
+
+            while !Task.isCancelled {
+                await captureClipboardIfChanged()
+                try? await Task.sleep(for: .milliseconds(750))
+            }
+        }
+    }
+
+    private func captureClipboardIfChanged() async {
+        let pasteboard = NSPasteboard.general
+        let changeCount = pasteboard.changeCount
+        guard changeCount != lastPasteboardChangeCount else { return }
+        lastPasteboardChangeCount = changeCount
+
+        let candidates = ClipboardPasteboardReader.candidates(from: pasteboard)
+        guard !candidates.isEmpty else { return }
+
+        do {
+            let items = try await clipboardStore.importImages(candidates)
+            clipboardItemCount = items.count
+            if isClipboardSelected {
+                setMediaItems(items)
+            }
+        } catch {
+            // Pasteboard owners can disappear while providing lazy data. Ignore
+            // that transient change; the next copy operation gets another pass.
+        }
+    }
+
     // MARK: - Scanning
 
     private func restartFilesystemMonitoring() {
@@ -413,7 +490,9 @@ final class BrowserModel {
             try? await Task.sleep(for: .milliseconds(450))
             guard !Task.isCancelled else { return }
             rescanRoots()
-            loadMediaForSelection()
+            if case .folder = selectedSource {
+                loadMediaForSelection()
+            }
         }
     }
 
@@ -446,8 +525,9 @@ final class BrowserModel {
             rootTrees = trees
 
             // Drop a selection that no longer exists in the refreshed tree.
-            if let selection = selectedFolderID, !folderExists(withID: selection, in: trees) {
-                selectedFolderID = nil
+            if case .folder(let selection) = selectedSource,
+               !folderExists(withID: selection, in: trees) {
+                selectedSource = nil
                 setMediaItems([])
             }
         }
@@ -456,13 +536,12 @@ final class BrowserModel {
     private func loadMediaForSelection() {
         mediaTask?.cancel()
         activeMediaLoadID = nil
-        guard let id = selectedFolderID else {
+        guard let source = selectedSource else {
             isLoadingMedia = false
             setMediaItems([])
             return
         }
 
-        let url = URL(fileURLWithPath: id)
         let loadID = UUID()
         activeMediaLoadID = loadID
         isLoadingMedia = true
@@ -474,14 +553,25 @@ final class BrowserModel {
                 }
             }
             do {
-                let items = try await FolderScanner.mediaItems(in: url)
+                let items: [MediaItem]
+                switch source {
+                case .clipboard:
+                    items = await clipboardStore.items()
+                    clipboardItemCount = items.count
+                case .folder(let id):
+                    items = try await FolderScanner.mediaItems(
+                        in: URL(fileURLWithPath: id)
+                    )
+                }
                 guard !Task.isCancelled else { return }
                 setMediaItems(items)
             } catch is CancellationError {
                 return
             } catch {
                 setMediaItems([])
-                loadError = "This folder could not be read."
+                loadError = source == .clipboard
+                    ? "Clipboard history could not be loaded."
+                    : "This folder could not be read."
             }
         }
     }
@@ -803,6 +893,7 @@ final class BrowserModel {
     func moveSelectedItemsToTrash() {
         guard !selectedItemIDs.isEmpty else { return }
 
+        let wasClipboard = isClipboardSelected
         let ordered = orderedItems
         let targets = ordered.filter { selectedItemIDs.contains($0.id) }
         guard !targets.isEmpty else { return }
@@ -850,8 +941,19 @@ final class BrowserModel {
             loadError = "Some items could not be moved to the Trash."
         }
 
-        // A newly emptied folder should disappear from the smart sidebar.
-        rescanRoots()
+        if wasClipboard {
+            let trashedURLs = targets
+                .filter { trashedIDs.contains($0.id) }
+                .map(\.url)
+            Task {
+                if let items = try? await clipboardStore.removeReferences(to: trashedURLs) {
+                    clipboardItemCount = items.count
+                }
+            }
+        } else {
+            // A newly emptied folder should disappear from the smart sidebar.
+            rescanRoots()
+        }
     }
 
     // MARK: - Full media viewer

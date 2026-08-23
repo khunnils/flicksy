@@ -8,21 +8,26 @@ import SwiftUI
 /// The smart, media-only folder tree (spec section 5).
 struct FolderSidebar: View {
     @Environment(BrowserModel.self) private var model
+    @State private var confirmsClearingClipboard = false
 
     var body: some View {
         @Bindable var model = model
 
-        Group {
-            if model.rootTrees.isEmpty {
-                emptyState
-            } else {
-                List(selection: $model.selectedFolderID) {
-                    Section("Folders") {
-                        ForEach(model.rootTrees) { root in
-                            OutlineGroup(root, children: \.outlineChildren) { folder in
-                                folderRow(folder)
-                                    .tag(folder.id)
-                            }
+        List(selection: $model.selectedSource) {
+            Section("Library") {
+                clipboardRow
+                    .tag(BrowserSource.clipboard)
+            }
+
+            Section("Folders") {
+                if model.rootTrees.isEmpty {
+                    Text("No folders added")
+                        .foregroundStyle(.tertiary)
+                } else {
+                    ForEach(model.rootTrees) { root in
+                        OutlineGroup(root, children: \.outlineChildren) { folder in
+                            folderRow(folder)
+                                .tag(BrowserSource.folder(folder.id))
                         }
                     }
                 }
@@ -30,6 +35,32 @@ struct FolderSidebar: View {
         }
         .safeAreaInset(edge: .bottom) {
             addFolderBar
+        }
+        .alert("Clear Clipboard History?", isPresented: $confirmsClearingClipboard) {
+            Button("Clear History", role: .destructive) {
+                model.clearClipboardHistory()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes Flicksy's saved clipboard image copies. It does not delete their original files.")
+        }
+    }
+
+    private var clipboardRow: some View {
+        HStack(spacing: 8) {
+            Label("Clipboard", systemImage: "clipboard")
+            Spacer()
+            if model.clipboardItemCount > 0 {
+                Text(model.clipboardItemCount, format: .number)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .contextMenu {
+            Button("Clear Clipboard History", role: .destructive) {
+                confirmsClearingClipboard = true
+            }
+            .disabled(model.clipboardItemCount == 0)
         }
     }
 
@@ -57,18 +88,5 @@ struct FolderSidebar: View {
             .padding(8)
         }
         .background(.bar)
-    }
-
-    private var emptyState: some View {
-        ContentUnavailableView {
-            Label("No Folders", systemImage: "folder.badge.plus")
-        } description: {
-            Text("Add a root folder to start browsing your media.")
-        } actions: {
-            Button("Add Folder…") {
-                model.addRootFolder()
-            }
-            .buttonStyle(.borderedProminent)
-        }
     }
 }
