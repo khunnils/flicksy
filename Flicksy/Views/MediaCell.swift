@@ -44,8 +44,8 @@ struct MediaCardBackground<Content: View>: View {
     }
 }
 
-/// Centers media on a subtle mat whose inset remains identical on every edge,
-/// independent of the grid card's configured aspect ratio.
+/// Centers media on a subtle mat shared by every item in the grid. The mat
+/// follows the folder's card ratio while the media keeps its own aspect ratio.
 struct MediaThumbnailSurface<Content: View>: View {
     let aspectRatio: CGFloat
     var isSelected: Bool = false
@@ -55,11 +55,6 @@ struct MediaThumbnailSurface<Content: View>: View {
     var body: some View {
         GeometryReader { proxy in
             let contentSize = fittedContentSize(in: proxy.size)
-            let surfaceSize = MediaThumbnailLayout.surfaceSize(
-                aspectRatio: aspectRatio,
-                inset: inset,
-                container: proxy.size
-            )
 
             ZStack {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -73,7 +68,7 @@ struct MediaThumbnailSurface<Content: View>: View {
                     .frame(width: contentSize.width, height: contentSize.height)
                     .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
             }
-                .frame(width: surfaceSize.width, height: surfaceSize.height)
+                .frame(width: proxy.size.width, height: proxy.size.height)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -122,27 +117,6 @@ enum MediaThumbnailLayout {
 
         let width = min(availableWidth, availableHeight * aspectRatio)
         return CGSize(width: width, height: width / aspectRatio)
-    }
-
-    static func surfaceSize(
-        aspectRatio: CGFloat,
-        inset: CGFloat = 7,
-        container: CGSize
-    ) -> CGSize {
-        if aspectRatio < 1 {
-            let side = min(container.width, container.height)
-            return CGSize(width: side, height: side)
-        }
-
-        let content = fittedContentSize(
-            aspectRatio: aspectRatio,
-            inset: inset,
-            container: container
-        )
-        return CGSize(
-            width: content.width + inset * 2,
-            height: content.height + inset * 2
-        )
     }
 
     static func contentLeadingInset(aspectRatio: CGFloat, container: CGSize) -> CGFloat {

@@ -8,6 +8,9 @@
 	     Without this the sandbox denies FileManager.trashItem on selected folders. -->
 	<key>com.apple.security.files.user-selected.read-write</key>
 	<true/>
+	<!-- Allows the Downloads library shortcut to work without a folder picker. -->
+	<key>com.apple.security.files.downloads.read-write</key>
+	<true/>
 	<!-- Required for security-scoped bookmarks to persist folder access across launches.
 	     There is no Xcode build setting that emits this key, so it must live here. -->
 	<key>com.apple.security.files.bookmarks.app-scope</key>

@@ -17,6 +17,11 @@ struct FolderSidebar: View {
             Section("Library") {
                 clipboardRow
                     .tag(BrowserSource.clipboard)
+
+                ForEach(StandardBrowserFolder.allCases, id: \.self) { folder in
+                    Label(folder.title, systemImage: folder.systemImage)
+                        .tag(BrowserSource.standardFolder(folder))
+                }
             }
 
             Section("Folders") {

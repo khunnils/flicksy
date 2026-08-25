@@ -100,11 +100,11 @@ enum FolderScanner {
     nonisolated static func mediaItems(in directory: URL) async throws -> [MediaItem] {
         try Task.checkCancellation()
 
-        let contents = (try? FileManager.default.contentsOfDirectory(
+        let contents = try FileManager.default.contentsOfDirectory(
             at: directory,
             includingPropertiesForKeys: resourceKeys,
             options: [.skipsHiddenFiles, .skipsPackageDescendants]
-        )) ?? []
+        )
 
         var items: [MediaItem] = []
 

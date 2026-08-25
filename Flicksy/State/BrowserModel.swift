@@ -16,6 +16,7 @@ enum MoveDirection {
 /// clipboard history.
 enum BrowserSource: Hashable {
     case clipboard
+    case standardFolder(StandardBrowserFolder)
     case folder(MediaFolder.ID)
 }
 
@@ -288,6 +289,7 @@ final class BrowserModel {
     private static let sortAscendingKey = "sortAscending"
 
     private let rootStore = RootFolderStore()
+    private let standardFolderStore = StandardFolderStore()
     private let clipboardStore = ClipboardHistoryStore()
     private var scanTask: Task<Void, Never>?
     private var mediaTask: Task<Void, Never>?
@@ -327,6 +329,7 @@ final class BrowserModel {
 
     /// Restore persisted root folders and scan them. Call once when the UI appears.
     func restore() {
+        standardFolderStore.restore()
         let failures = rootStore.restore()
         if !failures.isEmpty {
             loadError = failures.first
@@ -476,7 +479,9 @@ final class BrowserModel {
     // MARK: - Scanning
 
     private func restartFilesystemMonitoring() {
-        fileSystemMonitor = FileSystemMonitor(urls: rootStore.urls) { [weak self] in
+        fileSystemMonitor = FileSystemMonitor(
+            urls: rootStore.urls + standardFolderStore.monitoredURLs
+        ) { [weak self] in
             self?.filesystemDidChange()
         }
     }
@@ -491,6 +496,8 @@ final class BrowserModel {
             guard !Task.isCancelled else { return }
             rescanRoots()
             if case .folder = selectedSource {
+                loadMediaForSelection()
+            } else if case .standardFolder = selectedSource {
                 loadMediaForSelection()
             }
         }
@@ -558,6 +565,14 @@ final class BrowserModel {
                 case .clipboard:
                     items = await clipboardStore.items()
                     clipboardItemCount = items.count
+                case .standardFolder(let folder):
+                    guard let url = urlForStandardFolder(folder) else {
+                        setMediaItems([])
+                        loadError = "Access to \(folder.title) was not granted."
+                        return
+                    }
+                    restartFilesystemMonitoring()
+                    items = try await FolderScanner.mediaItems(in: url)
                 case .folder(let id):
                     items = try await FolderScanner.mediaItems(
                         in: URL(fileURLWithPath: id)
@@ -574,6 +589,24 @@ final class BrowserModel {
                     : "This folder could not be read."
             }
         }
+    }
+
+    /// Reuse an existing user-added root when it points at the same standard
+    /// location, avoiding a second permission prompt for Desktop.
+    private func urlForStandardFolder(_ folder: StandardBrowserFolder) -> URL? {
+        // Downloads uses its dedicated sandbox entitlement. Never allow an old
+        // bookmark or user-added root to override that stable system URL.
+        if folder == .downloads {
+            return standardFolderStore.url(for: .downloads)
+        }
+
+        if let standardURL = folder.url?.standardizedFileURL,
+           let authorizedRoot = rootStore.urls.first(where: {
+               $0.standardizedFileURL == standardURL
+           }) {
+            return authorizedRoot
+        }
+        return standardFolderStore.url(for: folder)
     }
 
     /// Replace the current listing, rebuild the per-section splits, and drop any
