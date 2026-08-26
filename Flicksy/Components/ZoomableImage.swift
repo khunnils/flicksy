@@ -9,13 +9,14 @@ import AppKit
 /// Fit / 100% / pinch-zoom / drag-pan image display (spec section 17).
 ///
 /// `zoom` is relative to fit-to-window: 1 is fit, and 100% is the scale at which
-/// one image pixel occupies one SwiftUI point. State is local so navigating to
-/// the next still resets it via the caller's `.id(item.id)`.
+/// one image pixel occupies one SwiftUI point. Zoom lives in BrowserModel so the
+/// window toolbar and keyboard shortcuts manipulate this same view.
 struct ZoomableImage: View {
     let image: NSImage
     let nativeSize: CGSize
 
-    @State private var zoom: CGFloat = 1
+    @Environment(BrowserModel.self) private var model
+
     @State private var pan: CGSize = .zero
     @GestureState private var pinch: CGFloat = 1
     @GestureState private var drag: CGSize = .zero
@@ -23,7 +24,7 @@ struct ZoomableImage: View {
     var body: some View {
         GeometryReader { geo in
             let fitted = fitScale(container: geo.size)
-            let currentZoom = clampedZoom(zoom * pinch, fitScale: fitted)
+            let currentZoom = clampedZoom(CGFloat(model.viewerImageZoom) * pinch, fitScale: fitted)
             let displayed = CGSize(
                 width: nativeSize.width * fitted * currentZoom,
                 height: nativeSize.height * fitted * currentZoom
@@ -50,30 +51,19 @@ struct ZoomableImage: View {
             .onTapGesture(count: 2) {
                 toggleFitAndActual(fitScale: fitted)
             }
-            .overlay(alignment: .bottomTrailing) {
-                zoomToggle(fitScale: fitted)
+            .onAppear { configureZoom(fitScale: fitted) }
+            .onChange(of: geo.size) { _, _ in configureZoom(fitScale: fitted) }
+            .onChange(of: nativeSize) { _, _ in configureZoom(fitScale: fitted) }
+            .onChange(of: model.viewerImageZoom) { _, newZoom in
+                let resized = CGSize(
+                    width: nativeSize.width * fitted * newZoom,
+                    height: nativeSize.height * fitted * newZoom
+                )
+                pan = clampedPan(pan, displayed: resized, container: geo.size)
             }
         }
         .clipped()
     }
-
-    // MARK: - Chrome
-
-    private func zoomToggle(fitScale: CGFloat) -> some View {
-        Button(isFit ? "100%" : "Fit") {
-            toggleFitAndActual(fitScale: fitScale)
-        }
-        .buttonStyle(.plain)
-        .font(.caption.weight(.medium))
-        .foregroundStyle(.white)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 5)
-        .background(.black.opacity(0.45), in: Capsule())
-        .help(isFit ? "Actual size" : "Fit to window")
-        .padding(4)
-    }
-
-    private var isFit: Bool { abs(zoom - 1) < 0.04 }
 
     // MARK: - Gestures
 
@@ -83,11 +73,11 @@ struct ZoomableImage: View {
                 state = value.magnification
             }
             .onEnded { value in
-                zoom = clampedZoom(zoom * value.magnification, fitScale: fitScale)
-                snapToFitIfNeeded()
+                let zoom = clampedZoom(CGFloat(model.viewerImageZoom) * value.magnification, fitScale: fitScale)
+                model.setViewerImageZoom(Double(zoom))
                 let displayed = CGSize(
-                    width: nativeSize.width * fitScale * zoom,
-                    height: nativeSize.height * fitScale * zoom
+                    width: nativeSize.width * fitScale * CGFloat(model.viewerImageZoom),
+                    height: nativeSize.height * fitScale * CGFloat(model.viewerImageZoom)
                 )
                 pan = clampedPan(pan, displayed: displayed, container: container)
             }
@@ -108,17 +98,16 @@ struct ZoomableImage: View {
     }
 
     private func toggleFitAndActual(fitScale: CGFloat) {
-        if isFit {
-            zoom = clampedZoom(actualSizeZoom(fitScale: fitScale), fitScale: fitScale)
-        } else {
-            zoom = 1
+        model.configureViewerImageZoom(fitScale: fitScale)
+        model.toggleViewerImageFitAndActualSize()
+        if model.isViewerImageFit {
             pan = .zero
         }
     }
 
-    private func snapToFitIfNeeded() {
-        if zoom <= 1.02 {
-            zoom = 1
+    private func configureZoom(fitScale: CGFloat) {
+        model.configureViewerImageZoom(fitScale: fitScale)
+        if model.isViewerImageFit {
             pan = .zero
         }
     }

@@ -68,16 +68,18 @@ struct MediaBrowserView: View {
         .focusable(model.hasSelectedSource)
         .focusEffectDisabled()
         .focused($browserFocused)
-        .searchable(
+        .modifier(BrowserSearch(
             text: $model.searchQuery,
             isPresented: $model.isSearchPresented,
-            placement: .toolbar,
-            prompt: "Search Media"
-        )
-        .searchFocused($searchFieldFocused)
+            isEnabled: model.viewerItemID == nil,
+            searchFieldFocused: $searchFieldFocused
+        ))
         .onKeyPress { handleKey($0) }
         .onChange(of: searchFieldFocused) { _, focused in
             model.isSearchFieldFocused = focused
+        }
+        .onChange(of: model.viewerItemID) { _, id in
+            if id != nil { searchFieldFocused = false }
         }
         .onChange(of: model.focusedItemID) { _, id in
             // Clicking or arrowing to an item pulls focus into the browser so its
@@ -220,5 +222,29 @@ struct MediaBrowserView: View {
             return .ignored
         }
         return .handled
+    }
+}
+
+/// Toolbar search is attached only while the library is visible, so preview
+/// does not inherit the search field.
+private struct BrowserSearch: ViewModifier {
+    @Binding var text: String
+    @Binding var isPresented: Bool
+    var isEnabled: Bool
+    var searchFieldFocused: FocusState<Bool>.Binding
+
+    func body(content: Content) -> some View {
+        if isEnabled {
+            content
+                .searchable(
+                    text: $text,
+                    isPresented: $isPresented,
+                    placement: .toolbar,
+                    prompt: "Search Media"
+                )
+                .searchFocused(searchFieldFocused)
+        } else {
+            content
+        }
     }
 }

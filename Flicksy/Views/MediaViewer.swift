@@ -122,7 +122,7 @@ struct MediaViewer: View {
             Spacer()
                 .allowsHitTesting(false)
 
-            HStack(spacing: 20) {
+            HStack(spacing: 12) {
                 navigationButton(
                     systemImage: "chevron.left",
                     shortcut: .leftArrow,
@@ -131,13 +131,6 @@ struct MediaViewer: View {
                 ) {
                     model.showPreviousInViewer()
                 }
-
-                Text(item.name)
-                    .font(.callout)
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .frame(maxWidth: 420)
 
                 navigationButton(
                     systemImage: "chevron.right",

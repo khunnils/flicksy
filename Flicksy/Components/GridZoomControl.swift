@@ -59,3 +59,48 @@ struct GridZoomControl: View {
         .accessibilityLabel(label)
     }
 }
+
+/// Image-viewer counterpart to GridZoomControl. Keeping this in the window
+/// toolbar makes the active zoom target clear while a still is being previewed.
+struct ImageViewerZoomControl: View {
+    @Environment(BrowserModel.self) private var model
+
+    var body: some View {
+        HStack(spacing: 4) {
+            zoomButton(
+                "minus.magnifyingglass",
+                label: "Zoom Out",
+                disabled: !model.canZoomViewerImageOut,
+                action: model.zoomViewerImageOut
+            )
+
+            zoomButton(
+                "plus.magnifyingglass",
+                label: "Zoom In",
+                disabled: !model.canZoomViewerImageIn,
+                action: model.zoomViewerImageIn
+            )
+        }
+        .padding(.horizontal, 4)
+        .buttonStyle(.plain)
+        .buttonRepeatBehavior(.enabled)
+        .fixedSize()
+    }
+
+    private func zoomButton(
+        _ systemImage: String,
+        label: String,
+        disabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 16, weight: .medium))
+                .frame(width: 28, height: 22)
+                .contentShape(Rectangle())
+        }
+        .disabled(disabled)
+        .help(label)
+        .accessibilityLabel(label)
+    }
+}

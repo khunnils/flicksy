@@ -32,18 +32,24 @@ struct MainView: View {
             MediaBrowserView()
                 .navigationTitle("Media Browser")
                 .toolbar {
-                    ToolbarItem(placement: .principal) {
-                        LibraryTabPicker()
-                    }
-                    ToolbarItem {
-                        SortControl()
+                    if model.viewerItem == nil {
+                        ToolbarItem(placement: .principal) {
+                            LibraryTabPicker()
+                        }
+                        ToolbarItem {
+                            SortControl()
+                        }
                     }
                     ToolbarItem(placement: .primaryAction) {
-                        switch model.libraryTab {
-                        case .visual:
-                            GridZoomControl()
-                        case .audio:
-                            AudioViewModeControl()
+                        if model.isViewingImage {
+                            ImageViewerZoomControl()
+                        } else if model.viewerItem == nil {
+                            switch model.libraryTab {
+                            case .visual:
+                                GridZoomControl()
+                            case .audio:
+                                AudioViewModeControl()
+                            }
                         }
                     }
                 }
@@ -84,14 +90,13 @@ struct MainView: View {
 
     // MARK: - Command-scroll zoom
 
-    /// Zoom the grid with Command + scroll wheel. Ignored while the viewer is open;
-    /// events without the Command modifier pass through untouched.
+    /// Zoom the active visual surface with Command + scroll wheel: the image when
+    /// viewing a still, otherwise the thumbnail grid.
     private func installScrollMonitor() {
         guard scrollMonitor == nil else { return }
         scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
-            guard model.viewerItemID == nil,
-                  model.libraryTab == .visual,
-                  event.modifierFlags.contains(.command)
+            guard event.modifierFlags.contains(.command),
+                  model.isViewingImage || (model.viewerItemID == nil && model.libraryTab == .visual)
             else { return event }
 
             handleZoomScroll(event)
@@ -141,15 +146,23 @@ struct MainView: View {
             zoomAccumulator.value += delta
             while zoomAccumulator.value >= zoomScrollThreshold {
                 zoomAccumulator.value -= zoomScrollThreshold
-                model.zoomIn()
+                zoomIn()
             }
             while zoomAccumulator.value <= -zoomScrollThreshold {
                 zoomAccumulator.value += zoomScrollThreshold
-                model.zoomOut()
+                zoomOut()
             }
         } else {
             // A mouse wheel notch is one discrete step.
-            if delta > 0 { model.zoomIn() } else { model.zoomOut() }
+            if delta > 0 { zoomIn() } else { zoomOut() }
         }
+    }
+
+    private func zoomIn() {
+        if model.isViewingImage { model.zoomViewerImageIn() } else { model.zoomIn() }
+    }
+
+    private func zoomOut() {
+        if model.isViewingImage { model.zoomViewerImageOut() } else { model.zoomOut() }
     }
 }

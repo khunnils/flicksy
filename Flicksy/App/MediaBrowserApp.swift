@@ -28,23 +28,35 @@ struct MediaBrowserApp: App {
                     Divider()
 
                     Button("Zoom In") {
-                        model.zoomIn()
+                        if model.isViewingImage {
+                            model.zoomViewerImageIn()
+                        } else {
+                            model.zoomIn()
+                        }
                     }
                     .keyboardShortcut("+")
                     .disabled(
-                        model.libraryTab != .visual
-                            || model.thumbnailSize >= BrowserModel.maxThumbnailSize
-                            || model.viewerItemID != nil
+                        model.isViewingImage
+                            ? !model.canZoomViewerImageIn
+                            : (model.libraryTab != .visual
+                                || model.thumbnailSize >= BrowserModel.maxThumbnailSize
+                                || model.viewerItemID != nil)
                     )
 
                     Button("Zoom Out") {
-                        model.zoomOut()
+                        if model.isViewingImage {
+                            model.zoomViewerImageOut()
+                        } else {
+                            model.zoomOut()
+                        }
                     }
                     .keyboardShortcut("-")
                     .disabled(
-                        model.libraryTab != .visual
-                            || model.thumbnailSize <= BrowserModel.minThumbnailSize
-                            || model.viewerItemID != nil
+                        model.isViewingImage
+                            ? !model.canZoomViewerImageOut
+                            : (model.libraryTab != .visual
+                                || model.thumbnailSize <= BrowserModel.minThumbnailSize
+                                || model.viewerItemID != nil)
                     )
                 }
             }

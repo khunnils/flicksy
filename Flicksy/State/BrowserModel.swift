@@ -270,6 +270,16 @@ final class BrowserModel {
     static let defaultThumbnailSize: Double = 200
     static let thumbnailSizeStep: Double = 28
 
+    /// Zoom for the still image currently open in the full-window viewer. It is
+    /// relative to fit-to-window, so 1 always means Fit. ZoomableImage supplies
+    /// the geometry-dependent limits when its container changes.
+    private(set) var viewerImageZoom: Double = 1
+    private(set) var viewerImageMinimumZoom: Double = 1
+    private(set) var viewerImageMaximumZoom: Double = 8
+    private(set) var viewerImageActualSizeZoom: Double = 1
+
+    static let viewerImageZoomFactor: Double = 1.25
+
     static func clampedThumbnailSize(_ size: Double) -> Double {
         min(max(size, minThumbnailSize), maxThumbnailSize)
     }
@@ -280,6 +290,46 @@ final class BrowserModel {
 
     func zoomOut() {
         thumbnailSize = Self.clampedThumbnailSize(thumbnailSize - Self.thumbnailSizeStep)
+    }
+
+    var isViewingImage: Bool { viewerItem?.type == .image }
+    var canZoomViewerImageIn: Bool { viewerImageZoom < viewerImageMaximumZoom - 0.001 }
+    var canZoomViewerImageOut: Bool { viewerImageZoom > viewerImageMinimumZoom + 0.001 }
+    var isViewerImageFit: Bool { abs(viewerImageZoom - 1) < 0.04 }
+
+    func configureViewerImageZoom(fitScale: CGFloat) {
+        guard fitScale > 0 else { return }
+        let actual = 1 / Double(fitScale)
+        viewerImageActualSizeZoom = actual
+        viewerImageMinimumZoom = min(1, actual)
+        viewerImageMaximumZoom = max(8, actual * 4)
+        setViewerImageZoom(viewerImageZoom)
+    }
+
+    func setViewerImageZoom(_ zoom: Double) {
+        viewerImageZoom = min(max(zoom, viewerImageMinimumZoom), viewerImageMaximumZoom)
+        if viewerImageZoom <= 1.02 && viewerImageMinimumZoom >= 0.98 {
+            viewerImageZoom = 1
+        }
+    }
+
+    func zoomViewerImageIn() {
+        setViewerImageZoom(viewerImageZoom * Self.viewerImageZoomFactor)
+    }
+
+    func zoomViewerImageOut() {
+        setViewerImageZoom(viewerImageZoom / Self.viewerImageZoomFactor)
+    }
+
+    func toggleViewerImageFitAndActualSize() {
+        setViewerImageZoom(isViewerImageFit ? viewerImageActualSizeZoom : 1)
+    }
+
+    private func resetViewerImageZoom() {
+        viewerImageZoom = 1
+        viewerImageMinimumZoom = 1
+        viewerImageMaximumZoom = 8
+        viewerImageActualSizeZoom = 1
     }
 
     private static let thumbnailSizeKey = "thumbnailSize"
@@ -1002,12 +1052,14 @@ final class BrowserModel {
         // "one player at a time" invariant and stops audio playing underneath it.
         playingVideoID = nil
         playingAudioID = nil
+        resetViewerImageZoom()
         viewerItemID = item.id
         focusedItemID = item.id
     }
 
     func closeViewer() {
         viewerItemID = nil
+        resetViewerImageZoom()
     }
 
     func showPreviousInViewer() {
@@ -1028,6 +1080,7 @@ final class BrowserModel {
 
         let next = index + offset
         guard playlist.indices.contains(next) else { return }
+        resetViewerImageZoom()
         self.viewerItemID = playlist[next].id
     }
 
