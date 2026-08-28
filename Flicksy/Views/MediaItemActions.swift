@@ -84,6 +84,20 @@ struct MediaItemInteractionsModifier: ViewModifier {
         Divider()
 
         Button {
+            model.copySelectedFiles(clicked: item)
+        } label: {
+            Label("Copy", systemImage: "doc.on.doc")
+        }
+        Button {
+            model.pasteFiles()
+        } label: {
+            Label("Paste", systemImage: "doc.on.clipboard")
+        }
+        .disabled(!model.canPasteFiles)
+
+        Divider()
+
+        Button {
             model.revealInFinder(clicked: item)
         } label: {
             Label("Reveal in Finder", systemImage: "folder")
@@ -91,7 +105,7 @@ struct MediaItemInteractionsModifier: ViewModifier {
         Button {
             model.copyPath(clicked: item)
         } label: {
-            Label("Copy Path", systemImage: "doc.on.doc")
+            Label("Copy Path", systemImage: "link")
         }
     }
 

@@ -85,6 +85,12 @@ struct MediaBrowserApp: App {
                     .keyboardShortcut("c", modifiers: .command)
                     .disabled(model.selectedItemIDs.isEmpty && model.viewerItemID == nil)
 
+                    Button("Paste") {
+                        model.pasteFiles()
+                    }
+                    .keyboardShortcut("v", modifiers: .command)
+                    .disabled(!model.canPasteFiles || model.viewerItemID != nil)
+
                     Button("Copy Path") {
                         model.copyPath()
                     }

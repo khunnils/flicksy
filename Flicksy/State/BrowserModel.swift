@@ -247,6 +247,7 @@ final class BrowserModel {
     private(set) var isScanning = false
     private(set) var isLoadingMedia = false
     private(set) var clipboardItemCount = 0
+    private(set) var pasteboardContainsFileURLs = false
 
     /// A user-facing message when folders cannot be restored or read. Cleared once
     /// the situation is resolved (spec section 24).
@@ -557,6 +558,21 @@ final class BrowserModel {
         }
     }
 
+    nonisolated private static func pasteDestination(
+        for source: URL,
+        in directory: URL,
+        reserving reserved: Set<URL>
+    ) -> URL {
+        let original = directory.appendingPathComponent(source.lastPathComponent)
+        if !reserved.contains(original),
+           !FileManager.default.fileExists(atPath: original.path) {
+            return original
+        }
+
+        // Rebase the duplicate-name calculation into the destination folder.
+        return duplicateDestination(for: original, reserving: reserved)
+    }
+
     nonisolated private static func urlsReferToSameFile(_ lhs: URL, _ rhs: URL) -> Bool {
         let keys: Set<URLResourceKey> = [.fileResourceIdentifierKey]
         guard let lhsID = try? lhs.resourceValues(forKeys: keys).fileResourceIdentifier,
@@ -582,6 +598,7 @@ final class BrowserModel {
         let string = urls.map(\.path).joined(separator: "\n")
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(string, forType: .string)
+        pasteboardContainsFileURLs = false
     }
 
     /// Copy the selected files themselves so they can be pasted into Finder.
@@ -590,6 +607,70 @@ final class BrowserModel {
         guard !urls.isEmpty else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.writeObjects(urls)
+        pasteboardContainsFileURLs = true
+    }
+
+    /// Whether the active source represents a writable filesystem folder. The
+    /// virtual Clipboard source deliberately has no paste destination.
+    var canPasteIntoSelectedFolder: Bool {
+        selectedFolderURL != nil
+    }
+
+    var canPasteFiles: Bool {
+        canPasteIntoSelectedFolder && pasteboardContainsFileURLs
+    }
+
+    /// Copy file URLs from the system pasteboard into the active folder. Existing
+    /// names are kept safe with Finder-style "copy" suffixes rather than replaced.
+    func pasteFiles() {
+        guard let destinationFolder = selectedFolderURL else { return }
+
+        let options: [NSPasteboard.ReadingOptionKey: Any] = [
+            .urlReadingFileURLsOnly: true
+        ]
+        let sources = (NSPasteboard.general.readObjects(
+            forClasses: [NSURL.self],
+            options: options
+        ) as? [URL]) ?? []
+        guard !sources.isEmpty else { return }
+
+        Task {
+            let failed = await Task.detached(priority: .userInitiated) {
+                var reservedDestinations: Set<URL> = []
+                var failed = false
+
+                for source in sources {
+                    let destination = Self.pasteDestination(
+                        for: source,
+                        in: destinationFolder,
+                        reserving: reservedDestinations
+                    )
+                    reservedDestinations.insert(destination)
+                    do {
+                        try FileManager.default.copyItem(at: source, to: destination)
+                    } catch {
+                        failed = true
+                    }
+                }
+                return failed
+            }.value
+
+            refreshAfterFileMutation()
+            if failed {
+                loadError = "Some clipboard items could not be pasted into this folder."
+            }
+        }
+    }
+
+    private var selectedFolderURL: URL? {
+        switch selectedSource {
+        case .folder(let id):
+            URL(fileURLWithPath: id, isDirectory: true)
+        case .standardFolder(let folder):
+            urlForStandardFolder(folder)
+        case .clipboard, nil:
+            nil
+        }
     }
 
     /// URLs to put on the pasteboard for a drag starting at `item`.
@@ -640,6 +721,10 @@ final class BrowserModel {
         let changeCount = pasteboard.changeCount
         guard changeCount != lastPasteboardChangeCount else { return }
         lastPasteboardChangeCount = changeCount
+        pasteboardContainsFileURLs = pasteboard.canReadObject(
+            forClasses: [NSURL.self],
+            options: [.urlReadingFileURLsOnly: true]
+        )
 
         let candidates = ClipboardPasteboardReader.candidates(from: pasteboard)
         guard !candidates.isEmpty else { return }
