@@ -14,13 +14,15 @@ import UniformTypeIdentifiers
 enum FolderScanner {
     /// Resource keys fetched in a single pass during directory enumeration so that
     /// classification (`.contentTypeKey`) and cheap metadata (`.fileSizeKey`,
-    /// `.contentModificationDateKey`) cost no additional `stat` calls per file.
+    /// `.contentModificationDateKey`, `.addedToDirectoryDateKey`) cost no
+    /// additional `stat` calls per file.
     nonisolated private static let resourceKeys: [URLResourceKey] = [
         .isDirectoryKey,
         .isRegularFileKey,
         .contentTypeKey,
         .fileSizeKey,
         .contentModificationDateKey,
+        .addedToDirectoryDateKey,
     ]
 
     nonisolated private static var resourceKeySet: Set<URLResourceKey> { Set(resourceKeys) }
@@ -131,7 +133,8 @@ enum FolderScanner {
                 width: pixelSize.0,
                 height: pixelSize.1,
                 fileSize: values.fileSize.map(Int64.init),
-                modifiedAt: values.contentModificationDate
+                modifiedAt: values.contentModificationDate,
+                addedAt: values.addedToDirectoryDate
             ))
         }
 

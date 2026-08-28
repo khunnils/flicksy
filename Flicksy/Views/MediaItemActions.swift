@@ -14,26 +14,97 @@ struct MediaItemInteractionsModifier: ViewModifier {
 
     @State private var hostView: NSView?
     @State private var isDragging = false
+    @State private var isRenaming = false
+    @State private var proposedName = ""
 
     func body(content: Content) -> some View {
         content
             .contextMenu { menuItems }
             .background(HostViewCapture { hostView = $0 })
             .simultaneousGesture(dragGesture)
+            .alert("Rename", isPresented: $isRenaming) {
+                TextField("Filename", text: $proposedName)
+                Button("Cancel", role: .cancel) {}
+                Button("Rename") {
+                    model.rename(item, to: proposedName)
+                }
+                .disabled(proposedName.isEmpty)
+            } message: {
+                Text("Enter a new name for \(item.name).")
+            }
     }
 
     @ViewBuilder
     private var menuItems: some View {
-        Button("Open") {
-            model.openFromContextMenu(item)
+        if model.viewerItemID == nil {
+            Button {
+                model.openFromContextMenu(item)
+            } label: {
+                Label("Open", systemImage: "arrow.up.right.square")
+            }
         }
+
+        Menu {
+            let applications = openWithApplications
+            if applications.isEmpty {
+                Text("No Applications Found")
+            } else {
+                ForEach(applications) { application in
+                    Button {
+                        model.openWith(application.url, clicked: item)
+                    } label: {
+                        Label {
+                            Text(application.name)
+                        } icon: {
+                            Image(nsImage: application.icon)
+                        }
+                    }
+                }
+            }
+        } label: {
+            Label("Open With", systemImage: "macwindow.on.rectangle")
+        }
+
         Divider()
-        Button("Reveal in Finder") {
+
+        Button {
+            model.duplicate(clicked: item)
+        } label: {
+            Label("Duplicate", systemImage: "plus.square.on.square")
+        }
+        .disabled(model.isClipboardSelected)
+        Button {
+            proposedName = item.name
+            isRenaming = true
+        } label: {
+            Label("Rename…", systemImage: "pencil")
+        }
+        .disabled(model.isClipboardSelected)
+
+        Divider()
+
+        Button {
             model.revealInFinder(clicked: item)
+        } label: {
+            Label("Reveal in Finder", systemImage: "folder")
         }
-        Button("Copy Path") {
+        Button {
             model.copyPath(clicked: item)
+        } label: {
+            Label("Copy Path", systemImage: "doc.on.doc")
         }
+    }
+
+    private var openWithApplications: [OpenWithApplication] {
+        NSWorkspace.shared.urlsForApplications(toOpen: item.url)
+            .map { url in
+                OpenWithApplication(
+                    url: url,
+                    name: FileManager.default.displayName(atPath: url.path),
+                    icon: NSWorkspace.shared.icon(forFile: url.path)
+                )
+            }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
     private var dragGesture: some Gesture {
@@ -75,6 +146,14 @@ struct MediaItemInteractionsModifier: ViewModifier {
         }
         hostView.beginDraggingSession(with: items, event: event, source: FileDragSource.shared)
     }
+}
+
+private struct OpenWithApplication: Identifiable {
+    var id: String { url.path }
+
+    let url: URL
+    let name: String
+    let icon: NSImage
 }
 
 extension View {

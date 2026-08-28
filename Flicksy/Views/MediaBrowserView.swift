@@ -27,6 +27,10 @@ struct MediaBrowserView: View {
     /// thumbnail size is committed only when the gesture ends.
     @GestureState private var gridMagnification: CGFloat = 1
 
+    /// Keyboard moves set this so the focused cell is scrolled into view. Clicks
+    /// leave it false — selecting an already-visible tile should not recenter it.
+    @State private var shouldScrollFocusIntoView = false
+
     var body: some View {
         @Bindable var model = model
 
@@ -127,7 +131,8 @@ struct MediaBrowserView: View {
                     }
             }
             .onChange(of: model.focusedItemID) { _, id in
-                guard let id else { return }
+                guard shouldScrollFocusIntoView, let id else { return }
+                shouldScrollFocusIntoView = false
                 withAnimation(.easeInOut(duration: 0.15)) {
                     proxy.scrollTo(id, anchor: .center)
                 }
@@ -205,13 +210,13 @@ struct MediaBrowserView: View {
         let extend = press.modifiers.contains(.shift)
         switch press.key {
         case .leftArrow:
-            model.moveSelection(.left, columns: navigationColumns, extending: extend)
+            moveFocus(.left, extending: extend)
         case .rightArrow:
-            model.moveSelection(.right, columns: navigationColumns, extending: extend)
+            moveFocus(.right, extending: extend)
         case .upArrow:
-            model.moveSelection(.up, columns: navigationColumns, extending: extend)
+            moveFocus(.up, extending: extend)
         case .downArrow:
-            model.moveSelection(.down, columns: navigationColumns, extending: extend)
+            moveFocus(.down, extending: extend)
         case .space:
             model.openPreview()
         case .return:
@@ -222,6 +227,15 @@ struct MediaBrowserView: View {
             return .ignored
         }
         return .handled
+    }
+
+    private func moveFocus(_ direction: MoveDirection, extending: Bool) {
+        let previous = model.focusedItemID
+        shouldScrollFocusIntoView = true
+        model.moveSelection(direction, columns: navigationColumns, extending: extending)
+        if model.focusedItemID == previous {
+            shouldScrollFocusIntoView = false
+        }
     }
 }
 

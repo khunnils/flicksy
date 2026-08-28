@@ -440,6 +440,136 @@ final class BrowserModel {
         }
     }
 
+    /// Open the clicked item (or every selected item when it is part of the
+    /// selection) in a specific installed application.
+    func openWith(_ applicationURL: URL, clicked item: MediaItem) {
+        let urls = itemsForAction(clicked: item).map(\.url)
+        guard !urls.isEmpty else { return }
+
+        let configuration = NSWorkspace.OpenConfiguration()
+        NSWorkspace.shared.open(
+            urls,
+            withApplicationAt: applicationURL,
+            configuration: configuration
+        ) { _, error in
+            guard error != nil else { return }
+            Task { @MainActor [weak self] in
+                self?.loadError = "The selected items could not be opened with \(applicationURL.deletingPathExtension().lastPathComponent)."
+            }
+        }
+    }
+
+    /// Copy the clicked item, or all selected items when the click is inside the
+    /// current selection. Large media files are copied away from the main actor.
+    func duplicate(clicked item: MediaItem) {
+        guard !isClipboardSelected else { return }
+        let targets = itemsForAction(clicked: item).map(\.url)
+        guard !targets.isEmpty else { return }
+
+        Task {
+            let failed = await Task.detached(priority: .userInitiated) {
+                var reservedDestinations: Set<URL> = []
+                var failed = false
+
+                for source in targets {
+                    let destination = Self.duplicateDestination(
+                        for: source,
+                        reserving: reservedDestinations
+                    )
+                    reservedDestinations.insert(destination)
+                    do {
+                        try FileManager.default.copyItem(at: source, to: destination)
+                    } catch {
+                        failed = true
+                    }
+                }
+                return failed
+            }.value
+
+            refreshAfterFileMutation()
+            if failed {
+                loadError = "Some selected items could not be duplicated."
+            }
+        }
+    }
+
+    /// Rename one file in place. The extension is editable, matching Finder.
+    func rename(_ item: MediaItem, to proposedName: String) {
+        guard !isClipboardSelected else { return }
+        let newName = proposedName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !newName.isEmpty,
+              newName != ".",
+              newName != "..",
+              !newName.contains("/")
+        else {
+            loadError = "Enter a valid filename that does not contain a slash."
+            return
+        }
+
+        let destination = item.url.deletingLastPathComponent().appendingPathComponent(newName)
+        guard destination != item.url else { return }
+        guard !FileManager.default.fileExists(atPath: destination.path)
+                || Self.urlsReferToSameFile(item.url, destination)
+        else {
+            loadError = "A file named \(newName) already exists in this folder."
+            return
+        }
+
+        selectItem(item)
+        Task {
+            let succeeded = await Task.detached(priority: .userInitiated) {
+                do {
+                    try FileManager.default.moveItem(at: item.url, to: destination)
+                    return true
+                } catch {
+                    return false
+                }
+            }.value
+
+            if succeeded {
+                refreshAfterFileMutation()
+            } else {
+                loadError = "\(item.name) could not be renamed."
+            }
+        }
+    }
+
+    nonisolated private static func duplicateDestination(
+        for source: URL,
+        reserving reserved: Set<URL>
+    ) -> URL {
+        let directory = source.deletingLastPathComponent()
+        let fileExtension = source.pathExtension
+        let baseName = source.deletingPathExtension().lastPathComponent
+        var copyNumber = 1
+
+        while true {
+            let suffix = copyNumber == 1 ? " copy" : " copy \(copyNumber)"
+            let filename = fileExtension.isEmpty
+                ? baseName + suffix
+                : baseName + suffix + "." + fileExtension
+            let candidate = directory.appendingPathComponent(filename)
+            if !reserved.contains(candidate),
+               !FileManager.default.fileExists(atPath: candidate.path) {
+                return candidate
+            }
+            copyNumber += 1
+        }
+    }
+
+    nonisolated private static func urlsReferToSameFile(_ lhs: URL, _ rhs: URL) -> Bool {
+        let keys: Set<URLResourceKey> = [.fileResourceIdentifierKey]
+        guard let lhsID = try? lhs.resourceValues(forKeys: keys).fileResourceIdentifier,
+              let rhsID = try? rhs.resourceValues(forKeys: keys).fileResourceIdentifier
+        else { return false }
+        return lhsID.isEqual(rhsID)
+    }
+
+    private func refreshAfterFileMutation() {
+        rescanRoots()
+        loadMediaForSelection()
+    }
+
     func revealInFinder(clicked item: MediaItem? = nil) {
         let urls = itemsForAction(clicked: item).map(\.url)
         guard !urls.isEmpty else { return }

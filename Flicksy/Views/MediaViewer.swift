@@ -23,8 +23,7 @@ struct MediaViewer: View {
 
     var body: some View {
         ZStack {
-            Color.black
-                .opacity(0.97)
+            Color.white
                 .ignoresSafeArea()
 
             media
@@ -35,14 +34,8 @@ struct MediaViewer: View {
             chrome
             shortcuts
         }
-        .contextMenu {
-            Button("Reveal in Finder") {
-                model.revealInFinder(clicked: item)
-            }
-            Button("Copy Path") {
-                model.copyPath(clicked: item)
-            }
-        }
+        .preferredColorScheme(.light)
+        .mediaItemInteractions(item, model: model, draggable: false)
         .task(id: item.contentVersion) {
             preparePlayback()
         }
@@ -101,7 +94,7 @@ struct MediaViewer: View {
                 } label: {
                     Image(systemName: "arrow.up.left.and.arrow.down.right.circle.fill")
                         .font(.title2)
-                        .foregroundStyle(.white.opacity(0.85), .black.opacity(0.4))
+                        .foregroundStyle(.black.opacity(0.45), .black.opacity(0.08))
                 }
                 .buttonStyle(.plain)
                 .help("Toggle Full Screen (F)")
@@ -111,7 +104,7 @@ struct MediaViewer: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title2)
-                        .foregroundStyle(.white.opacity(0.85), .black.opacity(0.4))
+                        .foregroundStyle(.black.opacity(0.45), .black.opacity(0.08))
                 }
                 .buttonStyle(.plain)
                 .keyboardShortcut(.cancelAction)
@@ -143,7 +136,7 @@ struct MediaViewer: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 10)
-            .background(.black.opacity(0.45), in: Capsule())
+            .background(.black.opacity(0.06), in: Capsule())
             .padding(.bottom, 16)
         }
     }
@@ -158,7 +151,7 @@ struct MediaViewer: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.title3)
-                .foregroundStyle(enabled ? .white : Color.white.opacity(0.25))
+                .foregroundStyle(enabled ? .primary : Color.primary.opacity(0.25))
                 .frame(width: 28, height: 28)
         }
         .buttonStyle(.plain)

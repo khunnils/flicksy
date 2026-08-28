@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Finder-style audio list with stable, scannable metadata columns. A horizontal
 /// scroll view preserves the columns when the detail pane is narrow.
@@ -30,6 +31,8 @@ struct AudioMetadataList: View {
         HStack(spacing: AudioListColumns.spacing) {
             Color.clear.frame(width: AudioListColumns.play)
             columnHeader("Name", width: AudioListColumns.name, alignment: .leading)
+            columnHeader("Kind", width: AudioListColumns.kind, alignment: .leading)
+            columnHeader("Date Added", width: AudioListColumns.dateAdded)
             columnHeader("Duration", width: AudioListColumns.duration)
             columnHeader("Bit Rate", width: AudioListColumns.bitRate)
             columnHeader("Sample Rate", width: AudioListColumns.sampleRate)
@@ -56,6 +59,8 @@ struct AudioMetadataList: View {
 private enum AudioListColumns {
     static let play: CGFloat = 28
     static let name: CGFloat = 280
+    static let kind: CGFloat = 140
+    static let dateAdded: CGFloat = 110
     static let duration: CGFloat = 80
     static let bitRate: CGFloat = 90
     static let sampleRate: CGFloat = 100
@@ -64,8 +69,8 @@ private enum AudioListColumns {
     static let spacing: CGFloat = 12
     static let horizontalPadding: CGFloat = 8
 
-    static let totalWidth = play + name + duration + bitRate + sampleRate
-        + channels + size + spacing * 6 + horizontalPadding * 2
+    static let totalWidth = play + name + kind + dateAdded + duration + bitRate
+        + sampleRate + channels + size + spacing * 8 + horizontalPadding * 2
 }
 
 private struct AudioMetadataRow: View {
@@ -90,6 +95,8 @@ private struct AudioMetadataRow: View {
                 .truncationMode(.middle)
                 .frame(width: AudioListColumns.name, alignment: .leading)
 
+            value(kindDescription, width: AudioListColumns.kind, alignment: .leading)
+            value(dateAddedDescription, width: AudioListColumns.dateAdded)
             value(MediaFormatting.clock(metadata?.duration), width: AudioListColumns.duration)
             value(MediaFormatting.bitRate(metadata?.bitRate), width: AudioListColumns.bitRate)
             value(MediaFormatting.sampleRate(metadata?.sampleRate), width: AudioListColumns.sampleRate)
@@ -136,11 +143,26 @@ private struct AudioMetadataRow: View {
         .help(isPlaying ? "Pause" : "Play")
     }
 
-    private func value(_ text: String?, width: CGFloat) -> some View {
+    private var kindDescription: String? {
+        let fileExtension = item.url.pathExtension
+        guard !fileExtension.isEmpty else { return nil }
+        return UTType(filenameExtension: fileExtension)?.localizedDescription
+            ?? fileExtension.uppercased()
+    }
+
+    private var dateAddedDescription: String? {
+        item.addedAt?.formatted(date: .abbreviated, time: .omitted)
+    }
+
+    private func value(
+        _ text: String?,
+        width: CGFloat,
+        alignment: Alignment = .trailing
+    ) -> some View {
         Text(text ?? "—")
             .foregroundStyle(text == nil ? .tertiary : .secondary)
             .lineLimit(1)
-            .frame(width: width, alignment: .trailing)
+            .frame(width: width, alignment: alignment)
     }
 
     private func togglePlayback() {

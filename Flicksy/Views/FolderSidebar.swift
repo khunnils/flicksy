@@ -9,6 +9,7 @@ import SwiftUI
 struct FolderSidebar: View {
     @Environment(BrowserModel.self) private var model
     @State private var confirmsClearingClipboard = false
+    @State private var expandedFolderIDs: Set<MediaFolder.ID> = []
 
     var body: some View {
         @Bindable var model = model
@@ -30,10 +31,10 @@ struct FolderSidebar: View {
                         .foregroundStyle(.tertiary)
                 } else {
                     ForEach(model.rootTrees) { root in
-                        OutlineGroup(root, children: \.outlineChildren) { folder in
-                            folderRow(folder)
-                                .tag(BrowserSource.folder(folder.id))
-                        }
+                        FolderTreeRow(
+                            folder: root,
+                            expandedFolderIDs: $expandedFolderIDs
+                        )
                     }
                 }
             }
@@ -69,17 +70,6 @@ struct FolderSidebar: View {
         }
     }
 
-    private func folderRow(_ folder: MediaFolder) -> some View {
-        Label(folder.name, systemImage: folder.isRoot ? "folder.badge.gearshape" : "folder")
-            .contextMenu {
-                if folder.isRoot {
-                    Button("Remove Root Folder", role: .destructive) {
-                        model.removeRootFolder(id: folder.id)
-                    }
-                }
-            }
-    }
-
     private var addFolderBar: some View {
         VStack(spacing: 0) {
             Divider()
@@ -93,5 +83,73 @@ struct FolderSidebar: View {
             .padding(8)
         }
         .background(.bar)
+    }
+}
+
+private struct FolderTreeRow: View {
+    @Environment(BrowserModel.self) private var model
+
+    let folder: MediaFolder
+    @Binding var expandedFolderIDs: Set<MediaFolder.ID>
+
+    var body: some View {
+        if folder.children.isEmpty {
+            folderLabel
+                .tag(BrowserSource.folder(folder.id))
+        } else {
+            DisclosureGroup(isExpanded: isExpanded) {
+                ForEach(folder.children) { child in
+                    FolderTreeRow(
+                        folder: child,
+                        expandedFolderIDs: $expandedFolderIDs
+                    )
+                }
+            } label: {
+                folderLabel
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .highPriorityGesture(
+                        TapGesture().onEnded {
+                            model.selectedSource = .folder(folder.id)
+                            withAnimation {
+                                toggleExpansion()
+                            }
+                        }
+                    )
+            }
+            .tag(BrowserSource.folder(folder.id))
+        }
+    }
+
+    private var folderLabel: some View {
+        Label(folder.name, systemImage: folder.isRoot ? "folder.badge.gearshape" : "folder")
+            .contextMenu {
+                if folder.isRoot {
+                    Button("Remove Root Folder", role: .destructive) {
+                        model.removeRootFolder(id: folder.id)
+                    }
+                }
+            }
+    }
+
+    private var isExpanded: Binding<Bool> {
+        Binding(
+            get: { expandedFolderIDs.contains(folder.id) },
+            set: { expanded in
+                if expanded {
+                    expandedFolderIDs.insert(folder.id)
+                } else {
+                    expandedFolderIDs.remove(folder.id)
+                }
+            }
+        )
+    }
+
+    private func toggleExpansion() {
+        if expandedFolderIDs.contains(folder.id) {
+            expandedFolderIDs.remove(folder.id)
+        } else {
+            expandedFolderIDs.insert(folder.id)
+        }
     }
 }

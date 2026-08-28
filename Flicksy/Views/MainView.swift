@@ -30,7 +30,7 @@ struct MainView: View {
                 .navigationSplitViewColumnWidth(min: 200, ideal: 240)
         } detail: {
             MediaBrowserView()
-                .navigationTitle("Media Browser")
+                .navigationTitle(selectedSourceTitle)
                 .toolbar {
                     if model.viewerItem == nil {
                         ToolbarItem(placement: .principal) {
@@ -53,6 +53,7 @@ struct MainView: View {
                         }
                     }
                 }
+                .modifier(PreviewToolbarStyle(isPreviewing: model.viewerItem != nil))
         }
         .overlay {
             // Overlaying the split view (rather than using a sheet) lets the
@@ -85,6 +86,19 @@ struct MainView: View {
             Button("Dismiss", role: .cancel) { model.loadError = nil }
         } message: {
             Text(model.loadError ?? "")
+        }
+    }
+
+    private var selectedSourceTitle: String {
+        switch model.selectedSource {
+        case .clipboard:
+            "Clipboard"
+        case .standardFolder(let folder):
+            folder.title
+        case .folder(let id):
+            URL(fileURLWithPath: id).lastPathComponent
+        case nil:
+            "Media Browser"
         }
     }
 
@@ -164,5 +178,22 @@ struct MainView: View {
 
     private func zoomOut() {
         if model.isViewingImage { model.zoomViewerImageOut() } else { model.zoomOut() }
+    }
+}
+
+/// Opaque white titlebar while the media viewer is open, so the unified toolbar
+/// does not pick up a grey material over the preview.
+private struct PreviewToolbarStyle: ViewModifier {
+    let isPreviewing: Bool
+
+    func body(content: Content) -> some View {
+        if isPreviewing {
+            content
+                .toolbarBackground(Color.white, for: .windowToolbar)
+                .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
+                .toolbarColorScheme(.light, for: .windowToolbar)
+        } else {
+            content
+        }
     }
 }

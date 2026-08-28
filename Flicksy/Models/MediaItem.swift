@@ -7,7 +7,7 @@ import Foundation
 
 /// A single media file discovered on disk.
 ///
-/// Cheap-to-obtain fields (`type`, `name`, `fileSize`, `modifiedAt`) are populated
+/// Cheap-to-obtain fields (`type`, `name`, `fileSize`, `modifiedAt`, `addedAt`) are populated
 /// during the folder scan from resource values that come "for free" with the
 /// directory enumeration. Expensive fields (`duration`, pixel dimensions) are
 /// filled in lazily by later milestones and remain `nil` until then.
@@ -34,6 +34,7 @@ struct MediaItem: Identifiable, Hashable, Sendable {
     var height: Int?
     var fileSize: Int64?
     var modifiedAt: Date?
+    var addedAt: Date?
 
     nonisolated init(
         url: URL,
@@ -43,7 +44,8 @@ struct MediaItem: Identifiable, Hashable, Sendable {
         width: Int? = nil,
         height: Int? = nil,
         fileSize: Int64? = nil,
-        modifiedAt: Date? = nil
+        modifiedAt: Date? = nil,
+        addedAt: Date? = nil
     ) {
         self.url = url
         self.type = type
@@ -53,5 +55,6 @@ struct MediaItem: Identifiable, Hashable, Sendable {
         self.height = height
         self.fileSize = fileSize
         self.modifiedAt = modifiedAt
+        self.addedAt = addedAt
     }
 }
