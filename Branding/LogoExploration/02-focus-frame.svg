@@ -1,0 +1,8 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Focus Frame</title>
+  <desc id="desc">An open preview frame around a media play symbol.</desc>
+  <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round">
+    <path d="M38 20H25a5 5 0 0 0-5 5v13M62 20h13a5 5 0 0 1 5 5v13M80 62v13a5 5 0 0 1-5 5H62M38 80H25a5 5 0 0 1-5-5V62"/>
+  </g>
+  <path d="M43 36.5a4 4 0 0 1 6.1-3.4l20 13.4a4 4 0 0 1 0 6.7l-20 13.4A4 4 0 0 1 43 63.2Z" fill="currentColor"/>
+</svg>

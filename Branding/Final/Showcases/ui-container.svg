@@ -1,0 +1,11 @@
+<svg viewBox="0 0 1600 1000" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flicksy UI Container showcase">
+  <rect width="1600" height="1000" fill="#E5E7EB"/>
+  <rect x="300" y="140" width="1000" height="720" rx="72" fill="#F9FAFB" stroke="#FFFFFF" stroke-width="4"/>
+  <rect x="410" y="240" width="780" height="520" rx="52" fill="#EEF0F3"/>
+  <g fill="#111215" transform="translate(540 225) scale(5.2)">
+    <rect x="18" y="21" width="29" height="28" rx="7"/>
+    <rect x="53" y="16" width="29" height="28" rx="7"/>
+    <rect x="18" y="55" width="29" height="29" rx="7"/>
+    <rect x="53" y="50" width="22" height="19" rx="6"/>
+  </g>
+</svg>

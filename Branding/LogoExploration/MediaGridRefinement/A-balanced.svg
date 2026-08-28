@@ -1,0 +1,10 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Media Grid — Balanced</title>
+  <desc id="desc">An optically balanced four-tile grid forming an abstract F.</desc>
+  <g fill="currentColor">
+    <rect x="19" y="18" width="27" height="26" rx="7"/>
+    <rect x="53" y="18" width="28" height="26" rx="7"/>
+    <rect x="19" y="51" width="27" height="31" rx="7"/>
+    <rect x="53" y="51" width="20" height="17" rx="6"/>
+  </g>
+</svg>

@@ -18,6 +18,8 @@ struct ImageCell: View {
     @Environment(BrowserModel.self) private var model
 
     @State private var image: NSImage?
+    @State private var pixelWidth: Int?
+    @State private var pixelHeight: Int?
     @State private var didFail = false
     @State private var cardSize: CGSize = .zero
 
@@ -76,7 +78,10 @@ struct ImageCell: View {
     }
 
     private var subtitle: String? {
-        MediaFormatting.dimensions(width: item.width, height: item.height)
+        MediaFormatting.dimensions(
+            width: pixelWidth ?? item.width,
+            height: pixelHeight ?? item.height
+        )
             ?? MediaFormatting.fileSize(item.fileSize)
     }
 
@@ -91,6 +96,8 @@ struct ImageCell: View {
         guard !Task.isCancelled else { return }
         if let result {
             image = result.image
+            pixelWidth = result.pixelWidth
+            pixelHeight = result.pixelHeight
         } else {
             didFail = true
         }

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Flicksy — Media Grid Refinement</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root { color-scheme:light; --bg:#f3f3f0; --panel:#fff; --ink:#151515; --muted:#777773; --line:#deded9; --wash:#f8f8f6; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,sans-serif; -webkit-font-smoothing:antialiased; }
+    body.dark { color-scheme:dark; --bg:#101010; --panel:#1a1a1a; --ink:#f4f4ef; --muted:#9a9a96; --line:#343434; --wash:#151515; }
+    header { max-width:1320px; margin:auto; padding:70px 28px 38px; display:flex; align-items:end; justify-content:space-between; gap:32px; }
+    .eyebrow,.label { font:11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+    h1 { margin:12px 0 8px; font-size:clamp(40px,6vw,72px); line-height:.98; letter-spacing:-.05em; font-weight:540; }
+    .intro { max-width:620px; color:var(--muted); font-size:16px; margin:0; }
+    .controls { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+    button { appearance:none; border:1px solid var(--line); border-radius:999px; background:var(--panel); color:var(--ink); padding:8px 13px; font:inherit; cursor:pointer; }
+    button:hover,button.active { background:var(--ink); color:var(--bg); border-color:var(--ink); }
+    main { max-width:1320px; margin:auto; padding:0 28px 70px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+    article { border:1px solid var(--line); background:var(--panel); border-radius:22px; overflow:hidden; transition:transform .45s cubic-bezier(.16,1,.3,1),box-shadow .45s; }
+    article:hover { transform:translateY(-4px); box-shadow:0 22px 60px rgba(0,0,0,.09); }
+    .stage { height:390px; display:grid; place-items:center; background:var(--wash); border-bottom:1px solid var(--line); position:relative; }
+    .mark { width:176px; height:176px; transition:width .3s,height .3s,transform .45s cubic-bezier(.16,1,.3,1),filter .2s; }
+    body.dark .mark { filter:invert(1); }
+    article:hover .mark { transform:scale(1.04); }
+    .mini { position:absolute; right:22px; bottom:22px; width:32px; height:32px; border-radius:8px; background:var(--ink); display:grid; place-items:center; }
+    .mini img { width:16px; height:16px; filter:invert(1); }
+    body.dark .mini { background:var(--ink); }
+    body.dark .mini img { filter:none; }
+    .copy { padding:24px; }
+    h2 { margin:8px 0 8px; font-size:22px; letter-spacing:-.025em; }
+    p { margin:0; color:var(--muted); min-height:64px; }
+    .actions { display:flex; gap:14px; margin-top:18px; }
+    a { color:var(--ink); text-decoration:none; font-size:12px; border-bottom:1px solid var(--line); }
+    footer { max-width:1320px; margin:auto; padding:0 28px 70px; color:var(--muted); font-size:12px; }
+    @media (max-width:900px) { main { grid-template-columns:1fr; } header { align-items:start; flex-direction:column; } .controls { justify-content:flex-start; } .stage { height:320px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <div class="eyebrow">Selected direction · refinement 01</div>
+      <h1>Media Grid</h1>
+      <p class="intro">Three controlled refinements of Flicksy’s four-tile F. Compare their rhythm at display size and in the 16 px app-context badge.</p>
+    </div>
+    <div class="controls" aria-label="Preview controls">
+      <button data-size="32">32 px</button><button data-size="64">64 px</button><button data-size="128">128 px</button><button class="active" data-size="176">176 px</button>
+      <button id="theme">Dark mode</button>
+    </div>
+  </header>
+  <main id="grid"></main>
+  <footer>Recommendation: C has the most distinctive Flicksy character; A is the safest timeless system mark.</footer>
+  <script>
+    const variants = [
+      ["A","Balanced","A-balanced.svg","Optically tuned proportions and generous spacing. Calm, neutral, and the most native-macOS feeling of the three."],
+      ["B","Compact","B-compact.svg","Tighter gaps and heavier tiles preserve the F most clearly at tiny sizes. Practical and assertive."],
+      ["C","Flick","C-flick.svg","The right tiles step forward and upward, turning the static grid into a subtle browsing gesture without adding detail."],
+    ];
+    const grid = document.querySelector('#grid');
+    grid.innerHTML = variants.map(([label,title,file,text]) => `<article><div class="stage"><img class="mark" src="${file}" alt="Media Grid ${title} logo"><span class="mini"><img src="${file}" alt=""></span></div><div class="copy"><div class="label">Option ${label}</div><h2>${title}</h2><p>${text}</p><div class="actions"><a href="${file}" download>Download SVG</a><a href="${file}" target="_blank">Open vector</a></div></div></article>`).join('');
+    document.querySelectorAll('[data-size]').forEach(button => button.addEventListener('click', () => {
+      document.querySelectorAll('[data-size]').forEach(b => b.classList.remove('active'));
+      button.classList.add('active');
+      document.querySelectorAll('.mark').forEach(mark => mark.style.width = mark.style.height = `${button.dataset.size}px`);
+    }));
+    document.querySelector('#theme').addEventListener('click', event => {
+      document.body.classList.toggle('dark');
+      event.currentTarget.textContent = document.body.classList.contains('dark') ? 'Light mode' : 'Dark mode';
+    });
+  </script>
+</body>
+</html>

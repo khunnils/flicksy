@@ -1,0 +1,7 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Flick Corner</title>
+  <desc id="desc">A single media tile whose corner flicks forward into motion.</desc>
+  <path d="M25 18h37l20 20v37a7 7 0 0 1-7 7H25a7 7 0 0 1-7-7V25a7 7 0 0 1 7-7Z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M62 18v13a7 7 0 0 0 7 7h13" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M39 40a3.5 3.5 0 0 1 5.4-3l16 10.6a3.5 3.5 0 0 1 0 5.8L44.4 64A3.5 3.5 0 0 1 39 61Z" fill="currentColor"/>
+</svg>

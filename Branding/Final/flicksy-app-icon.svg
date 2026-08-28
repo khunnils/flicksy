@@ -1,0 +1,16 @@
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Flicksy app icon</title>
+  <desc id="desc">The Flicksy Media Grid mark on a restrained silver-white macOS tile.</desc>
+  <defs>
+  </defs>
+  <g>
+    <rect x="80" y="62" width="864" height="864" rx="196" fill="#F0F1F4"/>
+    <rect x="82" y="64" width="860" height="860" rx="194" fill="none" stroke="#FFFFFF" stroke-opacity="0.88" stroke-width="4"/>
+  </g>
+  <g fill="#111215" transform="translate(80 80) scale(8.64)">
+    <rect x="18" y="21" width="29" height="28" rx="7"/>
+    <rect x="53" y="16" width="29" height="28" rx="7"/>
+    <rect x="18" y="55" width="29" height="29" rx="7"/>
+    <rect x="53" y="50" width="22" height="19" rx="6"/>
+  </g>
+</svg>

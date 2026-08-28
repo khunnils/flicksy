@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Flicksy — Final Identity</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root { color-scheme:light; --bg:#f3f3f0; --panel:#fff; --ink:#151515; --muted:#777773; --line:#dcdcd7; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,sans-serif; -webkit-font-smoothing:antialiased; }
+    header,main,footer { max-width:1280px; margin:auto; }
+    header { padding:72px 28px 48px; display:grid; grid-template-columns:1fr auto; gap:40px; align-items:end; }
+    .eyebrow,.tag { font:11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+    h1 { margin:12px 0 8px; font-size:clamp(48px,8vw,92px); line-height:.92; letter-spacing:-.06em; font-weight:540; }
+    .intro { max-width:620px; margin:0; color:var(--muted); font-size:17px; }
+    .hero-icon { width:160px; height:160px; }
+    main { padding:0 28px 80px; }
+    .assets { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:54px; }
+    .asset { background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:24px; }
+    .asset-preview { height:220px; display:grid; place-items:center; border-radius:14px; background:#f4f4f1; margin-bottom:20px; }
+    .asset-preview.dark { background:#17191d; }
+    .asset img { width:104px; height:104px; }
+    .asset h2 { margin:8px 0 5px; font-size:19px; }
+    .asset p { margin:0 0 16px; color:var(--muted); min-height:42px; }
+    a { color:var(--ink); text-decoration:none; font-size:12px; border-bottom:1px solid var(--line); margin-right:14px; }
+    h3 { font-size:26px; margin:0 0 18px; letter-spacing:-.03em; }
+    .boards { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+    figure { margin:0; background:var(--panel); border:1px solid var(--line); border-radius:20px; overflow:hidden; }
+    figure img { display:block; width:100%; aspect-ratio:8/5; object-fit:cover; }
+    figcaption { padding:18px 20px 20px; }
+    figcaption strong { display:block; margin-bottom:3px; }
+    figcaption span { color:var(--muted); }
+    footer { padding:0 28px 70px; color:var(--muted); font-size:12px; }
+    @media(max-width:800px) { header { grid-template-columns:1fr; } .hero-icon { width:112px;height:112px; } .assets,.boards { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div><div class="eyebrow">Final identity · Media Grid / Flick</div><h1>Flicksy</h1><p class="intro">A fast, minimal media browser for macOS. Four media tiles form an abstract F and advance upward with a quiet flick.</p></div>
+    <img class="hero-icon" src="Exports/flicksy-app-icon-1024.png" alt="Flicksy app icon">
+  </header>
+  <main>
+    <section class="assets">
+      <article class="asset"><div class="asset-preview"><img src="flicksy-mark-black.svg" alt="Flicksy black mark"></div><div class="tag">Primary mark</div><h2>Flexible vector</h2><p>Uses currentColor for interface and web contexts.</p><a href="flicksy-mark.svg" download>SVG</a><a href="Exports/flicksy-mark-black-1024.png" download>PNG</a></article>
+      <article class="asset"><div class="asset-preview dark"><img src="flicksy-mark-white.svg" alt="Flicksy white mark"></div><div class="tag">Reverse mark</div><h2>Dark backgrounds</h2><p>Explicit white artwork for controlled production use.</p><a href="flicksy-mark-white.svg" download>SVG</a><a href="Exports/flicksy-mark-white-1024.png" download>PNG</a></article>
+      <article class="asset"><div class="asset-preview"><img src="Exports/flicksy-app-icon-1024.png" alt="Flicksy app icon"></div><div class="tag">macOS artwork</div><h2>App icon</h2><p>Silver-white tile with the final graphite mark.</p><a href="flicksy-app-icon.svg" download>SVG</a><a href="Exports/flicksy-app-icon-1024.png" download>PNG</a></article>
+    </section>
+    <h3>Identity contexts</h3>
+    <section class="boards">
+      <figure><img src="Showcases/ui-container.png" alt="Flicksy UI Container showcase"><figcaption><strong>UI Container</strong><span>Native digital-product context and micro-depth.</span></figcaption></figure>
+      <figure><img src="Showcases/iridescent-frost.png" alt="Flicksy Iridescent Frost showcase"><figcaption><strong>Iridescent Frost</strong><span>Light, optical, Apple-hardware-adjacent polish.</span></figcaption></figure>
+      <figure><img src="Showcases/frosted-horizon.png" alt="Flicksy Frosted Horizon showcase"><figcaption><strong>Frosted Horizon</strong><span>Premium dark-mode and launch presentation.</span></figcaption></figure>
+      <figure><img src="Showcases/swiss-flat.png" alt="Flicksy Swiss Flat showcase"><figcaption><strong>Swiss Flat</strong><span>One-color confidence for print and campaigns.</span></figcaption></figure>
+    </section>
+  </main>
+  <footer>Flicksy identity system · 2026</footer>
+</body>
+</html>

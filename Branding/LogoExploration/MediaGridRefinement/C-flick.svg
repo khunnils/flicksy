@@ -1,0 +1,10 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Media Grid — Flick</title>
+  <desc id="desc">An asymmetric four-tile grid with the right tiles shifted forward.</desc>
+  <g fill="currentColor">
+    <rect x="18" y="21" width="27" height="27" rx="7"/>
+    <rect x="54" y="15" width="28" height="27" rx="7"/>
+    <rect x="18" y="55" width="27" height="30" rx="7"/>
+    <rect x="54" y="49" width="20" height="18" rx="6"/>
+  </g>
+</svg>

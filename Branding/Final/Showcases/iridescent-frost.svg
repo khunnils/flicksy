@@ -1,0 +1,13 @@
+<svg viewBox="0 0 1600 1000" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flicksy Iridescent Frost showcase">
+  <rect width="1600" height="1000" fill="#F2F3F6"/>
+  <circle cx="320" cy="230" r="310" fill="#DDE7FF" opacity="0.72"/>
+  <circle cx="1310" cy="250" r="360" fill="#F5DFF0" opacity="0.58"/>
+  <circle cx="850" cy="930" r="430" fill="#DDF3EB" opacity="0.5"/>
+  <rect x="430" y="160" width="740" height="680" rx="90" fill="#FFFFFF" opacity="0.72" stroke="#FFFFFF" stroke-width="6"/>
+  <g fill="#111215" transform="translate(540 225) scale(5.2)">
+    <rect x="18" y="21" width="29" height="28" rx="7"/>
+    <rect x="53" y="16" width="29" height="28" rx="7"/>
+    <rect x="18" y="55" width="29" height="29" rx="7"/>
+    <rect x="53" y="50" width="22" height="19" rx="6"/>
+  </g>
+</svg>

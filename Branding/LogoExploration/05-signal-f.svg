@@ -1,0 +1,12 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Signal F</title>
+  <desc id="desc">A compact F built from image strips and an audio signal.</desc>
+  <g fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round">
+    <path d="M31 78V25h43"/>
+    <path d="M31 49h30"/>
+  </g>
+  <g fill="currentColor">
+    <rect x="69" y="55" width="5" height="11" rx="2.5"/>
+    <rect x="77" y="51" width="5" height="19" rx="2.5"/>
+  </g>
+</svg>

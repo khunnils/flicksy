@@ -7,6 +7,38 @@ import AppKit
 import ImageIO
 import UniformTypeIdentifiers
 
+/// Bounds disk reads, image decoding, and cache writes so a fast scroll through a
+/// huge folder cannot launch hundreds of competing operations. Cancelled waiters
+/// consume and immediately return a permit when they reach the front of the queue.
+private actor ThumbnailWorkLimiter {
+    static let shared = ThumbnailWorkLimiter(limit: 6)
+
+    private var available: Int
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    init(limit: Int) {
+        available = max(1, limit)
+    }
+
+    func acquire() async {
+        if available > 0 {
+            available -= 1
+            return
+        }
+        await withCheckedContinuation { continuation in
+            waiters.append(continuation)
+        }
+    }
+
+    func release() {
+        if waiters.isEmpty {
+            available += 1
+        } else {
+            waiters.removeFirst().resume()
+        }
+    }
+}
+
 /// Generates and caches downsampled image thumbnails.
 ///
 /// Thumbnails are produced with ImageIO's `CGImageSourceCreateThumbnailAtIndex`,
@@ -86,35 +118,42 @@ actor ThumbnailService {
         }
 
         let maxPixel = bucket.rawValue
-        let task = Task<Thumbnail?, Never>.detached(priority: .utility) {
-            if let record = PersistentMediaCache.load(
+        let task = Task<Thumbnail?, Never>.detached(priority: .userInitiated) {
+            let limiter = ThumbnailWorkLimiter.shared
+            await limiter.acquire()
+
+            let result: Thumbnail?
+            if Task.isCancelled {
+                result = nil
+            } else if let record = PersistentMediaCache.load(
                 PersistentMediaCache.ImageRecord.self,
                 namespace: "images",
                 key: diskKey
             ), let image = PersistentMediaCache.decodedImage(from: record.imageData) {
-                return Thumbnail(
+                result = Thumbnail(
                     image: image,
                     pixelWidth: record.pixelWidth,
                     pixelHeight: record.pixelHeight
                 )
+            } else if let generated = Self.generate(url: url, maxPixel: maxPixel) {
+                if !Task.isCancelled, let data = PersistentMediaCache.encodedImage(generated.image) {
+                    PersistentMediaCache.store(
+                        PersistentMediaCache.ImageRecord(
+                            imageData: data,
+                            pixelWidth: generated.pixelWidth,
+                            pixelHeight: generated.pixelHeight
+                        ),
+                        namespace: "images",
+                        key: diskKey
+                    )
+                }
+                result = Task.isCancelled ? nil : generated
+            } else {
+                result = nil
             }
 
-            guard !Task.isCancelled,
-                  let generated = Self.generate(url: url, maxPixel: maxPixel)
-            else { return nil }
-
-            if !Task.isCancelled, let data = PersistentMediaCache.encodedImage(generated.image) {
-                PersistentMediaCache.store(
-                    PersistentMediaCache.ImageRecord(
-                        imageData: data,
-                        pixelWidth: generated.pixelWidth,
-                        pixelHeight: generated.pixelHeight
-                    ),
-                    namespace: "images",
-                    key: diskKey
-                )
-            }
-            return generated
+            await limiter.release()
+            return result
         }
         inFlight[key] = task
 

@@ -98,7 +98,7 @@ struct MainView: View {
         case .folder(let id):
             URL(fileURLWithPath: id).lastPathComponent
         case nil:
-            "Media Browser"
+            "Flicksy"
         }
     }
 

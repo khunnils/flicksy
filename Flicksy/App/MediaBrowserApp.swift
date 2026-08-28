@@ -8,7 +8,7 @@
 import SwiftUI
 
 @main
-struct MediaBrowserApp: App {
+struct FlicksyApp: App {
     @State private var model = BrowserModel()
 
     var body: some Scene {
@@ -17,6 +17,8 @@ struct MediaBrowserApp: App {
                 .environment(model)
         }
         .commands {
+            AboutCommands()
+
             CommandGroup(after: .toolbar) {
                 Section {
                     Button("Toggle Images & Video / Audio") {
@@ -111,6 +113,12 @@ struct MediaBrowserApp: App {
                 }
             }
         }
+
+        Window("About Flicksy", id: AboutView.windowID) {
+            AboutView()
+        }
+        .defaultPosition(.center)
+        .windowResizability(.contentSize)
     }
 
     private var findMediaCommand: some View {
@@ -119,5 +127,17 @@ struct MediaBrowserApp: App {
         }
         .keyboardShortcut("f", modifiers: .command)
         .disabled(!model.hasSelectedSource || model.viewerItemID != nil)
+    }
+}
+
+private struct AboutCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some Commands {
+        CommandGroup(replacing: .appInfo) {
+            Button("About Flicksy") {
+                openWindow(id: AboutView.windowID)
+            }
+        }
     }
 }

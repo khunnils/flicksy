@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Flicksy — Logo Design Exploration</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root { color-scheme: light; --bg:#f5f5f3; --panel:#fff; --ink:#151515; --muted:#777773; --line:#deded9; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,sans-serif; -webkit-font-smoothing:antialiased; }
+    body.dark { color-scheme:dark; --bg:#111; --panel:#1b1b1b; --ink:#f4f4f0; --muted:#999; --line:#343434; }
+    header { max-width:1240px; margin:0 auto; padding:72px 28px 42px; display:flex; gap:36px; align-items:end; justify-content:space-between; }
+    .eyebrow,.number { font:11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+    h1 { margin:12px 0 8px; font-size:clamp(42px,7vw,78px); line-height:.95; letter-spacing:-.055em; font-weight:520; }
+    .intro { max-width:560px; margin:0; font-size:16px; color:var(--muted); }
+    .controls { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
+    button { appearance:none; border:1px solid var(--line); border-radius:999px; background:var(--panel); color:var(--ink); padding:8px 13px; font:inherit; cursor:pointer; transition:.2s ease; }
+    button:hover,button.active { background:var(--ink); color:var(--bg); border-color:var(--ink); }
+    main { max-width:1240px; margin:0 auto; padding:0 28px 80px; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+    article { background:var(--panel); border:1px solid var(--line); border-radius:20px; overflow:hidden; transition:transform .45s cubic-bezier(.16,1,.3,1),box-shadow .45s; }
+    article:hover { transform:translateY(-4px); box-shadow:0 22px 60px rgba(0,0,0,.09); }
+    .canvas { height:330px; display:grid; place-items:center; border-bottom:1px solid var(--line); background-image:radial-gradient(circle at center,var(--panel) 25%,transparent 72%); }
+    .mark { width:128px; height:128px; color:var(--ink); transition:width .35s cubic-bezier(.16,1,.3,1),height .35s cubic-bezier(.16,1,.3,1),transform .5s cubic-bezier(.16,1,.3,1),filter .2s ease; }
+    body.dark .mark { filter:invert(1); }
+    article:hover .mark { transform:scale(1.045); }
+    .copy { padding:22px 24px 26px; display:grid; grid-template-columns:42px 1fr; gap:14px; }
+    h2 { margin:0 0 7px; font-size:19px; letter-spacing:-.02em; }
+    p { margin:0; color:var(--muted); }
+    .actions { margin-top:16px; display:flex; gap:14px; }
+    a { color:var(--ink); text-decoration:none; font-size:12px; border-bottom:1px solid var(--line); }
+    footer { max-width:1240px; margin:0 auto; padding:0 28px 72px; color:var(--muted); font-size:12px; }
+    @media (max-width:760px) { header { align-items:start; flex-direction:column; } .controls { justify-content:flex-start; } main { grid-template-columns:1fr; } .canvas { height:280px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <div class="eyebrow">Native macOS media browser · 2026</div>
+      <h1>Flicksy</h1>
+      <p class="intro">Eight minimal marks for a fast, focused way to browse images, video, and audio. Monochrome first: choose the silhouette before the finish.</p>
+    </div>
+    <div class="controls" aria-label="Preview controls">
+      <button data-size="16">16 px</button><button data-size="32">32 px</button><button data-size="64">64 px</button><button class="active" data-size="128">128 px</button>
+      <button id="theme">Dark mode</button>
+    </div>
+  </header>
+  <main id="grid"></main>
+  <footer>Built as editable SVGs with a 100 × 100 viewBox and currentColor for flexible use.</footer>
+  <script>
+    const logos = [
+      ["01","Flick Stack","01-flick-stack.svg","The most literal browsing concept: media cards move past each other while the lead card carries a compact F."],
+      ["02","Focus Frame","02-focus-frame.svg","Open framing corners evoke native preview and selection; the centered play form covers motion without turning into a player badge."],
+      ["03","Skim Loop","03-skim-loop.svg","A continuous asymmetric ribbon communicates frictionless scrubbing and movement between many kinds of media."],
+      ["04","Media Grid","04-media-grid.svg","Four rounded thumbnails mirror Flicksy’s adaptive grid while their negative space quietly constructs an F."],
+      ["05","Signal F","05-signal-f.svg","A rigorous F meets a tiny waveform, linking Flicksy’s visual grid and full-width audio browser."],
+      ["06","Scrub Window","06-scrub-window.svg","A fast horizontal gesture passes through a native window—speed and preview expressed as one compact system."],
+      ["07","Flick Corner","07-flick-corner.svg","One media tile lifts at the corner, turning the product name into a tactile gesture with a restrained play cue."],
+      ["08","Quiet Aperture","08-quiet-aperture.svg","The boldest app-icon silhouette: a single aperture-like disc with a softly cut F at its center."],
+    ];
+    const grid = document.querySelector('#grid');
+    grid.innerHTML = logos.map(([n,title,file,text]) => `<article><div class="canvas"><img class="mark" src="${file}" alt="${title} logo"></div><div class="copy"><div class="number">${n}</div><div><h2>${title}</h2><p>${text}</p><div class="actions"><a href="${file}" download>Download SVG</a><a href="${file}" target="_blank">Open vector</a></div></div></div></article>`).join('');
+    document.querySelectorAll('[data-size]').forEach(button => button.addEventListener('click', () => {
+      document.querySelectorAll('[data-size]').forEach(b => b.classList.remove('active'));
+      button.classList.add('active');
+      document.querySelectorAll('.mark').forEach(mark => mark.style.width = mark.style.height = `${button.dataset.size}px`);
+    }));
+    document.querySelector('#theme').addEventListener('click', event => {
+      document.body.classList.toggle('dark');
+      event.currentTarget.textContent = document.body.classList.contains('dark') ? 'Light mode' : 'Dark mode';
+    });
+  </script>
+</body>
+</html>

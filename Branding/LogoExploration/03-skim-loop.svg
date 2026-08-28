@@ -1,0 +1,7 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Skim Loop</title>
+  <desc id="desc">A continuous ribbon connecting media browsing and playback.</desc>
+  <path d="M18 50c0-13 8-22 19-22 17 0 21 44 38 44 5 0 9-4 9-9 0-8-10-13-20-13H36c-11 0-20 5-20 13 0 5 4 9 9 9 17 0 21-44 38-44 11 0 19 9 19 22" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="18" cy="50" r="5" fill="currentColor"/>
+  <circle cx="82" cy="50" r="5" fill="currentColor"/>
+</svg>

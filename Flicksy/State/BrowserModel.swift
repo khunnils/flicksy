@@ -20,6 +20,15 @@ enum BrowserSource: Hashable {
     case folder(MediaFolder.ID)
 }
 
+/// Cache reads and live scan batches race through one stream. Fast local folders
+/// usually produce a live batch first; slower/network folders can paint from the
+/// cache without delaying reconciliation.
+private enum FolderLoadEvent: Sendable {
+    case cached([MediaItem])
+    case liveBatch([MediaItem])
+    case failed
+}
+
 /// The presentations available for audio media.
 enum AudioViewMode: String, CaseIterable {
     case list
@@ -346,6 +355,8 @@ final class BrowserModel {
     private var mediaTask: Task<Void, Never>?
     private var fileSystemMonitor: FileSystemMonitor?
     private var monitorRefreshTask: Task<Void, Never>?
+    private var treeRefreshTask: Task<Void, Never>?
+    private var pendingStructuralRefresh = false
     private var activeScanID: UUID?
     private var activeMediaLoadID: UUID?
     private var clipboardMonitorTask: Task<Void, Never>?
@@ -581,9 +592,11 @@ final class BrowserModel {
         return lhsID.isEqual(rhsID)
     }
 
-    private func refreshAfterFileMutation() {
-        rescanRoots()
-        loadMediaForSelection()
+    private func refreshAfterFileMutation(rescanTree: Bool = false) {
+        if rescanTree {
+            rescanRoots()
+        }
+        loadMediaForSelection(preservingInteraction: true)
     }
 
     func revealInFinder(clicked item: MediaItem? = nil) {
@@ -635,11 +648,15 @@ final class BrowserModel {
         guard !sources.isEmpty else { return }
 
         Task {
-            let failed = await Task.detached(priority: .userInitiated) {
+            let result = await Task.detached(priority: .userInitiated) {
                 var reservedDestinations: Set<URL> = []
                 var failed = false
+                var copiedDirectory = false
 
                 for source in sources {
+                    if (try? source.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
+                        copiedDirectory = true
+                    }
                     let destination = Self.pasteDestination(
                         for: source,
                         in: destinationFolder,
@@ -652,11 +669,11 @@ final class BrowserModel {
                         failed = true
                     }
                 }
-                return failed
+                return (failed: failed, copiedDirectory: copiedDirectory)
             }.value
 
-            refreshAfterFileMutation()
-            if failed {
+            refreshAfterFileMutation(rescanTree: result.copiedDirectory)
+            if result.failed {
                 loadError = "Some clipboard items could not be pasted into this folder."
             }
         }
@@ -746,25 +763,40 @@ final class BrowserModel {
     private func restartFilesystemMonitoring() {
         fileSystemMonitor = FileSystemMonitor(
             urls: rootStore.urls + standardFolderStore.monitoredURLs
-        ) { [weak self] in
-            self?.filesystemDidChange()
+        ) { [weak self] hasStructuralChanges in
+            self?.filesystemDidChange(hasStructuralChanges: hasStructuralChanges)
         }
     }
 
     /// Editors often emit several rename/write events for one save. Coalesce the
     /// burst so large roots are scanned once, and cancel an obsolete pending pass
     /// if more changes arrive before it starts.
-    private func filesystemDidChange() {
+    private func filesystemDidChange(hasStructuralChanges: Bool) {
+        pendingStructuralRefresh = pendingStructuralRefresh || hasStructuralChanges
+
+        // Keep the selected directory responsive independently of the recursive
+        // smart-sidebar refresh.
         monitorRefreshTask?.cancel()
         monitorRefreshTask = Task {
             try? await Task.sleep(for: .milliseconds(450))
             guard !Task.isCancelled else { return }
-            rescanRoots()
             if case .folder = selectedSource {
-                loadMediaForSelection()
+                loadMediaForSelection(preservingInteraction: true)
             } else if case .standardFolder = selectedSource {
-                loadMediaForSelection()
+                loadMediaForSelection(preservingInteraction: true)
             }
+        }
+
+        // File-only changes can affect smart-folder visibility too, but they do
+        // not need to compete with the visible-folder reload. Let them settle;
+        // directory changes use the shorter delay.
+        treeRefreshTask?.cancel()
+        treeRefreshTask = Task {
+            let delay: Duration = pendingStructuralRefresh ? .milliseconds(450) : .seconds(2)
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled else { return }
+            pendingStructuralRefresh = false
+            rescanRoots()
         }
     }
 
@@ -805,7 +837,7 @@ final class BrowserModel {
         }
     }
 
-    private func loadMediaForSelection() {
+    private func loadMediaForSelection(preservingInteraction: Bool = false) {
         mediaTask?.cancel()
         activeMediaLoadID = nil
         guard let source = selectedSource else {
@@ -825,11 +857,12 @@ final class BrowserModel {
                 }
             }
             do {
-                let items: [MediaItem]
                 switch source {
                 case .clipboard:
-                    items = await clipboardStore.items()
+                    let items = await clipboardStore.items()
                     clipboardItemCount = items.count
+                    guard !Task.isCancelled else { return }
+                    setMediaItems(items)
                 case .standardFolder(let folder):
                     guard let url = urlForStandardFolder(folder) else {
                         setMediaItems([])
@@ -837,14 +870,18 @@ final class BrowserModel {
                         return
                     }
                     restartFilesystemMonitoring()
-                    items = try await FolderScanner.mediaItems(in: url)
+                    try await loadMediaDirectory(
+                        url,
+                        loadID: loadID,
+                        preservingInteraction: preservingInteraction
+                    )
                 case .folder(let id):
-                    items = try await FolderScanner.mediaItems(
-                        in: URL(fileURLWithPath: id)
+                    try await loadMediaDirectory(
+                        URL(fileURLWithPath: id, isDirectory: true),
+                        loadID: loadID,
+                        preservingInteraction: preservingInteraction
                     )
                 }
-                guard !Task.isCancelled else { return }
-                setMediaItems(items)
             } catch is CancellationError {
                 return
             } catch {
@@ -852,6 +889,110 @@ final class BrowserModel {
                 loadError = source == .clipboard
                     ? "Clipboard history could not be loaded."
                     : "This folder could not be read."
+            }
+        }
+    }
+
+    /// Race a cached listing against cancellable live batches. Main-actor updates
+    /// are deliberately chunked so SwiftUI can render and accept input between
+    /// large-directory scan results.
+    private func loadMediaDirectory(
+        _ directory: URL,
+        loadID: UUID,
+        preservingInteraction: Bool
+    ) async throws {
+        if !preservingInteraction {
+            setMediaItems([])
+        }
+
+        var freshItems: [MediaItem] = []
+        var pendingItems: [MediaItem] = []
+        var receivedFirstBatch = false
+        var displayedCache = false
+
+        for await event in Self.folderLoadEvents(for: directory) {
+            try Task.checkCancellation()
+            guard activeMediaLoadID == loadID else { throw CancellationError() }
+
+            switch event {
+            case .cached(let items):
+                guard !receivedFirstBatch, !items.isEmpty else { continue }
+                replaceMediaItems(items, resetInteraction: !preservingInteraction)
+                displayedCache = true
+                await Task.yield()
+
+            case .failed:
+                throw CocoaError(.fileReadUnknown)
+
+            case .liveBatch(let batch):
+                freshItems.append(contentsOf: batch)
+                if receivedFirstBatch {
+                    pendingItems.append(contentsOf: batch)
+                    if pendingItems.count >= 1_000 {
+                        appendMediaItems(pendingItems)
+                        pendingItems.removeAll(keepingCapacity: true)
+                    }
+                } else {
+                    // Drop the stale cache only once live data is ready to replace it.
+                    replaceMediaItems(
+                        batch,
+                        resetInteraction: !displayedCache && !preservingInteraction
+                    )
+                    receivedFirstBatch = true
+                }
+
+                // Give rendering and input handling an opportunity between chunks.
+                await Task.yield()
+            }
+        }
+
+        if !pendingItems.isEmpty {
+            appendMediaItems(pendingItems)
+        }
+
+        try Task.checkCancellation()
+        guard activeMediaLoadID == loadID else { throw CancellationError() }
+
+        if !receivedFirstBatch {
+            replaceMediaItems([], resetInteraction: !preservingInteraction)
+        }
+        preferPopulatedTab()
+
+        let listingToCache = freshItems
+        Task.detached(priority: .background) {
+            FolderListingCache.store(listingToCache, for: directory)
+        }
+    }
+
+    nonisolated private static func folderLoadEvents(
+        for directory: URL
+    ) -> AsyncStream<FolderLoadEvent> {
+        AsyncStream { continuation in
+            let cacheTask = Task.detached(priority: .utility) {
+                if let cached = FolderListingCache.load(for: directory),
+                   !Task.isCancelled {
+                    continuation.yield(.cached(cached))
+                }
+            }
+
+            let scanTask = Task.detached(priority: .userInitiated) {
+                do {
+                    for try await batch in FolderScanner.mediaItemBatches(in: directory) {
+                        try Task.checkCancellation()
+                        continuation.yield(.liveBatch(batch))
+                    }
+                    continuation.finish()
+                } catch is CancellationError {
+                    continuation.finish()
+                } catch {
+                    continuation.yield(.failed)
+                    continuation.finish()
+                }
+            }
+
+            continuation.onTermination = { @Sendable _ in
+                cacheTask.cancel()
+                scanTask.cancel()
             }
         }
     }
@@ -877,16 +1018,31 @@ final class BrowserModel {
     /// Replace the current listing, rebuild the per-section splits, and drop any
     /// playback or viewer state that referred to the previous folder.
     private func setMediaItems(_ items: [MediaItem]) {
+        replaceMediaItems(items, resetInteraction: true)
+    }
+
+    private func replaceMediaItems(_ items: [MediaItem], resetInteraction: Bool) {
         mediaItems = items
         cardAspectRatio = Self.cardAspectRatio(for: items)
-        playingVideoID = nil
-        playingAudioID = nil
-        viewerItemID = nil
-        selectedItemIDs = []
-        selectionAnchorID = nil
-        focusedItemID = nil
+        if resetInteraction {
+            playingVideoID = nil
+            playingAudioID = nil
+            viewerItemID = nil
+            selectedItemIDs = []
+            selectionAnchorID = nil
+            focusedItemID = nil
+        }
         rebuildVisibleItems()
         preferPopulatedTab()
+    }
+
+    private func appendMediaItems(_ items: [MediaItem]) {
+        guard !items.isEmpty else { return }
+        mediaItems.append(contentsOf: items)
+        // Incremental filesystem items intentionally have no eager dimensions,
+        // so their stable initial layout is square.
+        cardAspectRatio = 1
+        rebuildVisibleItems()
     }
 
     /// Use the median image ratio when every image is landscape. Missing or

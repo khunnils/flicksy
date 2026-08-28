@@ -1,0 +1,12 @@
+<svg viewBox="0 0 1600 1000" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flicksy Frosted Horizon showcase">
+  <rect width="1600" height="1000" fill="#1B222A"/>
+  <circle cx="290" cy="1100" r="720" fill="#273745"/>
+  <circle cx="1420" cy="-150" r="620" fill="#222B36"/>
+  <rect x="360" y="110" width="880" height="780" rx="110" fill="#FFFFFF" opacity="0.035" stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="3"/>
+  <g fill="#F6F7F8" transform="translate(540 225) scale(5.2)">
+    <rect x="18" y="21" width="29" height="28" rx="7"/>
+    <rect x="53" y="16" width="29" height="28" rx="7"/>
+    <rect x="18" y="55" width="29" height="29" rx="7"/>
+    <rect x="53" y="50" width="22" height="19" rx="6"/>
+  </g>
+</svg>
