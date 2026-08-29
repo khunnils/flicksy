@@ -1,0 +1,134 @@
+:root {
+  color-scheme: light;
+  --bg: #f3f3f0;
+  --panel: #ffffff;
+  --panel-soft: #f4f4f1;
+  --ink: #151515;
+  --muted: #777773;
+  --line: #dcdcd7;
+  --dark: #17191d;
+  --dark-panel: #1f2228;
+  --dark-line: #2c3038;
+  --dark-muted: #9a9fa8;
+  --radius: 20px;
+  --radius-sm: 14px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  /* Explicit canvas background: keeps body's paint on its own box so
+     the sticky nav's backdrop-filter has real content to sample. */
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.55 var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+a {
+  color: inherit;
+}
+
+.wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+.eyebrow {
+  font: 11px/1.2 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+h1,
+h2 {
+  font-weight: 540;
+  letter-spacing: -0.04em;
+  margin: 0;
+}
+
+h2 {
+  font-size: clamp(30px, 4.4vw, 46px);
+  line-height: 1.04;
+  letter-spacing: -0.045em;
+}
+
+.section {
+  padding: 96px 0;
+}
+
+.section-head {
+  max-width: 640px;
+  margin-bottom: 48px;
+}
+
+.section-head .eyebrow {
+  display: block;
+  margin-bottom: 14px;
+}
+
+.section-head p {
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 17px;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 560;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn-primary {
+  background: var(--ink);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #000;
+}
+
+.btn-ghost {
+  border-color: var(--line);
+  background: transparent;
+  color: var(--ink);
+}
+
+.btn-ghost:hover {
+  background: var(--panel);
+}

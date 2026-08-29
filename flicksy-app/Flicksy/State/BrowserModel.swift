@@ -471,6 +471,48 @@ final class BrowserModel {
         }
     }
 
+    func rotateViewerImageLeft() {
+        transformViewerImage(.rotateLeft)
+    }
+
+    func rotateViewerImageRight() {
+        transformViewerImage(.rotateRight)
+    }
+
+    func flipViewerImageHorizontal() {
+        transformViewerImage(.flipHorizontal)
+    }
+
+    func flipViewerImageVertical() {
+        transformViewerImage(.flipVertical)
+    }
+
+    private func transformViewerImage(_ operation: ImageCropper.Transform) {
+        guard !isCropping, !isApplyingCrop,
+              let item = viewerItem, item.type == .image
+        else { return }
+
+        let url = item.url
+        isApplyingCrop = true
+        Task {
+            defer { isApplyingCrop = false }
+            do {
+                let pixelSize = try await Task.detached(priority: .userInitiated) {
+                    try ImageCropper.transform(url: url, operation: operation)
+                }.value
+                noteRewrittenFile(at: url, pixelSize: pixelSize)
+                resetViewerImageZoom()
+                if isLibrarySourceSelected {
+                    await reconcileLibrary(roots: rootStore.urls)
+                } else {
+                    refreshAfterFileMutation()
+                }
+            } catch {
+                loadError = error.localizedDescription
+            }
+        }
+    }
+
     /// Keep the open viewer and listing in sync after an in-place rewrite so
     /// `contentVersion` changes and previews reload.
     private func noteRewrittenFile(at url: URL, pixelSize: CGSize) {

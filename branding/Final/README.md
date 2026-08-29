@@ -17,4 +17,4 @@ The final mark is based on **Media Grid — Option C**, tightened with the compa
 - `Exports/` — transparent mark PNGs, the 1024 px app icon, and compiled macOS `.icns`.
 - `showcase.html` — final identity presentation and download page.
 
-The complete 16–1024 px AppIcon set is installed in `Flicksy/Assets.xcassets/AppIcon.appiconset`.
+The complete 16–1024 px AppIcon set is installed in `flicksy-app/Flicksy/Assets.xcassets/AppIcon.appiconset`.

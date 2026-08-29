@@ -1,0 +1,263 @@
+---
+// Stylized in-browser rendition of the Flicksy main window.
+// Placeholder until real app screenshots are dropped in.
+
+const wave = (seed: number, n: number) =>
+  Array.from({ length: n }, (_, i) => {
+    const v = Math.abs(Math.sin(seed + i * 0.7) * Math.cos(seed * 1.3 + i * 0.23));
+    return Math.round(12 + v * 88);
+  });
+
+const waveA = wave(2.1, 64);
+const waveB = wave(5.7, 64);
+---
+
+<div class="mock" role="img" aria-label="The Flicksy app: a folder sidebar with tags and collections beside a grid of video and image thumbnails and audio waveforms">
+  <div class="chrome">
+    <span class="dots"><i></i><i></i><i></i></span>
+    <span class="title">Flicksy</span>
+    <span class="grid-controls"><b>1×1</b><b>2×2</b><b class="on">3×3</b><b>4×4</b></span>
+  </div>
+  <div class="body">
+    <aside class="side">
+      <p class="side-label">Library</p>
+      <ul>
+        <li class="on">◱ All Media</li>
+        <li>★ Favorites</li>
+      </ul>
+      <p class="side-label">Tags</p>
+      <ul>
+        <li><span class="dot green"></span>b-roll</li>
+        <li><span class="dot purple"></span>thumbnails</li>
+        <li><span class="dot blue"></span>approved</li>
+      </ul>
+      <p class="side-label">Collections</p>
+      <ul>
+        <li>▦ Episode 12</li>
+        <li>▦ Spring drop</li>
+      </ul>
+      <p class="side-label">Folders</p>
+      <ul class="tree">
+        <li>▾ YouTube</li>
+        <li class="in">Philippines</li>
+        <li class="in">Samurai</li>
+        <li>▾ Assets</li>
+        <li class="in">Music</li>
+        <li class="in">SFX</li>
+      </ul>
+    </aside>
+    <div class="main">
+      <p class="group-label">Images &amp; Video</p>
+      <div class="tiles">
+        <figure class="tile scrub" id="scrub-demo">
+          <div class="frames">
+            <span class="frame f1 show"></span><span class="frame f2"></span><span class="frame f3"></span>
+            <span class="frame f4"></span><span class="frame f5"></span><span class="frame f6"></span>
+          </div>
+          <span class="playhead"></span>
+          <span class="hint">hover to scrub</span>
+          <figcaption><em>scene-043.mp4</em><span class="tc">00:00</span></figcaption>
+        </figure>
+        <figure class="tile t2"><figcaption><em>thumb-final.png</em><span>2048×1152</span></figcaption></figure>
+        <figure class="tile t3"><span class="play">▶</span><figcaption><em>drone-pass.mov</em><span>0:14</span></figcaption></figure>
+        <figure class="tile t4"><figcaption><em>product-04.heic</em><span>4032×3024</span></figcaption></figure>
+        <figure class="tile t5"><span class="play">▶</span><figcaption><em>talking-head.mp4</em><span>3:42</span></figcaption></figure>
+        <figure class="tile t6"><figcaption><em>flatlay-v2.jpg</em><span>5472×3648</span></figcaption></figure>
+      </div>
+      <p class="group-label">Audio</p>
+      <div class="audio-row">
+        <span class="a-play">▶</span>
+        <span class="a-name">temple-bell.wav</span>
+        <span class="wave">{waveA.map((h) => <i style={`height:${h}%`}></i>)}</span>
+        <span class="a-dur">0:14</span>
+      </div>
+      <div class="audio-row">
+        <span class="a-play">▶</span>
+        <span class="a-name">riser-whoosh.mp3</span>
+        <span class="wave">{waveB.map((h) => <i style={`height:${h}%`}></i>)}</span>
+        <span class="a-dur">0:03</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Hover-scrub demo: mouse X picks one of six fake "frames" and updates the timecode.
+  const tile = document.getElementById('scrub-demo');
+  if (tile) {
+    const frames = tile.querySelectorAll<HTMLElement>('.frame');
+    const playhead = tile.querySelector<HTMLElement>('.playhead')!;
+    const tc = tile.querySelector<HTMLElement>('.tc')!;
+    const duration = 8.3;
+    tile.addEventListener('mousemove', (e) => {
+      const r = tile.getBoundingClientRect();
+      const x = Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1);
+      const idx = Math.min(Math.floor(x * frames.length), frames.length - 1);
+      frames.forEach((f, i) => f.classList.toggle('show', i === idx));
+      playhead.style.left = `${x * 100}%`;
+      const s = x * duration;
+      tc.textContent = `00:0${Math.floor(s)}.${Math.floor((s % 1) * 10)}`;
+    });
+    tile.addEventListener('mouseleave', () => {
+      frames.forEach((f, i) => f.classList.toggle('show', i === 0));
+      playhead.style.left = '0%';
+      tc.textContent = '00:00';
+    });
+  }
+</script>
+
+<style>
+  .mock {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 40px 80px -40px rgba(21, 21, 21, 0.25);
+    font-size: 12px;
+    user-select: none;
+  }
+
+  .chrome {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel-soft);
+  }
+  .dots { display: flex; gap: 6px; }
+  .dots i { width: 11px; height: 11px; border-radius: 50%; background: #e0e0db; border: 1px solid #d2d2cc; }
+  .chrome .title { font-weight: 560; color: var(--muted); }
+  .grid-controls { margin-left: auto; display: flex; gap: 4px; font: 10px var(--font-mono); color: var(--muted); }
+  .grid-controls b { font-weight: 500; padding: 3px 7px; border-radius: 6px; }
+  .grid-controls b.on { background: var(--ink); color: #fff; }
+
+  .body { display: grid; grid-template-columns: 168px 1fr; }
+
+  .side { border-right: 1px solid var(--line); padding: 14px 12px 18px; background: var(--panel-soft); }
+  .side-label { margin: 12px 4px 5px; font: 9px var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .side-label:first-child { margin-top: 0; }
+  .side ul { list-style: none; margin: 0; padding: 0; }
+  .side li { padding: 4px 8px; border-radius: 7px; color: #4a4a46; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .side li.on { background: #e7e7e2; color: var(--ink); font-weight: 560; }
+  .side .tree .in { padding-left: 22px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .dot.green { background: #4fa96e; }
+  .dot.purple { background: #8f6fd1; }
+  .dot.blue { background: #5586cf; }
+
+  .main { padding: 16px 18px 20px; min-width: 0; }
+  .group-label { margin: 0 0 10px; font: 9px var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .group-label + .group-label { margin-top: 18px; }
+
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+  .tile {
+    margin: 0;
+    position: relative;
+    aspect-ratio: 16 / 10.5;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #e9e9e4;
+  }
+  .tile figcaption {
+    position: absolute;
+    inset: auto 0 0 0;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 14px 8px 6px;
+    background: linear-gradient(transparent, rgba(15, 16, 18, 0.55));
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 10px;
+  }
+  .tile figcaption em { font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tile figcaption span { opacity: 0.75; flex: none; }
+  .play {
+    position: absolute;
+    top: 50%; left: 50%;
+    translate: -50% -50%;
+    width: 26px; height: 26px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    background: rgba(15, 16, 18, 0.55);
+    color: #fff;
+    font-size: 9px;
+    padding-left: 2px;
+    backdrop-filter: blur(2px);
+  }
+
+  /* Fake footage: quiet, desaturated gradients. */
+  .t2 { background: linear-gradient(135deg, #d8cfc2, #b3a591); }
+  .t3 { background: linear-gradient(160deg, #a9bfc9, #5d7683); }
+  .t4 { background: linear-gradient(150deg, #ccd4c5, #93a08b); }
+  .t5 { background: linear-gradient(140deg, #c9c2d4, #877e9d); }
+  .t6 { background: linear-gradient(155deg, #d9d2c4, #a89c85); }
+
+  .scrub { cursor: crosshair; }
+  .frames, .frame { position: absolute; inset: 0; }
+  .frame { opacity: 0; transition: opacity 0.06s linear; }
+  .frame.show { opacity: 1; }
+  .f1 { background: linear-gradient(120deg, #9db4a8, #55705f); }
+  .f2 { background: linear-gradient(130deg, #a4bab0, #5d7a68); }
+  .f3 { background: linear-gradient(140deg, #adc0b0, #68836d); }
+  .f4 { background: linear-gradient(150deg, #b6c5ae, #748c72); }
+  .f5 { background: linear-gradient(160deg, #bfc9ab, #808f74); }
+  .f6 { background: linear-gradient(170deg, #c8cda9, #8c9177); }
+  .playhead {
+    position: absolute;
+    top: 0; bottom: 0; left: 0;
+    width: 1.5px;
+    background: rgba(255, 255, 255, 0.9);
+    opacity: 0;
+    transition: opacity 0.15s;
+    pointer-events: none;
+  }
+  .scrub:hover .playhead { opacity: 1; }
+  .hint {
+    position: absolute;
+    top: 7px; left: 7px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(15, 16, 18, 0.55);
+    color: #fff;
+    font: 9px var(--font-mono);
+    letter-spacing: 0.06em;
+    backdrop-filter: blur(2px);
+    transition: opacity 0.2s;
+  }
+  .scrub:hover .hint { opacity: 0; }
+  .tc { font-family: var(--font-mono); }
+
+  .audio-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    background: var(--panel);
+  }
+  .a-play {
+    width: 22px; height: 22px;
+    flex: none;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    font-size: 8px;
+    padding-left: 1px;
+    color: var(--ink);
+  }
+  .a-name { flex: none; width: 108px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+  .wave { flex: 1; display: flex; align-items: center; gap: 2px; height: 26px; min-width: 0; overflow: hidden; }
+  .wave i { flex: 1; min-width: 1.5px; border-radius: 1px; background: #b9b9b2; }
+  .a-dur { font: 10px var(--font-mono); color: var(--muted); }
+
+  @media (max-width: 720px) {
+    .body { grid-template-columns: 1fr; }
+    .side { display: none; }
+    .tiles { grid-template-columns: repeat(2, 1fr); }
+    .tile:nth-child(n + 5) { display: none; }
+    .a-name { width: 84px; }
+  }
+</style>

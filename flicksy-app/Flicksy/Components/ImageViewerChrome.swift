@@ -17,8 +17,10 @@ struct ImageViewerToolbar: View {
                     cropEditingControls
                 } else {
                     toolbarIconButton("crop", label: "Crop", action: model.beginCrop)
-                    ImageViewerZoomControl()
                 }
+                rotateMenu
+                flipMenu
+                ImageViewerZoomControl()
             }
 
             toolbarIconButton(
@@ -30,6 +32,7 @@ struct ImageViewerToolbar: View {
 
             closeButton
         }
+        .padding(.horizontal, 8)
     }
 
     private var cropEditingControls: some View {
@@ -46,7 +49,8 @@ struct ImageViewerToolbar: View {
             Button("Apply") {
                 model.applyCrop()
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.plain)
+            .fontWeight(.semibold)
             .help("Apply crop and overwrite the original image")
             .disabled(model.isApplyingCrop)
             .keyboardShortcut(.defaultAction)
@@ -68,9 +72,49 @@ struct ImageViewerToolbar: View {
                 }
             }
         } label: {
-            Label(model.cropAspect.title, systemImage: "aspectratio")
+            HStack(spacing: 5) {
+                Image(systemName: "aspectratio")
+                Text(model.cropAspect.title)
+            }
+            .foregroundStyle(.primary)
+            .fixedSize()
         }
+        .menuStyle(.borderlessButton)
         .help("Lock crop guide to an aspect ratio")
+    }
+
+    private var rotateMenu: some View {
+        Menu {
+            Button("Rotate Left", systemImage: "rotate.left", action: model.rotateViewerImageLeft)
+            Button("Rotate Right", systemImage: "rotate.right", action: model.rotateViewerImageRight)
+        } label: {
+            toolbarMenuIcon("rotate.right")
+        }
+        .menuStyle(.borderlessButton)
+        .disabled(model.isCropping || model.isApplyingCrop)
+        .help("Rotate image")
+        .accessibilityLabel("Rotate image")
+    }
+
+    private var flipMenu: some View {
+        Menu {
+            Button("Flip Horizontally", systemImage: "arrow.left.and.right.righttriangle.left.righttriangle.right", action: model.flipViewerImageHorizontal)
+            Button("Flip Vertically", systemImage: "arrow.up.and.down.righttriangle.up.righttriangle.down", action: model.flipViewerImageVertical)
+        } label: {
+            toolbarMenuIcon("arrow.left.and.right.righttriangle.left.righttriangle.right")
+        }
+        .menuStyle(.borderlessButton)
+        .disabled(model.isCropping || model.isApplyingCrop)
+        .help("Flip image")
+        .accessibilityLabel("Flip image")
+    }
+
+    private func toolbarMenuIcon(_ systemImage: String) -> some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 16, weight: .medium))
+            .foregroundStyle(.primary)
+            .frame(width: 28, height: 22)
+            .contentShape(Rectangle())
     }
 
     @ViewBuilder
