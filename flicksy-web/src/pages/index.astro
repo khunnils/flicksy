@@ -41,24 +41,12 @@ const faqs = [
       <div class="iridescent-stage" aria-label="Flicksy app screenshot">
         <span class="aurora aurora-blue"></span><span class="aurora aurora-pink"></span><span class="aurora aurora-mint"></span>
         <div class="app-window hero-window"><img src="/app-browser-dinos.jpeg" alt="Flicksy on macOS showing a visual grid of video clips" width="1784" height="1293" /></div>
-        <div class="floating-chip chip-left"><span class="chip-icon">⌁</span><span><strong>Hover to skim</strong><small>Find any frame</small></span></div>
-        <div class="floating-chip chip-right"><span class="chip-icon">↗</span><span><strong>Ready to drag</strong><small>Into any editor</small></span></div>
       </div>
     </header>
   </div>
 
   <main>
-    <section class="workflow section wrap" id="how">
-      <div class="section-intro center"><p class="eyebrow">One clear workflow</p><h2>From folder to final cut,<br />without breaking focus.</h2><p>Flicksy turns the media already on your Mac into one visual, searchable surface.</p></div>
-      <ol class="steps">
-        <li><span>01</span><strong>Point</strong><small>Add the folders you already use.</small></li>
-        <li><span>02</span><strong>Find</strong><small>Skim media at the speed of sight.</small></li>
-        <li><span>03</span><strong>Collect</strong><small>Tag favorites without moving files.</small></li>
-        <li><span>04</span><strong>Drag</strong><small>Drop the right take into your edit.</small></li>
-      </ol>
-    </section>
-
-    <section class="showcase section wrap">
+    <section class="showcase section wrap" id="how">
       <div class="showcase-grid">
         <div class="showcase-copy">
           <p class="eyebrow">Feels at home on Mac</p><h2>A media browser that gets out of your way.</h2>
@@ -132,29 +120,34 @@ const faqs = [
   .text-link { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; text-underline-offset: 4px; text-decoration-color: #c5c9d0; }
   .fine-print { margin: 15px 0 0; color: #969ba5; font-size: 11.5px; }
   .iridescent-stage { position: relative; margin: 82px -52px 0; min-height: 650px; padding: 70px 64px 120px; isolation: isolate; }
-  .iridescent-stage::before { content: ''; position: absolute; z-index: -3; inset: -80px -12vw 0; background: linear-gradient(180deg, rgba(248,249,251,0) 0%, rgba(238,241,247,.7) 45%, #edf0f4 100%); border-radius: 50% 50% 0 0 / 20% 20% 0 0; }
-  .aurora { position: absolute; z-index: -2; border-radius: 50%; filter: blur(10px); opacity: .78; }
-  .aurora-blue { width: 620px; height: 460px; left: -110px; top: 70px; background: #dce8ff; }
-  .aurora-pink { width: 580px; height: 420px; right: -80px; top: 110px; background: #f3dff0; }
-  .aurora-mint { width: 620px; height: 350px; left: 35%; bottom: 5px; background: #dff2ec; }
-  .app-window { position: relative; overflow: hidden; border: 1px solid rgba(124,133,148,.26); background: #fff; box-shadow: 0 42px 90px rgba(47,57,76,.20), 0 9px 24px rgba(47,57,76,.11); }
-  .app-window img { width: 100%; height: 100%; object-fit: cover; }
-  .hero-window { border-radius: 24px; transform: perspective(1600px) rotateX(2deg); }
-  .floating-chip { position: absolute; z-index: 3; display: flex; align-items: center; gap: 11px; padding: 11px 16px 11px 11px; border: 1px solid rgba(255,255,255,.9); border-radius: 15px; background: rgba(255,255,255,.72); box-shadow: 0 16px 38px rgba(56,66,87,.13), inset 0 0 0 1px rgba(120,130,145,.06); backdrop-filter: blur(22px); text-align: left; }
-  .floating-chip strong, .floating-chip small { display: block; }
-  .floating-chip strong { font-size: 12px; } .floating-chip small { color: var(--muted); font-size: 10px; margin-top: 1px; }
-  .chip-icon { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; background: #191c21; color: white; }
-  .chip-left { left: 18px; bottom: 76px; } .chip-right { right: 16px; top: 22px; }
-  .workflow { padding-top: 115px; }
+  .iridescent-stage::before {
+    content: ''; position: absolute; z-index: -3; inset: -90px -24vw 0;
+    background:
+      radial-gradient(ellipse 45% 62% at 12% 51%, rgba(83, 139, 255, .78), transparent 72%),
+      radial-gradient(ellipse 42% 58% at 88% 49%, rgba(248, 102, 190, .68), transparent 72%),
+      radial-gradient(ellipse 43% 48% at 53% 91%, rgba(72, 218, 190, .65), transparent 74%),
+      radial-gradient(ellipse 34% 42% at 54% 35%, rgba(164, 119, 255, .55), transparent 74%),
+      linear-gradient(180deg, rgba(247,248,251,0) 0%, #e9eefb 34%, #eef4f5 100%);
+    border-radius: 50% 50% 0 0 / 16% 16% 0 0;
+  }
+  .iridescent-stage::after {
+    content: ''; position: absolute; z-index: -1; inset: auto -24vw 0; height: 155px;
+    background: linear-gradient(180deg, transparent 0%, rgba(247,248,250,.72) 58%, var(--bg) 100%);
+    pointer-events: none;
+  }
+  .aurora { position: absolute; z-index: -2; border-radius: 50%; filter: blur(32px); mix-blend-mode: multiply; opacity: .56; }
+  .aurora-blue { width: 600px; height: 420px; left: -80px; top: 105px; background: #73a4ff; }
+  .aurora-pink { width: 560px; height: 400px; right: -40px; top: 120px; background: #ef8bce; }
+  .aurora-mint { width: 590px; height: 310px; left: 34%; bottom: 20px; background: #72dac8; }
+  .app-window { position: relative; overflow: visible; border: 0; background: transparent; box-shadow: none; }
+  .app-window img {
+    width: 100%; height: 100%; object-fit: cover;
+    clip-path: inset(2.6% 3% 5.4% 3% round 22px);
+    filter: drop-shadow(0 36px 34px rgba(34, 43, 61, .24)) drop-shadow(0 8px 12px rgba(34, 43, 61, .14));
+  }
+  .hero-window { transform: perspective(1600px) rotateX(2deg); }
   .center { margin-left: auto; margin-right: auto; text-align: center; }
-  .steps { list-style: none; margin: 58px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--line); }
-  .steps li { position: relative; display: flex; flex-direction: column; padding: 28px 24px 0 0; }
-  .steps li::before { content: ''; position: absolute; width: 8px; height: 8px; top: -4.5px; left: 0; background: white; border: 1px solid #aeb5c0; border-radius: 50%; }
-  .steps li:not(:last-child)::after { content: '→'; position: absolute; right: 30px; top: 29px; color: #c0c4ca; }
-  .steps li > span { color: #999faa; font: 10px var(--font-mono); }
-  .steps strong { margin-top: 18px; font-size: 19px; }
-  .steps small { margin-top: 5px; max-width: 170px; color: var(--muted); font-size: 13px; line-height: 1.5; }
-  .showcase { padding-top: 125px; padding-bottom: 140px; }
+  .showcase { position: relative; z-index: 2; margin-top: -72px; padding-top: 180px; padding-bottom: 140px; }
   .showcase-grid { display: grid; grid-template-columns: .78fr 1.45fr; align-items: center; gap: 70px; }
   .showcase-copy h2 { margin: 15px 0 22px; font-size: clamp(38px, 4.4vw, 58px); }
   .showcase-copy > p:not(.eyebrow) { color: var(--muted); font-size: 16px; }
@@ -163,7 +156,8 @@ const faqs = [
   .check-list span { color: #557868; }
   .window-wrap { position: relative; }
   .window-wrap::before { content: ''; position: absolute; inset: -70px -80px; z-index: -1; border-radius: 50%; background: radial-gradient(circle, rgba(221,232,255,.8), rgba(243,225,242,.35) 45%, transparent 72%); }
-  .detail-window { border-radius: 19px; transform: rotate(1deg); }
+  .detail-window { transform: rotate(1deg); }
+  .detail-window img { clip-path: inset(2.7% 3% 5.2% 3% round 18px); }
   .horizon { position: relative; overflow: hidden; padding: 125px 0 0; background: #1c2530; color: #f7f9fb; isolation: isolate; }
   .horizon::after { content: ''; position: absolute; inset: auto 0 0; height: 34%; z-index: -1; background: linear-gradient(180deg, transparent, rgba(14,20,28,.35)); }
   .horizon-orb { position: absolute; z-index: -2; border-radius: 50%; }
@@ -178,7 +172,8 @@ const faqs = [
   .preview-card { display: grid; grid-template-columns: .68fr 1.55fr; align-items: center; gap: 58px; margin-top: 110px; }
   .preview-copy h3 { margin: 13px 0; font-size: clamp(28px, 3.5vw, 43px); line-height: 1.05; letter-spacing: -.04em; }
   .preview-copy > p:not(.eyebrow) { color: #a6b2bd; }
-  .preview-window { align-self: end; border-radius: 22px 22px 0 0; border-bottom: 0; box-shadow: 0 40px 90px rgba(0,0,0,.32); }
+  .preview-window { align-self: end; }
+  .preview-window img { clip-path: inset(3.1% 3.1% 6.2% 3.1% round 19px); filter: drop-shadow(0 38px 32px rgba(0,0,0,.35)) drop-shadow(0 8px 12px rgba(0,0,0,.2)); }
   .organize { padding-top: 130px; }
   .organize-grid { margin-top: 58px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
   .soft-card { display: flex; flex-direction: column; min-height: 440px; padding: 16px; border: 1px solid rgba(132,143,158,.17); background: rgba(255,255,255,.7); border-radius: 25px; box-shadow: 0 20px 50px rgba(46,57,75,.06); }
@@ -225,11 +220,11 @@ const faqs = [
   @media (max-width: 700px) {
     .nav { height: 66px; } .nav-links { display: none; } .nav .button { margin-left: auto; }
     .hero { padding-top: 55px; } .hero h1 { font-size: clamp(53px, 16vw, 76px); } .hero-actions { flex-direction: column; gap: 17px; }
-    .iridescent-stage { margin-top: 52px; padding: 34px 10px 72px; } .hero-window { border-radius: 13px; } .floating-chip { display: none; }
-    .steps { grid-template-columns: 1fr 1fr; row-gap: 35px; } .steps li:nth-child(2)::after { display: none; }
-    .section, .workflow, .showcase, .organize { padding-top: 88px; padding-bottom: 88px; }
+    .iridescent-stage { margin-top: 52px; padding: 34px 10px 72px; } .app-window img { clip-path: inset(2.6% 3% 5.4% 3% round 12px); }
+    .section, .organize { padding-top: 88px; padding-bottom: 88px; }
+    .showcase { margin-top: -45px; padding-top: 118px; padding-bottom: 88px; }
     .horizon { padding-top: 88px; } .feature-grid { grid-template-columns: 1fr; } .glass-card { min-height: 220px; } .glass-card h3 { margin-top: 38px; }
-    .preview-card { margin-top: 78px; gap: 38px; } .preview-window { border-radius: 13px 13px 0 0; }
+    .preview-card { margin-top: 78px; gap: 38px; }
     .organize-grid { grid-template-columns: 1fr; } .favorites-card { grid-column: auto; } .soft-card { min-height: 380px; }
     .pricing-grid { grid-template-columns: 1fr; } .faq-grid { grid-template-columns: 1fr; }
     .footer-inner { align-items: flex-start; flex-direction: column; } .footer-inner p { margin: 0; }
