@@ -67,6 +67,54 @@ struct MediaItemInteractionsModifier: ViewModifier {
 
         Divider()
 
+        if item.libraryID != nil {
+            let isFavorite = model.selectionIsAllFavorite(clicked: item)
+            Button {
+                model.toggleFavorite(clicked: item)
+            } label: {
+                Label(
+                    isFavorite ? "Remove from Favorites" : "Add to Favorites",
+                    systemImage: isFavorite ? "star.slash" : "star"
+                )
+            }
+
+            if !model.tags.isEmpty {
+                Menu("Tags") {
+                    ForEach(model.tags) { tag in
+                        let applied = model.selectionHasTag(tag, clicked: item)
+                        Button {
+                            model.setTag(tag, enabled: !applied, clicked: item)
+                        } label: {
+                            if applied {
+                                Label(tag.name, systemImage: "checkmark")
+                            } else {
+                                Text(tag.name)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Menu("Add to Collection") {
+                if model.collections.isEmpty {
+                    Text("No Collections")
+                } else {
+                    ForEach(model.collections) { collection in
+                        Button(collection.name) { model.addToCollection(collection, clicked: item) }
+                    }
+                }
+            }
+
+            if model.isCollectionSelected {
+                Button("Remove from Collection", role: .destructive) {
+                    _ = model.itemsForAction(clicked: item)
+                    model.removeSelectedFromCollection()
+                }
+            }
+
+            Divider()
+        }
+
         Button {
             model.duplicate(clicked: item)
         } label: {
@@ -106,6 +154,13 @@ struct MediaItemInteractionsModifier: ViewModifier {
             model.copyPath(clicked: item)
         } label: {
             Label("Copy Path", systemImage: "link")
+        }
+
+        if item.libraryID != nil {
+            Divider()
+            Button("Move Original to Trash", role: .destructive) {
+                model.moveSelectedFilesToTrashExplicitly(clicked: item)
+            }
         }
     }
 

@@ -182,10 +182,14 @@ struct PreviewUnavailable: View {
     }
 }
 
-/// One- or two-line caption used beneath grid cells.
+/// One- or two-line caption used beneath grid cells, plus optional organization
+/// chrome (favorite star and tag color dots). Color appears only on these dots
+/// and never tints the media itself.
 struct MediaCaption: View {
     let title: String
     let subtitle: String?
+    var isFavorite: Bool = false
+    var tags: [LibraryTag] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
@@ -199,8 +203,43 @@ struct MediaCaption: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
+            MediaOrganizationBadges(isFavorite: isFavorite, tags: tags)
+                .padding(.top, isFavorite || !tags.isEmpty ? 2 : 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// A small favorite star and up to a few tag color dots. Renders nothing when the
+/// item is neither favorited nor tagged so unorganized cells stay clean.
+struct MediaOrganizationBadges: View {
+    let isFavorite: Bool
+    let tags: [LibraryTag]
+    var maxDots = 4
+
+    var body: some View {
+        if isFavorite || !tags.isEmpty {
+            HStack(spacing: 4) {
+                if isFavorite {
+                    Image(systemName: "star.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.yellow)
+                        .accessibilityLabel("Favorite")
+                }
+                ForEach(tags.prefix(maxDots)) { tag in
+                    Circle()
+                        .fill(tag.color.color)
+                        .frame(width: 7, height: 7)
+                        .accessibilityLabel(tag.name)
+                }
+                if tags.count > maxDots {
+                    Text("+\(tags.count - maxDots)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("\(tags.count - maxDots) more tags")
+                }
+            }
+        }
     }
 }
 

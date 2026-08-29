@@ -40,6 +40,8 @@ struct AudioRow: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
 
+                    MediaOrganizationBadges(isFavorite: item.isFavorite, tags: item.tags)
+
                     Spacer(minLength: 8)
 
                     Text(timeLabel)
@@ -63,6 +65,11 @@ struct AudioRow: View {
         )
         .selectableCell(item, model: model)
         .mediaItemInteractions(item, model: model)
+        .dropDestination(for: URL.self) { urls, _ in
+            guard model.isCollectionSelected, model.sortKey == .manual else { return false }
+            model.reorderCollectionURLs(urls, before: item)
+            return urls.count == 1
+        }
         .task(id: item.contentVersion) {
             await loadWaveform()
         }

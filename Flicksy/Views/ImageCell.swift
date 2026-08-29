@@ -36,10 +36,15 @@ struct ImageCell: View {
             }
             .selectableCell(item, model: model)
 
-            MediaCaption(title: item.name, subtitle: subtitle)
+            MediaCaption(title: item.name, subtitle: subtitle, isFavorite: item.isFavorite, tags: item.tags)
                 .padding(.leading, captionLeadingInset)
         }
         .mediaItemInteractions(item, model: model)
+        .dropDestination(for: URL.self) { urls, _ in
+            guard model.isCollectionSelected, model.sortKey == .manual else { return false }
+            model.reorderCollectionURLs(urls, before: item)
+            return urls.count == 1
+        }
         .task(id: taskID) {
             await loadThumbnail()
         }

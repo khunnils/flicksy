@@ -6,15 +6,28 @@
 import AppKit
 import Foundation
 import Observation
+import UniformTypeIdentifiers
 
 /// Grid navigation directions for keyboard selection movement.
 enum MoveDirection {
     case left, right, up, down
 }
 
+/// A pending tag rename that collided with an existing tag. Kept until the user
+/// confirms or cancels the merge so the two are only combined on purpose.
+struct PendingTagMerge: Identifiable {
+    let id = UUID()
+    let tag: LibraryTag
+    let name: String
+    let color: LibraryTagColor
+}
+
 /// A sidebar selection can be a real media folder or Flicksy's app-owned virtual
 /// clipboard history.
 enum BrowserSource: Hashable {
+    case favorites
+    case tag(UUID)
+    case collection(UUID)
     case clipboard
     case standardFolder(StandardBrowserFolder)
     case folder(MediaFolder.ID)
@@ -61,6 +74,7 @@ enum MediaLibraryTab: String, CaseIterable, Identifiable {
 /// Keys the listing can be ordered by. The same choice applies to both library
 /// tabs (name, last updated, and so on).
 enum MediaSortKey: String, CaseIterable, Identifiable {
+    case manual
     case name
     case modified
     case size
@@ -70,6 +84,7 @@ enum MediaSortKey: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
+        case .manual: "Manual Order"
         case .name: "Name"
         case .modified: "Date Modified"
         case .size: "Size"
@@ -79,6 +94,7 @@ enum MediaSortKey: String, CaseIterable, Identifiable {
 
     var ascendingLabel: String {
         switch self {
+        case .manual: "First to Last"
         case .name: "A to Z"
         case .modified: "Oldest First"
         case .size: "Smallest First"
@@ -88,6 +104,7 @@ enum MediaSortKey: String, CaseIterable, Identifiable {
 
     var descendingLabel: String {
         switch self {
+        case .manual: "Last to First"
         case .name: "Z to A"
         case .modified: "Newest First"
         case .size: "Largest First"
@@ -99,7 +116,7 @@ enum MediaSortKey: String, CaseIterable, Identifiable {
     /// dates newest first, sizes largest first.
     var defaultAscending: Bool {
         switch self {
-        case .name, .kind: true
+        case .manual, .name, .kind: true
         case .modified, .size: false
         }
     }
@@ -128,15 +145,35 @@ final class BrowserModel {
             if selectedSource == .clipboard {
                 libraryTab = .visual
             }
+            if case .collection = selectedSource {
+                if sortKey != .manual { sortKey = .manual }
+            } else if sortKey == .manual {
+                sortKey = .name
+            }
             loadMediaForSelection()
         }
     }
 
     var hasSelectedSource: Bool { selectedSource != nil }
     var isClipboardSelected: Bool { selectedSource == .clipboard }
+    var selectedCollectionID: UUID? {
+        guard case .collection(let id) = selectedSource else { return nil }
+        return id
+    }
+    var isCollectionSelected: Bool { selectedCollectionID != nil }
+    var isLibrarySourceSelected: Bool {
+        switch selectedSource {
+        case .favorites, .tag, .collection: true
+        default: false
+        }
+    }
 
     /// Media directly contained in the selected folder.
     private(set) var mediaItems: [MediaItem] = []
+    private(set) var tags: [LibraryTag] = []
+    private(set) var collections: [MediaCollection] = []
+    private(set) var missingCollectionItems: [MissingCollectionItem] = []
+    private(set) var isIndexingLibrary = false
 
     /// The current search text. Filtering is cheap filename matching over the
     /// already-loaded folder contents, so results update on every keystroke.
@@ -262,6 +299,19 @@ final class BrowserModel {
     /// the situation is resolved (spec section 24).
     var loadError: String?
 
+    /// A user-facing message for organization actions (tags, favorites,
+    /// collections). Kept separate from `loadError` so a rejected drop does not
+    /// offer to add a root folder, which would be the wrong remedy.
+    var organizationError: String?
+
+    /// Drives the toolbar Organize popover so it can also be opened with the
+    /// keyboard (Command-T).
+    var isOrganizePresented = false
+
+    /// A rename that collided with an existing tag, awaiting the user's explicit
+    /// confirmation to merge the two tags.
+    var pendingTagMerge: PendingTagMerge?
+
     /// Target thumbnail width in points. The grid fits as many columns as will
     /// accommodate this size; persisted between launches.
     var thumbnailSize: Double {
@@ -349,6 +399,7 @@ final class BrowserModel {
     private static let sortAscendingKey = "sortAscending"
 
     private let rootStore = RootFolderStore()
+    private let libraryRepository = LibraryRepository()
     private let standardFolderStore = StandardFolderStore()
     private let clipboardStore = ClipboardHistoryStore()
     private var scanTask: Task<Void, Never>?
@@ -421,6 +472,290 @@ final class BrowserModel {
         }
         restartFilesystemMonitoring()
         rescanRoots()
+    }
+
+    // MARK: - Creator organization
+
+    var canOrganizeSelection: Bool {
+        actionItemsPreview(clicked: nil).contains { $0.libraryID != nil }
+    }
+
+    private var selectedLibraryAssetIDs: [UUID] {
+        itemsForAction(clicked: nil).compactMap(\.libraryID)
+    }
+
+    /// The items a context-menu or command would act on, without the selection
+    /// side effect of `itemsForAction`. Safe to call while building menu labels.
+    func actionItemsPreview(clicked item: MediaItem?) -> [MediaItem] {
+        if let item {
+            if selectedItemIDs.contains(item.id) {
+                return orderedItems.filter { selectedItemIDs.contains($0.id) }
+            }
+            return [item]
+        }
+        if let viewerItem {
+            return [viewerItem]
+        }
+        return orderedItems.filter { selectedItemIDs.contains($0.id) }
+    }
+
+    /// Whether every organizable item in the pending action is already a
+    /// favorite. Uses hydrated `MediaItem.isFavorite`, so it stays in sync with
+    /// what the cell chrome shows without another database read.
+    func selectionIsAllFavorite(clicked item: MediaItem? = nil) -> Bool {
+        let targets = actionItemsPreview(clicked: item).filter { $0.libraryID != nil }
+        return !targets.isEmpty && targets.allSatisfy(\.isFavorite)
+    }
+
+    /// Whether `tag` is applied to every organizable item in the pending action.
+    func selectionHasTag(_ tag: LibraryTag, clicked item: MediaItem? = nil) -> Bool {
+        let targets = actionItemsPreview(clicked: item).filter { $0.libraryID != nil }
+        return !targets.isEmpty && targets.allSatisfy { $0.tags.contains(where: { $0.id == tag.id }) }
+    }
+
+    func createTag(name: String, color: LibraryTagColor, applyingToSelected: Bool = false) {
+        let assetIDs = applyingToSelected ? selectedLibraryAssetIDs : []
+        Task {
+            do {
+                let tag = try await libraryRepository.createTag(name: name, color: color)
+                if !assetIDs.isEmpty {
+                    try await libraryRepository.setTag(tag.id, on: assetIDs, enabled: true)
+                }
+                await refreshOrganization(reloadSelection: true)
+            } catch { organizationError = error.localizedDescription }
+        }
+    }
+
+    func updateTag(_ tag: LibraryTag, name: String, color: LibraryTagColor) {
+        Task {
+            do {
+                try await libraryRepository.updateTag(
+                    id: tag.id,
+                    name: name,
+                    color: color,
+                    mergeOnConflict: false
+                )
+                await refreshOrganization(reloadSelection: true)
+            } catch let error as LibraryRepository.RepositoryError {
+                if case .duplicateName = error {
+                    // Renaming onto an existing tag is only destructive if the
+                    // user really wants to combine them, so confirm first.
+                    pendingTagMerge = PendingTagMerge(tag: tag, name: name, color: color)
+                } else {
+                    organizationError = error.localizedDescription
+                }
+            } catch {
+                organizationError = error.localizedDescription
+            }
+        }
+    }
+
+    func confirmPendingTagMerge() {
+        guard let pending = pendingTagMerge else { return }
+        pendingTagMerge = nil
+        Task {
+            do {
+                try await libraryRepository.updateTag(
+                    id: pending.tag.id,
+                    name: pending.name,
+                    color: pending.color,
+                    mergeOnConflict: true
+                )
+                if selectedSource == .tag(pending.tag.id) { selectedSource = .favorites }
+                await refreshOrganization(reloadSelection: true)
+            } catch { organizationError = error.localizedDescription }
+        }
+    }
+
+    func deleteTag(_ tag: LibraryTag) {
+        Task {
+            do {
+                try await libraryRepository.deleteTag(id: tag.id)
+                if selectedSource == .tag(tag.id) { selectedSource = .favorites }
+                await refreshOrganization(reloadSelection: true)
+            } catch { organizationError = error.localizedDescription }
+        }
+    }
+
+    func setTag(_ tag: LibraryTag, enabled: Bool, clicked item: MediaItem? = nil) {
+        let ids = itemsForAction(clicked: item).compactMap(\.libraryID)
+        guard !ids.isEmpty else { return }
+        Task {
+            do {
+                try await libraryRepository.setTag(tag.id, on: ids, enabled: enabled)
+                await refreshOrganization(reloadSelection: true)
+            } catch { organizationError = error.localizedDescription }
+        }
+    }
+
+    func tagsAppliedToEverySelectedItem(clicked item: MediaItem? = nil) async -> Set<UUID> {
+        let ids = itemsForAction(clicked: item).compactMap(\.libraryID)
+        return (try? await libraryRepository.tagIDs(for: ids)) ?? []
+    }
+
+    func toggleFavorite(clicked item: MediaItem? = nil) {
+        let ids = itemsForAction(clicked: item).compactMap(\.libraryID)
+        guard !ids.isEmpty else { return }
+        Task {
+            do {
+                let alreadyFavorite = try await libraryRepository.allFavorite(assetIDs: ids)
+                try await libraryRepository.setFavorite(!alreadyFavorite, assetIDs: ids)
+                await refreshOrganization(reloadSelection: true)
+            } catch { organizationError = error.localizedDescription }
+        }
+    }
+
+    func createCollection(name: String, addingSelected: Bool = false) {
+        let ids = addingSelected ? selectedLibraryAssetIDs : []
+        Task {
+            do {
+                let collection = try await libraryRepository.createCollection(name: name)
+                if !ids.isEmpty { try await libraryRepository.add(assetIDs: ids, to: collection.id) }
+                await refreshOrganization(reloadSelection: false)
+                selectedSource = .collection(collection.id)
+            } catch { organizationError = error.localizedDescription }
+        }
+    }
+
+    func renameCollection(_ collection: MediaCollection, to name: String) {
+        Task {
+            do {
+                try await libraryRepository.renameCollection(id: collection.id, name: name)
+                await refreshOrganization(reloadSelection: false)
+            } catch { organizationError = error.localizedDescription }
+        }
+    }
+
+    func deleteCollection(_ collection: MediaCollection) {
+        Task {
+            do {
+                try await libraryRepository.deleteCollection(id: collection.id)
+                if selectedSource == .collection(collection.id) { selectedSource = .favorites }
+                await refreshOrganization(reloadSelection: false)
+            } catch { organizationError = error.localizedDescription }
+        }
+    }
+
+    func addToCollection(_ collection: MediaCollection, clicked item: MediaItem? = nil) {
+        let ids = itemsForAction(clicked: item).compactMap(\.libraryID)
+        guard !ids.isEmpty else { return }
+        Task {
+            do {
+                try await libraryRepository.add(assetIDs: ids, to: collection.id)
+                await refreshOrganization(reloadSelection: selectedSource == .collection(collection.id))
+            } catch { organizationError = error.localizedDescription }
+        }
+    }
+
+    /// Handle a Finder/Flicksy drop of file URLs onto a collection. A drop is
+    /// accepted only when every supported media file it carries is already inside
+    /// an added root; non-media files are ignored. Returns whether the drop was
+    /// accepted so the drop target can reflect it.
+    @discardableResult
+    func addURLs(_ urls: [URL], to collection: MediaCollection) -> Bool {
+        let roots = rootStore.urls
+        let supported = urls.filter { Self.isSupportedMediaURL($0) }
+        guard !supported.isEmpty else { return false }
+        guard supported.allSatisfy({ Self.isURL($0, insideAnyOf: roots) }) else {
+            organizationError = "Only media inside an added folder can be added to a collection."
+            return false
+        }
+        Task {
+            do {
+                let ids = try await libraryRepository.assetIDs(for: supported, roots: roots)
+                try await libraryRepository.add(assetIDs: ids, to: collection.id)
+                await refreshOrganization(reloadSelection: selectedSource == .collection(collection.id))
+            } catch { organizationError = error.localizedDescription }
+        }
+        return true
+    }
+
+    /// Whether a URL points at a media type Flicksy indexes. Uses the filename
+    /// extension so no filesystem access is needed during a drag.
+    nonisolated static func isSupportedMediaURL(_ url: URL) -> Bool {
+        guard let type = UTType(filenameExtension: url.pathExtension) else { return false }
+        return MediaType(contentType: type) != nil
+    }
+
+    nonisolated static func isURL(_ url: URL, insideAnyOf roots: [URL]) -> Bool {
+        let path = url.standardizedFileURL.path
+        return roots.contains { root in
+            let rootPath = root.standardizedFileURL.path
+            let prefix = rootPath.hasSuffix("/") ? rootPath : rootPath + "/"
+            return path == rootPath || path.hasPrefix(prefix)
+        }
+    }
+
+    func removeSelectedFromCollection() {
+        guard let collectionID = selectedCollectionID else { return }
+        let ids = selectedLibraryAssetIDs
+        guard !ids.isEmpty else { return }
+        Task {
+            do {
+                try await libraryRepository.remove(assetIDs: ids, from: collectionID)
+                await refreshOrganization(reloadSelection: true)
+            } catch { organizationError = error.localizedDescription }
+        }
+    }
+
+    func removeMissingCollectionItem(_ item: MissingCollectionItem) {
+        Task {
+            do {
+                try await libraryRepository.removeMissingMembership(id: item.id)
+                await refreshOrganization(reloadSelection: true)
+            } catch { organizationError = error.localizedDescription }
+        }
+    }
+
+    func locateMissingCollectionItem(_ item: MissingCollectionItem) {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Relink"
+        panel.message = "Choose the replacement for \(item.name). It must be inside an added folder."
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        let roots = rootStore.urls
+        Task {
+            do {
+                try await libraryRepository.relink(assetID: item.assetID, to: url, roots: roots)
+                await refreshOrganization(reloadSelection: true)
+            } catch { organizationError = error.localizedDescription }
+        }
+    }
+
+    func reorderCollectionItem(_ item: MediaItem, before target: MediaItem?) {
+        guard sortKey == .manual,
+              let collectionID = selectedCollectionID,
+              let assetID = item.libraryID
+        else { return }
+        Task {
+            do {
+                try await libraryRepository.reorder(
+                    collectionID: collectionID,
+                    assetID: assetID,
+                    before: target?.libraryID
+                )
+                loadMediaForSelection(preservingInteraction: true)
+            } catch { organizationError = error.localizedDescription }
+        }
+    }
+
+    func reorderCollectionURLs(_ urls: [URL], before target: MediaItem) {
+        guard urls.count == 1,
+              let item = mediaItems.first(where: { $0.url.standardizedFileURL == urls[0].standardizedFileURL })
+        else { return }
+        reorderCollectionItem(item, before: target)
+    }
+
+    private func refreshOrganization(reloadSelection: Bool) async {
+        do {
+            async let loadedTags = libraryRepository.tags()
+            async let loadedCollections = libraryRepository.collections()
+            tags = try await loadedTags
+            collections = try await loadedCollections
+            if reloadSelection { loadMediaForSelection(preservingInteraction: true) }
+        } catch { organizationError = error.localizedDescription }
     }
 
     // MARK: - Finder / pasteboard
@@ -685,7 +1020,7 @@ final class BrowserModel {
             URL(fileURLWithPath: id, isDirectory: true)
         case .standardFolder(let folder):
             urlForStandardFolder(folder)
-        case .clipboard, nil:
+        case .favorites, .tag, .collection, .clipboard, nil:
             nil
         }
     }
@@ -828,12 +1163,30 @@ final class BrowserModel {
             guard !Task.isCancelled else { return }
             rootTrees = trees
 
+            // Catalog reconciliation is independent from the visible folder
+            // listing. It walks only explicitly added roots and preserves
+            // organization records for files that are temporarily unavailable.
+            await reconcileLibrary(roots: urls)
+
             // Drop a selection that no longer exists in the refreshed tree.
             if case .folder(let selection) = selectedSource,
                !folderExists(withID: selection, in: trees) {
                 selectedSource = nil
                 setMediaItems([])
             }
+        }
+    }
+
+    private func reconcileLibrary(roots: [URL]) async {
+        isIndexingLibrary = true
+        defer { isIndexingLibrary = false }
+        do {
+            try await libraryRepository.reconcile(roots: roots)
+            await refreshOrganization(reloadSelection: isLibrarySourceSelected)
+        } catch is CancellationError {
+            return
+        } catch {
+            organizationError = "The media library could not be updated: \(error.localizedDescription)"
         }
     }
 
@@ -858,6 +1211,12 @@ final class BrowserModel {
             }
             do {
                 switch source {
+                case .favorites:
+                    try await loadLibraryQuery(.favorites, preservingInteraction: preservingInteraction)
+                case .tag(let id):
+                    try await loadLibraryQuery(.tag(id), preservingInteraction: preservingInteraction)
+                case .collection(let id):
+                    try await loadLibraryQuery(.collection(id), preservingInteraction: preservingInteraction)
                 case .clipboard:
                     let items = await clipboardStore.items()
                     clipboardItemCount = items.count
@@ -893,6 +1252,16 @@ final class BrowserModel {
         }
     }
 
+    private func loadLibraryQuery(
+        _ query: LibraryQuery,
+        preservingInteraction: Bool
+    ) async throws {
+        let result = try await libraryRepository.query(query)
+        try Task.checkCancellation()
+        missingCollectionItems = result.missingItems
+        replaceMediaItems(result.items, resetInteraction: !preservingInteraction)
+    }
+
     /// Race a cached listing against cancellable live batches. Main-actor updates
     /// are deliberately chunked so SwiftUI can render and accept input between
     /// large-directory scan results.
@@ -917,7 +1286,11 @@ final class BrowserModel {
             switch event {
             case .cached(let items):
                 guard !receivedFirstBatch, !items.isEmpty else { continue }
-                replaceMediaItems(items, resetInteraction: !preservingInteraction)
+                let resolved = try await libraryRepository.attachLibraryIdentity(
+                    to: items,
+                    roots: rootStore.urls
+                )
+                replaceMediaItems(resolved, resetInteraction: !preservingInteraction)
                 displayedCache = true
                 await Task.yield()
 
@@ -925,9 +1298,13 @@ final class BrowserModel {
                 throw CocoaError(.fileReadUnknown)
 
             case .liveBatch(let batch):
+                let resolvedBatch = try await libraryRepository.attachLibraryIdentity(
+                    to: batch,
+                    roots: rootStore.urls
+                )
                 freshItems.append(contentsOf: batch)
                 if receivedFirstBatch {
-                    pendingItems.append(contentsOf: batch)
+                    pendingItems.append(contentsOf: resolvedBatch)
                     if pendingItems.count >= 1_000 {
                         appendMediaItems(pendingItems)
                         pendingItems.removeAll(keepingCapacity: true)
@@ -935,7 +1312,7 @@ final class BrowserModel {
                 } else {
                     // Drop the stale cache only once live data is ready to replace it.
                     replaceMediaItems(
-                        batch,
+                        resolvedBatch,
                         resetInteraction: !displayedCache && !preservingInteraction
                     )
                     receivedFirstBatch = true
@@ -1018,6 +1395,7 @@ final class BrowserModel {
     /// Replace the current listing, rebuild the per-section splits, and drop any
     /// playback or viewer state that referred to the previous folder.
     private func setMediaItems(_ items: [MediaItem]) {
+        missingCollectionItems = []
         replaceMediaItems(items, resetInteraction: true)
     }
 
@@ -1148,7 +1526,10 @@ final class BrowserModel {
     }
 
     private func sortedItems(_ items: [MediaItem]) -> [MediaItem] {
-        items.sorted { lhs, rhs in
+        if sortKey == .manual, isCollectionSelected {
+            return sortAscending ? items : Array(items.reversed())
+        }
+        return items.sorted { lhs, rhs in
             if let result = compare(lhs, rhs, by: sortKey), result != .orderedSame {
                 return sortAscending ? result == .orderedAscending : result == .orderedDescending
             }
@@ -1165,6 +1546,8 @@ final class BrowserModel {
     /// dates/sizes always sort last, regardless of direction.
     private func compare(_ lhs: MediaItem, _ rhs: MediaItem, by key: MediaSortKey) -> ComparisonResult? {
         switch key {
+        case .manual:
+            return nil
         case .name:
             return lhs.name.localizedStandardCompare(rhs.name)
         case .modified:
@@ -1345,6 +1728,19 @@ final class BrowserModel {
     /// permanent delete. Files that succeed are removed from the listing
     /// immediately; the focus moves to the nearest surviving neighbour.
     func moveSelectedItemsToTrash() {
+        if isCollectionSelected {
+            removeSelectedFromCollection()
+            return
+        }
+        trashSelectedFiles()
+    }
+
+    func moveSelectedFilesToTrashExplicitly(clicked item: MediaItem? = nil) {
+        if let item { _ = itemsForAction(clicked: item) }
+        trashSelectedFiles()
+    }
+
+    private func trashSelectedFiles() {
         guard !selectedItemIDs.isEmpty else { return }
 
         let wasClipboard = isClipboardSelected

@@ -90,10 +90,13 @@ private struct AudioMetadataRow: View {
             playButton
                 .frame(width: AudioListColumns.play)
 
-            Text(item.name)
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .frame(width: AudioListColumns.name, alignment: .leading)
+            HStack(spacing: 6) {
+                Text(item.name)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                MediaOrganizationBadges(isFavorite: item.isFavorite, tags: item.tags)
+            }
+            .frame(width: AudioListColumns.name, alignment: .leading)
 
             value(kindDescription, width: AudioListColumns.kind, alignment: .leading)
             value(dateAddedDescription, width: AudioListColumns.dateAdded)
@@ -113,6 +116,11 @@ private struct AudioMetadataRow: View {
         .contentShape(Rectangle())
         .selectableCell(item, model: model)
         .mediaItemInteractions(item, model: model)
+        .dropDestination(for: URL.self) { urls, _ in
+            guard model.isCollectionSelected, model.sortKey == .manual else { return false }
+            model.reorderCollectionURLs(urls, before: item)
+            return urls.count == 1
+        }
         .task(id: item.contentVersion) {
             metadata = await MediaMetadataService.shared.metadata(for: item.url)
         }

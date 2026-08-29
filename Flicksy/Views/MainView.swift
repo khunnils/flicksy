@@ -39,6 +39,9 @@ struct MainView: View {
                         ToolbarItem {
                             SortControl()
                         }
+                        ToolbarItem {
+                            OrganizationControl()
+                        }
                     }
                     ToolbarItem(placement: .primaryAction) {
                         if model.isViewingImage {
@@ -87,10 +90,27 @@ struct MainView: View {
         } message: {
             Text(model.loadError ?? "")
         }
+        .alert(
+            "Organization Problem",
+            isPresented: Binding(
+                get: { model.organizationError != nil },
+                set: { if !$0 { model.organizationError = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { model.organizationError = nil }
+        } message: {
+            Text(model.organizationError ?? "")
+        }
     }
 
     private var selectedSourceTitle: String {
         switch model.selectedSource {
+        case .favorites:
+            "Favorites"
+        case .tag(let id):
+            model.tags.first(where: { $0.id == id })?.name ?? "Tag"
+        case .collection(let id):
+            model.collections.first(where: { $0.id == id })?.name ?? "Collection"
         case .clipboard:
             "Clipboard"
         case .standardFolder(let folder):

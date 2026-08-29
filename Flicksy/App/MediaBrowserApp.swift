@@ -27,6 +27,12 @@ struct FlicksyApp: App {
                     .keyboardShortcut(.tab, modifiers: [.control])
                     .disabled(model.viewerItemID != nil)
 
+                    Button("Organize…") {
+                        model.isOrganizePresented = true
+                    }
+                    .keyboardShortcut("t", modifiers: .command)
+                    .disabled(!model.canOrganizeSelection || model.viewerItemID != nil)
+
                     Divider()
 
                     Button("Zoom In") {
@@ -106,7 +112,7 @@ struct FlicksyApp: App {
                     .disabled(model.selectedItemIDs.isEmpty && model.viewerItemID == nil)
 
                     Button("Move to Trash") {
-                        model.moveSelectedItemsToTrash()
+                        model.moveSelectedFilesToTrashExplicitly()
                     }
                     .keyboardShortcut(.delete, modifiers: .command)
                     .disabled(model.selectedItemIDs.isEmpty || model.viewerItemID != nil)

@@ -14,7 +14,7 @@ struct SortControl: View {
 
         Menu {
             Picker("Sort By", selection: $model.sortKey) {
-                ForEach(MediaSortKey.allCases) { key in
+                ForEach(MediaSortKey.allCases.filter { $0 != .manual || model.isCollectionSelected }) { key in
                     Text(key.title).tag(key)
                 }
             }

@@ -41,6 +41,8 @@ struct MediaBrowserView: View {
                     systemImage: "sidebar.left",
                     description: Text("Select Clipboard or a folder in the sidebar to browse media.")
                 )
+            } else if model.mediaItems.isEmpty && !model.missingCollectionItems.isEmpty {
+                MissingCollectionItemsView(items: model.missingCollectionItems)
             } else if model.mediaItems.isEmpty {
                 if model.isLoadingMedia {
                     ProgressView()
@@ -68,6 +70,11 @@ struct MediaBrowserView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .safeAreaInset(edge: .top) {
+            if !model.mediaItems.isEmpty, !model.missingCollectionItems.isEmpty {
+                MissingCollectionItemsView(items: model.missingCollectionItems, compact: true)
+            }
+        }
         .contentShape(Rectangle())
         .focusable(model.hasSelectedSource)
         .focusEffectDisabled()
@@ -236,6 +243,44 @@ struct MediaBrowserView: View {
         if model.focusedItemID == previous {
             shouldScrollFocusIntoView = false
         }
+    }
+}
+
+private struct MissingCollectionItemsView: View {
+    @Environment(BrowserModel.self) private var model
+    let items: [MissingCollectionItem]
+    var compact = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("\(items.count) Missing \(items.count == 1 ? "Item" : "Items")", systemImage: "exclamationmark.triangle")
+                .font(.headline)
+            if !compact {
+                Text("These originals moved outside the library or are unavailable.")
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(items.prefix(compact ? 3 : items.count)) { item in
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.name).lineLimit(1)
+                        Text(item.lastKnownPath)
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    Spacer()
+                    Button("Locate…") { model.locateMissingCollectionItem(item) }
+                    Button("Remove", role: .destructive) { model.removeMissingCollectionItem(item) }
+                }
+            }
+            if compact, items.count > 3 {
+                Text("And \(items.count - 3) more…").font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .padding(compact ? 10 : 20)
+        .frame(maxWidth: compact ? .infinity : 600, alignment: .leading)
+        .background(.bar)
     }
 }
 
