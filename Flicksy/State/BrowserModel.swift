@@ -340,6 +340,15 @@ final class BrowserModel {
 
     static let viewerImageZoomFactor: Double = 1.25
 
+    /// Crop session for the still open in the viewer. The guide is stored in
+    /// normalized oriented-image coordinates (origin top-left, 0…1).
+    private(set) var isCropping = false
+    private(set) var isApplyingCrop = false
+    var cropAspect: CropAspectRatio = .free
+    var cropNormalizedRect = CGRect(x: 0.08, y: 0.08, width: 0.84, height: 0.84)
+    /// Pixel size of the oriented still used to resolve aspect locks.
+    private(set) var cropImageSize: CGSize = .zero
+
     static func clampedThumbnailSize(_ size: Double) -> Double {
         min(max(size, minThumbnailSize), maxThumbnailSize)
     }
@@ -353,8 +362,8 @@ final class BrowserModel {
     }
 
     var isViewingImage: Bool { viewerItem?.type == .image }
-    var canZoomViewerImageIn: Bool { viewerImageZoom < viewerImageMaximumZoom - 0.001 }
-    var canZoomViewerImageOut: Bool { viewerImageZoom > viewerImageMinimumZoom + 0.001 }
+    var canZoomViewerImageIn: Bool { !isCropping && viewerImageZoom < viewerImageMaximumZoom - 0.001 }
+    var canZoomViewerImageOut: Bool { !isCropping && viewerImageZoom > viewerImageMinimumZoom + 0.001 }
     var isViewerImageFit: Bool { abs(viewerImageZoom - 1) < 0.04 }
 
     func configureViewerImageZoom(fitScale: CGFloat) {
@@ -367,6 +376,10 @@ final class BrowserModel {
     }
 
     func setViewerImageZoom(_ zoom: Double) {
+        guard !isCropping else {
+            viewerImageZoom = 1
+            return
+        }
         viewerImageZoom = min(max(zoom, viewerImageMinimumZoom), viewerImageMaximumZoom)
         if viewerImageZoom <= 1.02 && viewerImageMinimumZoom >= 0.98 {
             viewerImageZoom = 1
@@ -382,6 +395,7 @@ final class BrowserModel {
     }
 
     func toggleViewerImageFitAndActualSize() {
+        guard !isCropping else { return }
         setViewerImageZoom(isViewerImageFit ? viewerImageActualSizeZoom : 1)
     }
 
@@ -390,6 +404,87 @@ final class BrowserModel {
         viewerImageMinimumZoom = 1
         viewerImageMaximumZoom = 8
         viewerImageActualSizeZoom = 1
+    }
+
+    func beginCrop() {
+        guard isViewingImage, !isCropping else { return }
+        setViewerImageZoom(1)
+        cropAspect = .free
+        if cropImageSize.width > 0, cropImageSize.height > 0 {
+            cropNormalizedRect = ImageCropOverlay.largestNormalizedRect(
+                aspect: .free,
+                imageSize: cropImageSize
+            )
+        } else {
+            cropNormalizedRect = CGRect(x: 0.08, y: 0.08, width: 0.84, height: 0.84)
+        }
+        isCropping = true
+    }
+
+    func cancelCrop() {
+        guard isCropping, !isApplyingCrop else { return }
+        isCropping = false
+        cropAspect = .free
+    }
+
+    func setCropAspect(_ aspect: CropAspectRatio) {
+        guard isCropping else { return }
+        cropAspect = aspect
+        // Overlay reacts to aspect changes and recenters the guide.
+    }
+
+    func updateCropImageSize(_ size: CGSize) {
+        guard size.width > 0, size.height > 0 else { return }
+        cropImageSize = size
+        if isCropping,
+           cropNormalizedRect.width < 0.05 || cropNormalizedRect.height < 0.05 {
+            cropNormalizedRect = ImageCropOverlay.largestNormalizedRect(
+                aspect: cropAspect,
+                imageSize: size
+            )
+        }
+    }
+
+    func applyCrop() {
+        guard isCropping, !isApplyingCrop, let item = viewerItem, item.type == .image else { return }
+        let url = item.url
+        let rect = cropNormalizedRect
+        isApplyingCrop = true
+        Task {
+            defer { isApplyingCrop = false }
+            do {
+                let pixelSize = try await Task.detached(priority: .userInitiated) {
+                    try ImageCropper.crop(url: url, normalizedRect: rect)
+                }.value
+                noteRewrittenFile(at: url, pixelSize: pixelSize)
+                isCropping = false
+                cropAspect = .free
+                resetViewerImageZoom()
+                if isLibrarySourceSelected {
+                    await reconcileLibrary(roots: rootStore.urls)
+                } else {
+                    refreshAfterFileMutation()
+                }
+            } catch {
+                loadError = error.localizedDescription
+            }
+        }
+    }
+
+    /// Keep the open viewer and listing in sync after an in-place rewrite so
+    /// `contentVersion` changes and previews reload.
+    private func noteRewrittenFile(at url: URL, pixelSize: CGSize) {
+        let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+        let size = values?.fileSize.map(Int64.init)
+        let modified = values?.contentModificationDate
+        if let index = mediaItems.firstIndex(where: { $0.url.standardizedFileURL == url.standardizedFileURL }) {
+            mediaItems[index].fileSize = size
+            mediaItems[index].modifiedAt = modified
+            mediaItems[index].width = Int(pixelSize.width.rounded())
+            mediaItems[index].height = Int(pixelSize.height.rounded())
+            rebuildVisibleItems()
+        }
+        cropImageSize = pixelSize
     }
 
     private static let thumbnailSizeKey = "thumbnailSize"
@@ -1819,21 +1914,26 @@ final class BrowserModel {
         // "one player at a time" invariant and stops audio playing underneath it.
         playingVideoID = nil
         playingAudioID = nil
+        resetCropSession()
         resetViewerImageZoom()
         viewerItemID = item.id
         focusedItemID = item.id
     }
 
     func closeViewer() {
+        guard !isApplyingCrop else { return }
+        resetCropSession()
         viewerItemID = nil
         resetViewerImageZoom()
     }
 
     func showPreviousInViewer() {
+        guard !isCropping else { return }
         stepViewer(by: -1)
     }
 
     func showNextInViewer() {
+        guard !isCropping else { return }
         stepViewer(by: 1)
     }
 
@@ -1847,8 +1947,17 @@ final class BrowserModel {
 
         let next = index + offset
         guard playlist.indices.contains(next) else { return }
+        resetCropSession()
         resetViewerImageZoom()
         self.viewerItemID = playlist[next].id
+    }
+
+    private func resetCropSession() {
+        isCropping = false
+        isApplyingCrop = false
+        cropAspect = .free
+        cropImageSize = .zero
+        cropNormalizedRect = CGRect(x: 0.08, y: 0.08, width: 0.84, height: 0.84)
     }
 
     var canShowPreviousInViewer: Bool { viewerNeighbourExists(offset: -1) }

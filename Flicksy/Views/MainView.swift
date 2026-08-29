@@ -42,17 +42,17 @@ struct MainView: View {
                         ToolbarItem {
                             OrganizationControl()
                         }
-                    }
-                    ToolbarItem(placement: .primaryAction) {
-                        if model.isViewingImage {
-                            ImageViewerZoomControl()
-                        } else if model.viewerItem == nil {
+                        ToolbarItem(placement: .primaryAction) {
                             switch model.libraryTab {
                             case .visual:
                                 GridZoomControl()
                             case .audio:
                                 AudioViewModeControl()
                             }
+                        }
+                    } else {
+                        ToolbarItem(placement: .primaryAction) {
+                            ImageViewerToolbar()
                         }
                     }
                 }

@@ -12,6 +12,7 @@ import SwiftUI
 /// the sidebar too. Shortcuts are attached to real `Button`s rather than
 /// `onKeyPress` because key equivalents are dispatched by the window, so they
 /// keep working while focus sits inside the embedded `AVPlayerView`.
+/// Maximize and close live in the window toolbar (`ImageViewerToolbar`).
 struct MediaViewer: View {
     let item: MediaItem
 
@@ -28,7 +29,7 @@ struct MediaViewer: View {
 
             media
                 .padding(.horizontal, 24)
-                .padding(.top, 44)
+                .padding(.top, 12)
                 .padding(.bottom, 72)
 
             chrome
@@ -87,57 +88,34 @@ struct MediaViewer: View {
 
     private var chrome: some View {
         VStack {
-            HStack(spacing: 12) {
-                Spacer()
-                Button {
-                    NSApplication.shared.keyWindow?.toggleFullScreen(nil)
-                } label: {
-                    Image(systemName: "arrow.up.left.and.arrow.down.right.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(.black.opacity(0.45), .black.opacity(0.08))
-                }
-                .buttonStyle(.plain)
-                .help("Toggle Full Screen (F)")
-
-                Button {
-                    model.closeViewer()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(.black.opacity(0.45), .black.opacity(0.08))
-                }
-                .buttonStyle(.plain)
-                .keyboardShortcut(.cancelAction)
-                .help("Close viewer (Esc)")
-            }
-            .padding(16)
-
             Spacer()
                 .allowsHitTesting(false)
 
-            HStack(spacing: 12) {
-                navigationButton(
-                    systemImage: "chevron.left",
-                    shortcut: .leftArrow,
-                    enabled: model.canShowPreviousInViewer,
-                    help: "Previous (←)"
-                ) {
-                    model.showPreviousInViewer()
-                }
+            if !model.isCropping {
+                HStack(spacing: 12) {
+                    navigationButton(
+                        systemImage: "chevron.left",
+                        shortcut: .leftArrow,
+                        enabled: model.canShowPreviousInViewer,
+                        help: "Previous (←)"
+                    ) {
+                        model.showPreviousInViewer()
+                    }
 
-                navigationButton(
-                    systemImage: "chevron.right",
-                    shortcut: .rightArrow,
-                    enabled: model.canShowNextInViewer,
-                    help: "Next (→)"
-                ) {
-                    model.showNextInViewer()
+                    navigationButton(
+                        systemImage: "chevron.right",
+                        shortcut: .rightArrow,
+                        enabled: model.canShowNextInViewer,
+                        help: "Next (→)"
+                    ) {
+                        model.showNextInViewer()
+                    }
                 }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(.black.opacity(0.06), in: Capsule())
+                .padding(.bottom, 16)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 10)
-            .background(.black.opacity(0.06), in: Capsule())
-            .padding(.bottom, 16)
         }
     }
 
@@ -165,8 +143,10 @@ struct MediaViewer: View {
     private var shortcuts: some View {
         ZStack {
             // Space plays/pauses video; on a still it closes, like Quick Look
-            // (spec section 16).
+            // (spec section 16). While cropping, Space is ignored so it cannot
+            // dismiss the guide accidentally.
             Button("Space") {
+                if model.isCropping { return }
                 if playback != nil {
                     playback?.togglePlayPause()
                 } else {
@@ -179,7 +159,7 @@ struct MediaViewer: View {
                 playback?.togglePlayPause()
             }
             .keyboardShortcut(.return, modifiers: [])
-            .disabled(playback == nil)
+            .disabled(playback == nil || model.isCropping)
 
             Button("Toggle Full Screen") {
                 NSApplication.shared.keyWindow?.toggleFullScreen(nil)

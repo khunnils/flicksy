@@ -6,6 +6,16 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		AA0000000000000000000007 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 29986C6E3037E7160009632B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 29986C753037E7160009632B;
+			remoteInfo = Flicksy;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		29986C763037E7160009632B /* Flicksy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Flicksy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA0000000000000000000002 /* FlicksyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FlicksyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -26,6 +36,13 @@
 
 /* Begin PBXFrameworksBuildPhase section */
 		29986C733037E7160009632B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA0000000000000000000005 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -173,26 +190,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXFrameworksBuildPhase section */
-		AA0000000000000000000005 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
-
-/* Begin PBXContainerItemProxy section */
-		AA0000000000000000000007 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 29986C6E3037E7160009632B /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 29986C753037E7160009632B;
-			remoteInfo = Flicksy;
-		};
-/* End PBXContainerItemProxy section */
 
 /* Begin PBXTargetDependency section */
 		AA0000000000000000000008 /* PBXTargetDependency */ = {

@@ -22,44 +22,76 @@ struct ZoomableImage: View {
     @GestureState private var drag: CGSize = .zero
 
     var body: some View {
+        @Bindable var model = model
+
         GeometryReader { geo in
             let fitted = fitScale(container: geo.size)
-            let currentZoom = clampedZoom(CGFloat(model.viewerImageZoom) * pinch, fitScale: fitted)
+            let zoom = model.isCropping ? 1.0 : clampedZoom(CGFloat(model.viewerImageZoom) * pinch, fitScale: fitted)
             let displayed = CGSize(
-                width: nativeSize.width * fitted * currentZoom,
-                height: nativeSize.height * fitted * currentZoom
+                width: nativeSize.width * fitted * zoom,
+                height: nativeSize.height * fitted * zoom
             )
-            let currentPan = clampedPan(
-                CGSize(width: pan.width + drag.width, height: pan.height + drag.height),
-                displayed: displayed,
-                container: geo.size
+            let currentPan = model.isCropping
+                ? CGSize.zero
+                : clampedPan(
+                    CGSize(width: pan.width + drag.width, height: pan.height + drag.height),
+                    displayed: displayed,
+                    container: geo.size
+                )
+            let imageOrigin = CGPoint(
+                x: (geo.size.width - displayed.width) / 2 + currentPan.width,
+                y: (geo.size.height - displayed.height) / 2 + currentPan.height
             )
+            let imageFrame = CGRect(origin: imageOrigin, size: displayed)
 
             ZStack {
                 Image(nsImage: image)
                     .resizable()
-                    .interpolation(currentZoom * fitted > 1.25 ? .none : .high)
+                    .interpolation(zoom * fitted > 1.25 ? .none : .high)
                     .frame(width: displayed.width, height: displayed.height)
                     .offset(currentPan)
                     .position(x: geo.size.width / 2, y: geo.size.height / 2)
+
+                if model.isCropping {
+                    ImageCropOverlay(
+                        imageFrame: imageFrame,
+                        imageSize: nativeSize,
+                        normalizedRect: $model.cropNormalizedRect,
+                        aspect: model.cropAspect
+                    )
+                }
             }
             .frame(width: geo.size.width, height: geo.size.height)
             .contentShape(Rectangle())
-            .pointerStyle(drag != .zero ? .grabActive : (currentZoom > 1.02 ? .grabIdle : .default))
+            .pointerStyle(
+                model.isCropping
+                    ? .default
+                    : (drag != .zero ? .grabActive : (zoom > 1.02 ? .grabIdle : .default))
+            )
             .gesture(magnifyGesture(fitScale: fitted, container: geo.size))
             .simultaneousGesture(panGesture(displayed: displayed, container: geo.size))
             .onTapGesture(count: 2) {
+                guard !model.isCropping else { return }
                 toggleFitAndActual(fitScale: fitted)
             }
-            .onAppear { configureZoom(fitScale: fitted) }
+            .onAppear {
+                configureZoom(fitScale: fitted)
+                model.updateCropImageSize(nativeSize)
+            }
             .onChange(of: geo.size) { _, _ in configureZoom(fitScale: fitted) }
-            .onChange(of: nativeSize) { _, _ in configureZoom(fitScale: fitted) }
+            .onChange(of: nativeSize) { _, newSize in
+                configureZoom(fitScale: fitted)
+                model.updateCropImageSize(newSize)
+            }
             .onChange(of: model.viewerImageZoom) { _, newZoom in
                 let resized = CGSize(
                     width: nativeSize.width * fitted * newZoom,
                     height: nativeSize.height * fitted * newZoom
                 )
                 pan = clampedPan(pan, displayed: resized, container: geo.size)
+            }
+            .onChange(of: model.isCropping) { _, cropping in
+                if cropping { pan = .zero }
             }
         }
         .clipped()
@@ -70,9 +102,11 @@ struct ZoomableImage: View {
     private func magnifyGesture(fitScale: CGFloat, container: CGSize) -> some Gesture {
         MagnifyGesture()
             .updating($pinch) { value, state, _ in
+                guard !model.isCropping else { return }
                 state = value.magnification
             }
             .onEnded { value in
+                guard !model.isCropping else { return }
                 let zoom = clampedZoom(CGFloat(model.viewerImageZoom) * value.magnification, fitScale: fitScale)
                 model.setViewerImageZoom(Double(zoom))
                 let displayed = CGSize(
@@ -86,9 +120,11 @@ struct ZoomableImage: View {
     private func panGesture(displayed: CGSize, container: CGSize) -> some Gesture {
         DragGesture(minimumDistance: 4)
             .updating($drag) { value, state, _ in
+                guard !model.isCropping else { return }
                 state = value.translation
             }
             .onEnded { value in
+                guard !model.isCropping else { return }
                 pan = clampedPan(
                     CGSize(width: pan.width + value.translation.width, height: pan.height + value.translation.height),
                     displayed: displayed,
@@ -107,7 +143,7 @@ struct ZoomableImage: View {
 
     private func configureZoom(fitScale: CGFloat) {
         model.configureViewerImageZoom(fitScale: fitScale)
-        if model.isViewerImageFit {
+        if model.isViewerImageFit || model.isCropping {
             pan = .zero
         }
     }
