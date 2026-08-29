@@ -1,586 +1,237 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import AppMockup from '../components/AppMockup.astro';
 
 const features = [
-  {
-    k: 'Hover scrubbing',
-    d: 'Sweep your cursor across any clip to skim the whole thing. Find the exact take without opening a single player.',
-  },
-  {
-    k: 'Waveforms at a glance',
-    d: 'Audio shows up as waveforms, not filenames. Spot the hit, click to play from anywhere in the file.',
-  },
-  {
-    k: 'Inline playback',
-    d: 'Play video and audio right in the grid. No windows to open, arrange, or close afterwards.',
-  },
-  {
-    k: 'Drag into your editor',
-    d: 'Found it? Drag it straight into CapCut, Final Cut, Premiere — anywhere that takes a file.',
-  },
-  {
-    k: 'Native and fast',
-    d: 'A real Mac app built with Swift for Apple Silicon. Folders with thousands of assets stay smooth.',
-  },
-  {
-    k: 'Your files stay put',
-    d: 'No import, no upload, no library to maintain. Flicksy reads your folders exactly where they are.',
-  },
+  { icon: '⌁', title: 'Skim without opening', text: 'Move across any thumbnail to scrub through a clip. The right frame finds you before another player window can open.' },
+  { icon: '⌇', title: 'See the sound', text: 'Audio appears as a waveform, ready to play from any point. Find the hit without auditioning a folder of filenames.' },
+  { icon: '✦', title: 'Keep the good stuff close', text: 'Favorite, tag, and collect media across folders while every original stays exactly where you put it.' },
+  { icon: '↗', title: 'Drag into your editor', text: 'Take a clip straight into Final Cut, Premiere, CapCut, or anywhere else that accepts a file.' },
 ];
 
 const faqs = [
-  {
-    q: 'Is this a Google Photos or iCloud replacement?',
-    a: 'No. Flicksy is not a photo backup or cloud library. Nothing is uploaded, synced, or imported — it is a fast window onto the folders already on your Mac and connected drives.',
-  },
-  {
-    q: 'Does it replace my video editor?',
-    a: 'No — it feeds it. Editors like CapCut and Final Cut are where you assemble a project. Flicksy is where you find the clip, sound, or image to drag in.',
-  },
-  {
-    q: 'Does Flicksy move or copy my files?',
-    a: 'Never. Tags, collections, and favorites are stored by Flicksy on the side. Your folder structure stays exactly as your other tools expect it.',
-  },
-  {
-    q: 'What does the free trial include?',
-    a: 'Everything. Use the full app, and pay $9 only if it sticks.',
-  },
+  { q: 'Does Flicksy import or copy my files?', a: 'No. Flicksy reads the folders already on your Mac and connected drives. Your files and folder structure stay untouched.' },
+  { q: 'Is it a photo library or cloud backup?', a: 'Neither. Flicksy is a fast, visual window onto local media. Nothing is uploaded and there is no library to maintain.' },
+  { q: 'Which Macs are supported?', a: 'Flicksy is a native Apple Silicon app for macOS 15 and newer.' },
+  { q: 'What is included in the trial?', a: 'Everything. Try the complete app, then pay $9 once if it earns a place in your workflow.' },
 ];
 ---
 
-<Layout
-  title="Flicksy — All your media. One window."
-  description="A fast, minimal media browser for macOS. Browse, scrub, and organize every clip, image, and sound across all your projects — then drag it straight into your editor. $9 with a free trial."
->
-  <nav class="nav">
-    <div class="wrap nav-in">
-      <a class="brand" href="#top">
-        <img src="/flicksy-mark-black.svg" alt="" width="26" height="26" />
-        <span>Flicksy</span>
+<Layout title="Flicksy — Your media, instantly in view" description="A fast, native media browser for macOS. Browse, skim, organize, and drag every clip, image, and sound into your editor.">
+  <div class="site-shell" id="top">
+    <nav class="nav wrap" aria-label="Main navigation">
+      <a class="brand" href="#top" aria-label="Flicksy home">
+        <span class="brand-icon"><img src="/flicksy-mark-black.svg" alt="" width="23" height="23" /></span><span>Flicksy</span>
       </a>
-      <div class="nav-links">
-        <a href="#why">Why Flicksy</a>
-        <a href="#organize">Organize</a>
-        <a href="#features">Features</a>
-        <a href="#pricing">Pricing</a>
-      </div>
-      <a class="btn btn-primary nav-cta" href="#pricing">Try it free</a>
-    </div>
-  </nav>
+      <div class="nav-links"><a href="#how">How it works</a><a href="#features">Features</a><a href="#pricing">Pricing</a></div>
+      <a class="button button-small button-dark" href="#pricing">Try Flicksy</a>
+    </nav>
 
-  <header class="hero" id="top">
-    <div class="wrap">
-      <p class="eyebrow">Media browser for macOS</p>
-      <h1>All your media.<br />One window.</h1>
-      <p class="lead">
-        Flicksy is a fast, minimal browser for every clip, image, and sound on your Mac —
-        across all your projects at once. Skim it, tag it, drag it into your editor.
-      </p>
-      <div class="hero-cta">
-        <a class="btn btn-primary" href="#pricing">Start free trial</a>
-        <a class="btn btn-ghost" href="#why">See how it works</a>
-        <span class="price-note">$9 after the trial. That’s it.</span>
+    <header class="hero wrap">
+      <div class="hero-copy">
+        <p class="pill"><span class="apple-mark">●</span> Native media browser for Mac</p>
+        <h1>Your media.<br /><span>Instantly in view.</span></h1>
+        <p class="hero-lead">Browse every clip, image, and sound in one beautifully fast Mac app. Skim, sort, and drag the right moment straight into your editor.</p>
+        <div class="hero-actions">
+          <a class="button button-dark" href="#pricing">Start free trial <span>↘</span></a>
+          <a class="text-link" href="#how">See how it works <span>↓</span></a>
+        </div>
+        <p class="fine-print">Full app included · $9 once · No account</p>
       </div>
-    </div>
-    <div class="wrap hero-shot">
-      <AppMockup />
-      <p class="shot-hint">Live sketch of the app — hover the first clip to scrub it.</p>
-    </div>
-  </header>
+
+      <div class="iridescent-stage" aria-label="Flicksy app screenshot">
+        <span class="aurora aurora-blue"></span><span class="aurora aurora-pink"></span><span class="aurora aurora-mint"></span>
+        <div class="app-window hero-window"><img src="/app-browser-dinos.jpeg" alt="Flicksy on macOS showing a visual grid of video clips" width="1784" height="1293" /></div>
+        <div class="floating-chip chip-left"><span class="chip-icon">⌁</span><span><strong>Hover to skim</strong><small>Find any frame</small></span></div>
+        <div class="floating-chip chip-right"><span class="chip-icon">↗</span><span><strong>Ready to drag</strong><small>Into any editor</small></span></div>
+      </div>
+    </header>
+  </div>
 
   <main>
-    <section class="section" id="why">
-      <div class="wrap">
-        <div class="section-head">
-          <span class="eyebrow">The old way</span>
-          <h2>Stop juggling Finder windows.</h2>
-          <p>
-            You know the drill: five Finder windows, a stack of Quick Look previews,
-            and still no idea which clip had the good take.
-          </p>
+    <section class="workflow section wrap" id="how">
+      <div class="section-intro center"><p class="eyebrow">One clear workflow</p><h2>From folder to final cut,<br />without breaking focus.</h2><p>Flicksy turns the media already on your Mac into one visual, searchable surface.</p></div>
+      <ol class="steps">
+        <li><span>01</span><strong>Point</strong><small>Add the folders you already use.</small></li>
+        <li><span>02</span><strong>Find</strong><small>Skim media at the speed of sight.</small></li>
+        <li><span>03</span><strong>Collect</strong><small>Tag favorites without moving files.</small></li>
+        <li><span>04</span><strong>Drag</strong><small>Drop the right take into your edit.</small></li>
+      </ol>
+    </section>
+
+    <section class="showcase section wrap">
+      <div class="showcase-grid">
+        <div class="showcase-copy">
+          <p class="eyebrow">Feels at home on Mac</p><h2>A media browser that gets out of your way.</h2>
+          <p>No imported library. No alien interface. Flicksy feels familiar from the first click—with a native sidebar, familiar controls, Quick Look speed, and the polish you expect on macOS.</p>
+          <ul class="check-list"><li><span>✓</span> Built in Swift for Apple Silicon</li><li><span>✓</span> Reads folders and external drives in place</li><li><span>✓</span> Stays fluid across thousands of assets</li></ul>
         </div>
-        <div class="compare">
-          <div class="card compare-col finder">
-            <p class="compare-label">Finder + Quick Look</p>
-            <ul>
-              <li>One window per folder, arranged by hand</li>
-              <li>Preview one file at a time in a separate floating window</li>
-              <li>Videos: open, wait, drag the slider, close, repeat</li>
-              <li>Audio files are just names — play each to find the sound</li>
-              <li>Organizing means duplicating files or wrecking folder structure</li>
-            </ul>
-          </div>
-          <div class="card compare-col flicksy">
-            <p class="compare-label"><img src="/flicksy-mark-white.svg" alt="" width="14" height="14" /> Flicksy</p>
-            <ul>
-              <li>Every project folder in one sidebar, one window</li>
-              <li>Previews are the interface — a grid you can actually see</li>
-              <li>Hover any clip to scrub it instantly, no player needed</li>
-              <li>Audio renders as waveforms — click anywhere to hear it</li>
-              <li>Tag and collect across folders without moving a file</li>
-            </ul>
-          </div>
+        <div class="window-wrap"><div class="app-window detail-window"><img src="/app-browser-history.jpeg" alt="Flicksy browser window showing images and video from a project folder" width="1896" height="1316" /></div></div>
+      </div>
+    </section>
+
+    <section class="horizon" id="features">
+      <div class="horizon-orb horizon-orb-a"></div><div class="horizon-orb horizon-orb-b"></div>
+      <div class="wrap horizon-content">
+        <div class="section-intro light"><p class="eyebrow">Made for momentum</p><h2>Keep your hands moving.<br />Keep your ideas intact.</h2><p>Every part of Flicksy is tuned to shorten the distance between “I know I have it” and “there it is.”</p></div>
+        <div class="feature-grid">{features.map((feature) => <article class="glass-card"><span class="feature-icon">{feature.icon}</span><h3>{feature.title}</h3><p>{feature.text}</p></article>)}</div>
+        <div class="preview-card">
+          <div class="preview-copy"><p class="eyebrow">Built-in adjustments</p><h3>Stay in the flow, even for the little fixes.</h3><p>Preview, crop, rotate, and flip an image without leaving your media browser.</p></div>
+          <div class="app-window preview-window"><img src="/app-preview-crop.jpeg" alt="Flicksy image preview with native macOS crop controls" width="1784" height="1154" /></div>
         </div>
       </div>
     </section>
 
-    <section class="section dark-band">
-      <div class="wrap">
-        <div class="section-head">
-          <span class="eyebrow">Across projects</span>
-          <h2>Your editor thinks in projects.<br />Your media doesn’t.</h2>
-          <p>
-            CapCut, Final Cut, Premiere — they all lock media inside the current project.
-            But the b-roll you need is in last month’s shoot, the sound effect is in a
-            library folder, and the product shots are somewhere else entirely.
-          </p>
-        </div>
-        <div class="flow">
-          <div class="flow-folders">
-            <span>~/Movies/YouTube</span>
-            <span>~/Pictures/Etsy&nbsp;Shop</span>
-            <span>~/Music/SFX&nbsp;Library</span>
-            <span>/Volumes/Footage&nbsp;2026</span>
-          </div>
-          <div class="flow-arrow" aria-hidden="true">→</div>
-          <div class="flow-app">
-            <img src="/flicksy-mark-white.svg" alt="" width="34" height="34" />
-            <strong>One unified view</strong>
-            <span>Point Flicksy at your root folders. It shows only what contains media — everything else disappears.</span>
-          </div>
+    <section class="section organize wrap">
+      <div class="section-intro center"><p class="eyebrow">A layer, not a lock-in</p><h2>Organize the way you think.<br />Keep files where they belong.</h2></div>
+      <div class="organize-grid">
+        <article class="soft-card tags-card"><div class="mini-ui tag-cloud"><span><i class="purple"></i> Dinos <em>21</em></span><span><i class="red"></i> Thumbnails <em>8</em></span><span><i class="blue"></i> Approved <em>14</em></span></div><div><h3>Tags that travel</h3><p>Label media across folders, then see every matching item together.</p></div></article>
+        <article class="soft-card collections-card"><div class="mini-ui collection-list"><span><b>▦</b> Episode 12 <em>34</em></span><span><b>▦</b> Spring launch <em>18</em></span><span><b>▦</b> Best openers <em>9</em></span></div><div><h3>Collections without copies</h3><p>Build working sets across projects while every original stays put.</p></div></article>
+        <article class="soft-card favorites-card"><div class="mini-ui favorite-ui"><span>★</span><small>Your best takes,<br />always one click away.</small></div><div><h3>Favorites at hand</h3><p>Save the shots worth returning to with a single keystroke.</p></div></article>
+      </div>
+    </section>
+
+    <section class="section pricing" id="pricing">
+      <div class="wrap pricing-grid">
+        <div class="pricing-copy"><p class="eyebrow">Simple by design</p><h2>One tiny price.<br />One less subscription.</h2><p>Try the whole app free. Pay once only if Flicksy earns a place in your Dock.</p><div class="compatibility"><span>●</span> macOS 15+ · Apple Silicon</div></div>
+        <div class="price-card">
+          <div class="price-top"><img src="/flicksy-app-icon.png" alt="Flicksy app icon" width="72" height="72" /><span>Lifetime license</span></div>
+          <div class="price-line"><strong>$9</strong><span>USD<br />one-time</span></div>
+          <ul><li>Full-featured free trial</li><li>Video, images, and audio</li><li>Tags, collections, and favorites</li><li>No account, upload, or lock-in</li></ul>
+          <a class="button button-dark button-wide" href="#">Download the free trial <span>↓</span></a>
         </div>
       </div>
     </section>
 
-    <section class="section" id="organize">
-      <div class="wrap">
-        <div class="section-head">
-          <span class="eyebrow">Organize</span>
-          <h2>Tags, collections, favorites — without moving a single file.</h2>
-          <p>
-            Organization in Flicksy is a layer on top of your folders, not a replacement
-            for them. Your files never move, so nothing else in your workflow breaks.
-          </p>
-        </div>
-        <div class="org-grid">
-          <div class="card org-card">
-            <div class="org-visual tags-visual">
-              <span class="chip"><i class="c-green"></i>b-roll</span>
-              <span class="chip"><i class="c-purple"></i>thumbnails</span>
-              <span class="chip"><i class="c-blue"></i>approved</span>
-              <span class="chip"><i class="c-orange"></i>needs-color</span>
-              <span class="chip"><i class="c-pink"></i>hero shots</span>
-            </div>
-            <h3>Colored tags</h3>
-            <p>Mark clips as approved, flag shots for color, label b-roll. Filter to any tag across every folder at once.</p>
-          </div>
-          <div class="card org-card">
-            <div class="org-visual coll-visual">
-              <span class="coll">▦ Episode 12 <em>34 items</em></span>
-              <span class="coll">▦ Spring drop <em>18 items</em></span>
-              <span class="coll">▦ Best openers <em>9 items</em></span>
-            </div>
-            <h3>Collections</h3>
-            <p>Pull media from any folder into a working set — the shortlist for one video, one listing, one client.</p>
-          </div>
-          <div class="card org-card">
-            <div class="org-visual fav-visual">
-              <span class="star">★</span>
-            </div>
-            <h3>Favorites</h3>
-            <p>One keystroke to keep the good takes. Your best material, one click away, from anywhere.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="features">
-      <div class="wrap">
-        <div class="section-head">
-          <span class="eyebrow">Built for speed</span>
-          <h2>Everything you need to find it fast. Nothing else.</h2>
-        </div>
-        <div class="feature-grid">
-          {features.map((f) => (
-            <div class="feature">
-              <h3>{f.k}</h3>
-              <p>{f.d}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="pricing">
-      <div class="wrap pricing-wrap">
-        <div class="section-head">
-          <span class="eyebrow">Pricing</span>
-          <h2>Nine dollars. No subscription.</h2>
-          <p>
-            Try everything free. If Flicksy earns a place in your workflow, it’s a
-            one-time $9 — less than a stock clip.
-          </p>
-        </div>
-        <div class="card price-card">
-          <img src="/flicksy-app-icon.png" alt="Flicksy app icon" width="72" height="72" class="price-icon" />
-          <div class="price-line"><span class="price">$9</span><span class="price-once">one-time</span></div>
-          <ul>
-            <li>Full-featured free trial</li>
-            <li>All media types — video, image, audio</li>
-            <li>Tags, collections, favorites</li>
-            <li>Native app for Apple Silicon, macOS 15+</li>
-            <li>No account. No upload. No lock-in.</li>
-          </ul>
-          <a class="btn btn-primary btn-wide" href="#">Download the free trial</a>
-        </div>
-      </div>
-    </section>
-
-    <section class="section faq-section">
-      <div class="wrap">
-        <div class="section-head">
-          <span class="eyebrow">Straight answers</span>
-          <h2>What Flicksy is — and isn’t.</h2>
-        </div>
-        <div class="faqs">
-          {faqs.map((f) => (
-            <div class="faq card">
-              <h3>{f.q}</h3>
-              <p>{f.a}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+    <section class="section faq wrap">
+      <div class="section-intro"><p class="eyebrow">Good to know</p><h2>Straight answers.</h2></div>
+      <div class="faq-grid">{faqs.map((item) => <article><h3>{item.q}</h3><p>{item.a}</p></article>)}</div>
     </section>
   </main>
 
-  <footer class="footer">
-    <div class="wrap footer-in">
-      <a class="brand" href="#top">
-        <img src="/flicksy-mark-black.svg" alt="" width="22" height="22" />
-        <span>Flicksy</span>
-      </a>
-      <span class="footer-note">Made for creators who’d rather be making. © 2026 Flicksy.</span>
-    </div>
-  </footer>
+  <footer class="footer"><div class="wrap footer-inner"><a class="brand" href="#top"><span class="brand-icon"><img src="/flicksy-mark-black.svg" alt="" width="23" height="23" /></span><span>Flicksy</span></a><p>Made for creators who would rather be making.</p><span>© 2026 Flicksy</span></div></footer>
 </Layout>
 
 <style>
-  /* ---------- Nav ---------- */
-  .nav {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background: color-mix(in srgb, var(--bg) 85%, transparent);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--line);
-  }
-  .nav-in {
-    display: flex;
-    align-items: center;
-    gap: 28px;
-    height: 62px;
-  }
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 16px;
-    letter-spacing: -0.02em;
-  }
-  .nav-links {
-    display: flex;
-    gap: 22px;
-    margin-left: auto;
-  }
-  .nav-links a {
-    text-decoration: none;
-    font-size: 13.5px;
-    color: var(--muted);
-    transition: color 0.15s;
-  }
+  .site-shell { position: relative; overflow: clip; }
+  .nav { position: relative; z-index: 20; display: flex; align-items: center; gap: 34px; height: 76px; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 650; letter-spacing: -.025em; }
+  .brand-icon { width: 35px; height: 35px; border-radius: 11px; display: grid; place-items: center; background: rgba(255,255,255,.72); border: 1px solid rgba(255,255,255,.9); box-shadow: 0 4px 16px rgba(28,37,52,.08), inset 0 0 0 1px rgba(120,130,145,.08); backdrop-filter: blur(16px); }
+  .brand-icon img { width: 21px; height: 21px; }
+  .nav-links { margin-left: auto; display: flex; gap: 27px; }
+  .nav-links a { color: var(--muted); text-decoration: none; font-size: 13px; transition: color .2s; }
   .nav-links a:hover { color: var(--ink); }
-  .nav-cta { padding: 8px 16px; font-size: 13px; }
-
-  @media (max-width: 720px) {
-    .nav-links { display: none; }
-    .nav-cta { margin-left: auto; }
+  .button-small { padding: 9px 16px !important; font-size: 13px !important; }
+  .hero { position: relative; padding-top: 76px; text-align: center; }
+  .hero-copy { position: relative; z-index: 2; max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 7px 13px; background: rgba(255,255,255,.58); border: 1px solid rgba(255,255,255,.85); box-shadow: inset 0 0 0 1px rgba(100,110,130,.06), 0 8px 28px rgba(82,92,120,.08); border-radius: 999px; color: #626a79; font-size: 12px; backdrop-filter: blur(18px); }
+  .apple-mark { color: #20242b; font-size: 8px; }
+  .hero h1 { margin: 25px 0 23px; font-size: clamp(58px, 8.8vw, 110px); line-height: .88; letter-spacing: -.065em; font-weight: 650; }
+  .hero h1 span { font-weight: 420; color: #626a76; }
+  .hero-lead { max-width: 625px; margin: 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); line-height: 1.55; }
+  .hero-actions { display: flex; align-items: center; gap: 25px; margin-top: 30px; }
+  .text-link { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; text-underline-offset: 4px; text-decoration-color: #c5c9d0; }
+  .fine-print { margin: 15px 0 0; color: #969ba5; font-size: 11.5px; }
+  .iridescent-stage { position: relative; margin: 82px -52px 0; min-height: 650px; padding: 70px 64px 120px; isolation: isolate; }
+  .iridescent-stage::before { content: ''; position: absolute; z-index: -3; inset: -80px -12vw 0; background: linear-gradient(180deg, rgba(248,249,251,0) 0%, rgba(238,241,247,.7) 45%, #edf0f4 100%); border-radius: 50% 50% 0 0 / 20% 20% 0 0; }
+  .aurora { position: absolute; z-index: -2; border-radius: 50%; filter: blur(10px); opacity: .78; }
+  .aurora-blue { width: 620px; height: 460px; left: -110px; top: 70px; background: #dce8ff; }
+  .aurora-pink { width: 580px; height: 420px; right: -80px; top: 110px; background: #f3dff0; }
+  .aurora-mint { width: 620px; height: 350px; left: 35%; bottom: 5px; background: #dff2ec; }
+  .app-window { position: relative; overflow: hidden; border: 1px solid rgba(124,133,148,.26); background: #fff; box-shadow: 0 42px 90px rgba(47,57,76,.20), 0 9px 24px rgba(47,57,76,.11); }
+  .app-window img { width: 100%; height: 100%; object-fit: cover; }
+  .hero-window { border-radius: 24px; transform: perspective(1600px) rotateX(2deg); }
+  .floating-chip { position: absolute; z-index: 3; display: flex; align-items: center; gap: 11px; padding: 11px 16px 11px 11px; border: 1px solid rgba(255,255,255,.9); border-radius: 15px; background: rgba(255,255,255,.72); box-shadow: 0 16px 38px rgba(56,66,87,.13), inset 0 0 0 1px rgba(120,130,145,.06); backdrop-filter: blur(22px); text-align: left; }
+  .floating-chip strong, .floating-chip small { display: block; }
+  .floating-chip strong { font-size: 12px; } .floating-chip small { color: var(--muted); font-size: 10px; margin-top: 1px; }
+  .chip-icon { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; background: #191c21; color: white; }
+  .chip-left { left: 18px; bottom: 76px; } .chip-right { right: 16px; top: 22px; }
+  .workflow { padding-top: 115px; }
+  .center { margin-left: auto; margin-right: auto; text-align: center; }
+  .steps { list-style: none; margin: 58px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--line); }
+  .steps li { position: relative; display: flex; flex-direction: column; padding: 28px 24px 0 0; }
+  .steps li::before { content: ''; position: absolute; width: 8px; height: 8px; top: -4.5px; left: 0; background: white; border: 1px solid #aeb5c0; border-radius: 50%; }
+  .steps li:not(:last-child)::after { content: '→'; position: absolute; right: 30px; top: 29px; color: #c0c4ca; }
+  .steps li > span { color: #999faa; font: 10px var(--font-mono); }
+  .steps strong { margin-top: 18px; font-size: 19px; }
+  .steps small { margin-top: 5px; max-width: 170px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .showcase { padding-top: 125px; padding-bottom: 140px; }
+  .showcase-grid { display: grid; grid-template-columns: .78fr 1.45fr; align-items: center; gap: 70px; }
+  .showcase-copy h2 { margin: 15px 0 22px; font-size: clamp(38px, 4.4vw, 58px); }
+  .showcase-copy > p:not(.eyebrow) { color: var(--muted); font-size: 16px; }
+  .check-list { list-style: none; padding: 0; margin: 29px 0 0; }
+  .check-list li { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); font-size: 13px; }
+  .check-list span { color: #557868; }
+  .window-wrap { position: relative; }
+  .window-wrap::before { content: ''; position: absolute; inset: -70px -80px; z-index: -1; border-radius: 50%; background: radial-gradient(circle, rgba(221,232,255,.8), rgba(243,225,242,.35) 45%, transparent 72%); }
+  .detail-window { border-radius: 19px; transform: rotate(1deg); }
+  .horizon { position: relative; overflow: hidden; padding: 125px 0 0; background: #1c2530; color: #f7f9fb; isolation: isolate; }
+  .horizon::after { content: ''; position: absolute; inset: auto 0 0; height: 34%; z-index: -1; background: linear-gradient(180deg, transparent, rgba(14,20,28,.35)); }
+  .horizon-orb { position: absolute; z-index: -2; border-radius: 50%; }
+  .horizon-orb-a { width: 900px; height: 900px; top: -610px; right: -190px; background: #25313f; }
+  .horizon-orb-b { width: 900px; height: 700px; left: -350px; top: 290px; background: #2d4354; }
+  .horizon-content { position: relative; }
+  .light { max-width: 690px; } .light .eyebrow, .light p { color: #9eaeba; } .light h2 { margin: 16px 0 22px; }
+  .feature-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 55px; }
+  .glass-card { min-height: 270px; padding: 25px; border: 1px solid rgba(255,255,255,.11); border-radius: 22px; background: rgba(255,255,255,.055); box-shadow: inset 0 1px 0 rgba(255,255,255,.06); backdrop-filter: blur(20px); }
+  .feature-icon { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; background: rgba(255,255,255,.08); color: #dbe9f3; font-size: 18px; }
+  .glass-card h3 { margin: 58px 0 10px; font-size: 17px; } .glass-card p { margin: 0; color: #9eacb8; font-size: 13px; line-height: 1.6; }
+  .preview-card { display: grid; grid-template-columns: .68fr 1.55fr; align-items: center; gap: 58px; margin-top: 110px; }
+  .preview-copy h3 { margin: 13px 0; font-size: clamp(28px, 3.5vw, 43px); line-height: 1.05; letter-spacing: -.04em; }
+  .preview-copy > p:not(.eyebrow) { color: #a6b2bd; }
+  .preview-window { align-self: end; border-radius: 22px 22px 0 0; border-bottom: 0; box-shadow: 0 40px 90px rgba(0,0,0,.32); }
+  .organize { padding-top: 130px; }
+  .organize-grid { margin-top: 58px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+  .soft-card { display: flex; flex-direction: column; min-height: 440px; padding: 16px; border: 1px solid rgba(132,143,158,.17); background: rgba(255,255,255,.7); border-radius: 25px; box-shadow: 0 20px 50px rgba(46,57,75,.06); }
+  .soft-card > div:last-child { padding: 20px 10px 10px; } .soft-card h3 { margin: 0 0 7px; font-size: 18px; } .soft-card p { margin: 0; color: var(--muted); font-size: 13px; }
+  .mini-ui { flex: 1; border-radius: 17px; background: #eef1f5; }
+  .tag-cloud, .collection-list { display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: 28px; }
+  .tag-cloud span, .collection-list span { display: flex; align-items: center; gap: 9px; padding: 10px 12px; background: rgba(255,255,255,.86); border: 1px solid rgba(132,143,158,.16); border-radius: 11px; font-size: 12px; box-shadow: 0 4px 12px rgba(36,44,56,.03); }
+  .tag-cloud em, .collection-list em { margin-left: auto; color: #9aa0a9; font-style: normal; font-size: 10px; }
+  .tag-cloud i { width: 8px; height: 8px; border-radius: 50%; }
+  .purple { background: #a92aca; } .red { background: #ee3a45; } .blue { background: #3578e8; }
+  .collection-list b { color: #727985; font-weight: 500; }
+  .favorite-ui { display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 38%, #fff 0, #eef2f6 55%, #e9edf2 100%); text-align: center; }
+  .favorite-ui span { font-size: 58px; color: #1f2329; filter: drop-shadow(0 8px 15px rgba(30,36,46,.15)); }
+  .favorite-ui small { margin-top: 17px; color: #8a929e; line-height: 1.55; }
+  .pricing { background: linear-gradient(135deg, #eef3ff 0%, #f5eff7 48%, #eaf5f2 100%); }
+  .pricing-grid { display: grid; grid-template-columns: 1fr 440px; align-items: center; gap: 90px; }
+  .pricing-copy h2 { margin: 15px 0 22px; font-size: clamp(44px, 5vw, 68px); }
+  .pricing-copy > p:not(.eyebrow) { max-width: 490px; color: var(--muted); font-size: 17px; }
+  .compatibility { display: inline-flex; gap: 8px; margin-top: 25px; padding: 8px 12px; border: 1px solid rgba(255,255,255,.9); border-radius: 999px; background: rgba(255,255,255,.48); color: #6b7480; font-size: 11px; }
+  .compatibility span { color: #1e232a; font-size: 8px; }
+  .price-card { padding: 28px; border: 1px solid rgba(255,255,255,.92); border-radius: 26px; background: rgba(255,255,255,.67); box-shadow: 0 35px 80px rgba(50,61,82,.13), inset 0 0 0 1px rgba(125,137,153,.06); backdrop-filter: blur(28px); }
+  .price-top { display: flex; align-items: center; justify-content: space-between; color: #8a909a; font-size: 11px; }
+  .price-top img { width: 64px; height: 64px; border-radius: 16px; box-shadow: 0 8px 18px rgba(34,42,54,.14); }
+  .price-line { display: flex; align-items: flex-end; gap: 13px; margin: 26px 0; }
+  .price-line strong { font-size: 70px; line-height: .85; letter-spacing: -.065em; }
+  .price-line span { color: #8b929d; font: 9px/1.35 var(--font-mono); text-transform: uppercase; letter-spacing: .08em; }
+  .price-card ul { list-style: none; margin: 0 0 25px; padding: 0; }
+  .price-card li { position: relative; padding: 9px 0 9px 23px; border-top: 1px solid rgba(130,140,153,.16); font-size: 13px; }
+  .price-card li::before { content: '✓'; position: absolute; left: 1px; color: #557868; }
+  .faq { display: grid; grid-template-columns: .65fr 1.35fr; gap: 80px; } .faq .section-intro { margin: 0; }
+  .faq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 25px; }
+  .faq-grid article { padding: 23px 0 25px; border-top: 1px solid var(--line); }
+  .faq-grid h3 { margin: 0 0 9px; font-size: 14px; } .faq-grid p { margin: 0; color: var(--muted); font-size: 13px; }
+  .footer { padding: 32px 0 42px; border-top: 1px solid var(--line); }
+  .footer-inner { display: flex; align-items: center; gap: 24px; color: var(--muted); font-size: 11px; }
+  .footer-inner .brand { color: var(--ink); font-size: 14px; } .footer-inner p { margin: 0 auto; }
+  @media (max-width: 950px) {
+    .iridescent-stage { min-height: auto; margin-left: -20px; margin-right: -20px; padding: 50px 30px 90px; }
+    .showcase-grid { grid-template-columns: 1fr; gap: 55px; } .showcase-copy { max-width: 650px; }
+    .feature-grid { grid-template-columns: 1fr 1fr; } .preview-card { grid-template-columns: 1fr; } .preview-copy { max-width: 560px; }
+    .organize-grid { grid-template-columns: 1fr 1fr; } .favorites-card { grid-column: span 2; }
+    .pricing-grid { gap: 45px; } .faq { grid-template-columns: 1fr; gap: 45px; }
   }
-
-  /* ---------- Hero ---------- */
-  .hero { padding: 92px 0 0; }
-  .hero h1 {
-    font-size: clamp(48px, 8vw, 92px);
-    line-height: 0.94;
-    letter-spacing: -0.055em;
-    margin: 16px 0 22px;
+  @media (max-width: 700px) {
+    .nav { height: 66px; } .nav-links { display: none; } .nav .button { margin-left: auto; }
+    .hero { padding-top: 55px; } .hero h1 { font-size: clamp(53px, 16vw, 76px); } .hero-actions { flex-direction: column; gap: 17px; }
+    .iridescent-stage { margin-top: 52px; padding: 34px 10px 72px; } .hero-window { border-radius: 13px; } .floating-chip { display: none; }
+    .steps { grid-template-columns: 1fr 1fr; row-gap: 35px; } .steps li:nth-child(2)::after { display: none; }
+    .section, .workflow, .showcase, .organize { padding-top: 88px; padding-bottom: 88px; }
+    .horizon { padding-top: 88px; } .feature-grid { grid-template-columns: 1fr; } .glass-card { min-height: 220px; } .glass-card h3 { margin-top: 38px; }
+    .preview-card { margin-top: 78px; gap: 38px; } .preview-window { border-radius: 13px 13px 0 0; }
+    .organize-grid { grid-template-columns: 1fr; } .favorites-card { grid-column: auto; } .soft-card { min-height: 380px; }
+    .pricing-grid { grid-template-columns: 1fr; } .faq-grid { grid-template-columns: 1fr; }
+    .footer-inner { align-items: flex-start; flex-direction: column; } .footer-inner p { margin: 0; }
   }
-  .lead {
-    max-width: 560px;
-    margin: 0 0 32px;
-    color: var(--muted);
-    font-size: 18px;
-  }
-  .hero-cta {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 14px;
-  }
-  .price-note {
-    font-size: 13px;
-    color: var(--muted);
-  }
-  .hero-shot { margin-top: 64px; }
-  .shot-hint {
-    margin: 14px 4px 0;
-    font: 11px var(--font-mono);
-    letter-spacing: 0.06em;
-    color: var(--muted);
-  }
-
-  /* ---------- Finder comparison ---------- */
-  .compare {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
-  .compare-col { padding: 30px 32px 34px; }
-  .compare-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0 0 18px;
-    font: 11px var(--font-mono);
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-  .compare-col ul { margin: 0; padding: 0; list-style: none; }
-  .compare-col li {
-    padding: 11px 0 11px 26px;
-    position: relative;
-    border-top: 1px solid var(--line);
-    font-size: 14.5px;
-  }
-  .compare-col li::before {
-    position: absolute;
-    left: 0;
-    top: 11px;
-    font-size: 12px;
-  }
-  .finder { background: var(--panel-soft); }
-  .finder li { color: var(--muted); }
-  .finder li::before { content: '✕'; color: #b0857d; }
-  .flicksy {
-    background: var(--dark);
-    border-color: var(--dark);
-    color: #f5f6f4;
-  }
-  .flicksy .compare-label { color: var(--dark-muted); }
-  .flicksy li { border-top-color: var(--dark-line); }
-  .flicksy li::before { content: '✓'; color: #7fb694; }
-
-  @media (max-width: 800px) {
-    .compare { grid-template-columns: 1fr; }
-  }
-
-  /* ---------- Dark band: unified view ---------- */
-  .dark-band {
-    background: var(--dark);
-    color: #f5f6f4;
-  }
-  .dark-band .eyebrow { color: var(--dark-muted); }
-  .dark-band .section-head p { color: var(--dark-muted); }
-  .flow {
-    display: grid;
-    grid-template-columns: 1fr auto 1.2fr;
-    align-items: center;
-    gap: 28px;
-  }
-  .flow-folders {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .flow-folders span {
-    font: 12px var(--font-mono);
-    padding: 11px 16px;
-    border: 1px solid var(--dark-line);
-    border-radius: 10px;
-    background: var(--dark-panel);
-    color: var(--dark-muted);
-    width: fit-content;
-  }
-  .flow-arrow {
-    font-size: 26px;
-    color: var(--dark-muted);
-  }
-  .flow-app {
-    border: 1px solid var(--dark-line);
-    background: var(--dark-panel);
-    border-radius: var(--radius);
-    padding: 36px 34px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .flow-app strong { font-size: 20px; letter-spacing: -0.02em; }
-  .flow-app span { color: var(--dark-muted); font-size: 14.5px; }
-
-  @media (max-width: 800px) {
-    .flow { grid-template-columns: 1fr; }
-    .flow-arrow { rotate: 90deg; width: fit-content; }
-  }
-
-  /* ---------- Organization ---------- */
-  .org-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-  }
-  .org-card { padding: 24px; }
-  .org-card h3 { margin: 18px 0 6px; font-size: 18px; letter-spacing: -0.02em; font-weight: 580; }
-  .org-card p { margin: 0; color: var(--muted); font-size: 14px; }
-  .org-visual {
-    height: 150px;
-    border-radius: var(--radius-sm);
-    background: var(--panel-soft);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-  }
-  .tags-visual { flex-wrap: wrap; gap: 8px; align-content: center; }
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    padding: 6px 13px;
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    font-size: 12.5px;
-  }
-  .chip i { width: 8px; height: 8px; border-radius: 50%; }
-  .c-green { background: #4fa96e; }
-  .c-purple { background: #8f6fd1; }
-  .c-blue { background: #5586cf; }
-  .c-orange { background: #d99b4e; }
-  .c-pink { background: #d476a8; }
-  .coll-visual { flex-direction: column; gap: 8px; align-items: stretch; }
-  .coll {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 12px;
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 9px;
-    padding: 8px 13px;
-    font-size: 12.5px;
-    font-weight: 550;
-  }
-  .coll em { font-style: normal; font-weight: 400; color: var(--muted); font-size: 11px; }
-  .fav-visual .star {
-    font-size: 44px;
-    color: var(--ink);
-  }
-
-  @media (max-width: 800px) {
-    .org-grid { grid-template-columns: 1fr; }
-  }
-
-  /* ---------- Features ---------- */
-  .feature-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0;
-    border-top: 1px solid var(--line);
-  }
-  .feature {
-    padding: 28px 28px 32px 0;
-    border-bottom: 1px solid var(--line);
-  }
-  .feature h3 { margin: 0 0 8px; font-size: 17px; font-weight: 580; letter-spacing: -0.02em; }
-  .feature p { margin: 0; color: var(--muted); font-size: 14px; }
-
-  @media (max-width: 800px) {
-    .feature-grid { grid-template-columns: 1fr; }
-    .feature { padding-right: 0; }
-  }
-
-  /* ---------- Pricing ---------- */
-  .pricing-wrap {
-    display: grid;
-    grid-template-columns: 1fr 400px;
-    gap: 60px;
-    align-items: start;
-  }
-  .pricing-wrap .section-head { margin-bottom: 0; }
-  .price-card {
-    padding: 36px;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 30px 60px -35px rgba(21, 21, 21, 0.3);
-  }
-  .price-icon { border-radius: 16px; margin-bottom: 20px; }
-  .price-line { display: flex; align-items: baseline; gap: 10px; margin-bottom: 18px; }
-  .price { font-size: 54px; font-weight: 560; letter-spacing: -0.05em; line-height: 1; }
-  .price-once { font: 12px var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-  .price-card ul { margin: 0 0 28px; padding: 0; list-style: none; }
-  .price-card li {
-    padding: 9px 0 9px 24px;
-    position: relative;
-    border-top: 1px solid var(--line);
-    font-size: 14px;
-  }
-  .price-card li::before {
-    content: '✓';
-    position: absolute;
-    left: 0;
-    top: 9px;
-    font-size: 12px;
-    color: #4fa96e;
-  }
-  .btn-wide { justify-content: center; }
-
-  @media (max-width: 900px) {
-    .pricing-wrap { grid-template-columns: 1fr; gap: 40px; }
-    .pricing-wrap .section-head { margin-bottom: 0; }
-    .price-card { max-width: 440px; }
-  }
-
-  /* ---------- FAQ ---------- */
-  .faq-section { padding-top: 0; }
-  .faqs {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
-  .faq { padding: 26px 28px; }
-  .faq h3 { margin: 0 0 8px; font-size: 16px; font-weight: 580; letter-spacing: -0.015em; }
-  .faq p { margin: 0; color: var(--muted); font-size: 14px; }
-
-  @media (max-width: 800px) {
-    .faqs { grid-template-columns: 1fr; }
-  }
-
-  /* ---------- Footer ---------- */
-  .footer {
-    border-top: 1px solid var(--line);
-    padding: 34px 0 44px;
-  }
-  .footer-in {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 20px;
-    flex-wrap: wrap;
-  }
-  .footer-note { color: var(--muted); font-size: 12.5px; }
 </style>
