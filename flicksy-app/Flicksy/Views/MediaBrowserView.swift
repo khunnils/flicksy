@@ -3,6 +3,7 @@
 //  MediaBrowser
 //
 
+import AppKit
 import SwiftUI
 
 /// The main content area. Images/video and audio live on separate tabs so a
@@ -30,6 +31,18 @@ struct MediaBrowserView: View {
     /// Keyboard moves set this so the focused cell is scrolled into view. Clicks
     /// leave it false — selecting an already-visible tile should not recenter it.
     @State private var shouldScrollFocusIntoView = false
+
+    /// Cell frames and transient state for Finder-style empty-space marquee
+    /// selection. The gesture deliberately ignores drags that begin on an item,
+    /// leaving those to the native file-drag interaction on each cell.
+    @State private var selectionFrames: [MediaItem.ID: CGRect] = [:]
+    @State private var marqueeStart: CGPoint?
+    @State private var marqueeRect: CGRect?
+    @State private var marqueeBaseSelection: Set<MediaItem.ID> = []
+    @State private var marqueeMode: MarqueeMode = .replacing
+    @State private var isIgnoringMarqueeDrag = false
+
+    private static let selectionCoordinateSpace = "media-browser-selection"
 
     var body: some View {
         @Bindable var model = model
@@ -137,6 +150,22 @@ struct MediaBrowserView: View {
                         browserWidth = width
                     }
             }
+            .coordinateSpace(name: Self.selectionCoordinateSpace)
+            .onPreferenceChange(MediaSelectionFramePreferenceKey.self) { frames in
+                selectionFrames = frames
+            }
+            .simultaneousGesture(marqueeSelectionGesture)
+            .overlay {
+                if let marqueeRect {
+                    Rectangle()
+                        .fill(Color.accentColor.opacity(0.14))
+                        .stroke(Color.accentColor.opacity(0.82), lineWidth: 1)
+                        .frame(width: marqueeRect.width, height: marqueeRect.height)
+                        .position(x: marqueeRect.midX, y: marqueeRect.midY)
+                        .allowsHitTesting(false)
+                }
+            }
+            .clipped()
             .onChange(of: model.focusedItemID) { _, id in
                 guard shouldScrollFocusIntoView, let id else { return }
                 shouldScrollFocusIntoView = false
@@ -151,7 +180,8 @@ struct MediaBrowserView: View {
         MediaGrid(
             items: model.visualItems,
             thumbnailSize: effectiveThumbnailSize,
-            cardAspectRatio: CGFloat(model.cardAspectRatio)
+            cardAspectRatio: CGFloat(model.cardAspectRatio),
+            selectionCoordinateSpace: Self.selectionCoordinateSpace
         )
     }
 
@@ -174,7 +204,70 @@ struct MediaBrowserView: View {
     }
 
     private var audioList: some View {
-        AudioSection(items: model.audioItems, viewMode: model.audioViewMode)
+        AudioSection(
+            items: model.audioItems,
+            viewMode: model.audioViewMode,
+            selectionCoordinateSpace: Self.selectionCoordinateSpace
+        )
+    }
+
+    private var marqueeSelectionGesture: some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.selectionCoordinateSpace))
+            .onChanged { value in
+                if marqueeStart == nil, !isIgnoringMarqueeDrag {
+                    let beganOnItem = selectionFrames.values.contains { frame in
+                        frame.insetBy(dx: -2, dy: -2).contains(value.startLocation)
+                    }
+                    guard !beganOnItem else {
+                        isIgnoringMarqueeDrag = true
+                        return
+                    }
+
+                    browserFocused = true
+                    marqueeStart = value.startLocation
+                    marqueeBaseSelection = model.selectedItemIDs
+
+                    let modifiers = NSEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
+                    if modifiers.contains(.command) || modifiers.contains(.control) {
+                        marqueeMode = .toggling
+                    } else if modifiers.contains(.shift) {
+                        marqueeMode = .adding
+                    } else {
+                        marqueeMode = .replacing
+                    }
+                }
+
+                guard let marqueeStart, !isIgnoringMarqueeDrag else { return }
+                let rect = CGRect(
+                    x: min(marqueeStart.x, value.location.x),
+                    y: min(marqueeStart.y, value.location.y),
+                    width: abs(value.location.x - marqueeStart.x),
+                    height: abs(value.location.y - marqueeStart.y)
+                )
+                marqueeRect = rect
+
+                let intersecting = Set(selectionFrames.compactMap { id, frame in
+                    rect.intersects(frame) ? id : nil
+                })
+                model.setMarqueeSelection(selectionForMarquee(intersecting))
+            }
+            .onEnded { _ in
+                marqueeStart = nil
+                marqueeRect = nil
+                marqueeBaseSelection = []
+                isIgnoringMarqueeDrag = false
+            }
+    }
+
+    private func selectionForMarquee(_ intersecting: Set<MediaItem.ID>) -> Set<MediaItem.ID> {
+        switch marqueeMode {
+        case .replacing:
+            intersecting
+        case .adding:
+            marqueeBaseSelection.union(intersecting)
+        case .toggling:
+            marqueeBaseSelection.symmetricDifference(intersecting)
+        }
     }
 
     private func emptyTab(title: String, systemImage: String, otherTabHint: String?) -> some View {
@@ -244,6 +337,12 @@ struct MediaBrowserView: View {
             shouldScrollFocusIntoView = false
         }
     }
+}
+
+private enum MarqueeMode {
+    case replacing
+    case adding
+    case toggling
 }
 
 private struct MissingCollectionItemsView: View {

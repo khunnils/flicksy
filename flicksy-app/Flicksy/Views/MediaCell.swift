@@ -6,6 +6,20 @@
 import AppKit
 import SwiftUI
 
+/// Frames of the currently rendered media elements in the browser's selection
+/// coordinate space. Lazy containers automatically remove off-screen entries,
+/// so marquee hit testing never uses stale cell positions.
+struct MediaSelectionFramePreferenceKey: PreferenceKey {
+    static var defaultValue: [MediaItem.ID: CGRect] = [:]
+
+    static func reduce(
+        value: inout [MediaItem.ID: CGRect],
+        nextValue: () -> [MediaItem.ID: CGRect]
+    ) {
+        value.merge(nextValue(), uniquingKeysWith: { _, newValue in newValue })
+    }
+}
+
 /// Shared visual chrome for grid cells. Selection uses layered neutral edges so
 /// it stays visible over light or dark media without competing with the image.
 struct MediaCardBackground<Content: View>: View {
@@ -129,6 +143,21 @@ enum MediaThumbnailLayout {
 }
 
 extension View {
+    /// Reports this element's full hit area for empty-space drag selection.
+    func reportSelectionFrame(
+        for item: MediaItem,
+        coordinateSpace: String
+    ) -> some View {
+        background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: MediaSelectionFramePreferenceKey.self,
+                    value: [item.id: proxy.frame(in: .named(coordinateSpace))]
+                )
+            }
+        }
+    }
+
     /// Finder-style click-to-select behaviour for a media element.
     ///
     /// Selection happens as soon as the pointer goes down, so it does not wait for

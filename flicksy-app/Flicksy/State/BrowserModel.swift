@@ -1783,6 +1783,27 @@ final class BrowserModel {
         focusedItemID = nil
     }
 
+    /// Apply the live result of an empty-space marquee drag. IDs are restricted
+    /// to the active tab because visible cell frames can briefly overlap a tab
+    /// change while SwiftUI tears down the old lazy container.
+    func setMarqueeSelection(_ ids: Set<MediaItem.ID>) {
+        let ordered = orderedItems
+        let allowedIDs = Set(ordered.map(\.id))
+        selectedItemIDs = ids.intersection(allowedIDs)
+
+        if let focusedItemID, selectedItemIDs.contains(focusedItemID) {
+            // Keep the keyboard cursor stable while the rectangle grows.
+        } else {
+            focusedItemID = ordered.first { selectedItemIDs.contains($0.id) }?.id
+        }
+
+        if let selectionAnchorID, selectedItemIDs.contains(selectionAnchorID) {
+            // Preserve the existing Shift-selection anchor when possible.
+        } else {
+            selectionAnchorID = focusedItemID
+        }
+    }
+
     /// Move the keyboard cursor through the active tab.
     ///
     /// Left/Right step by one; Up/Down step by a full row. Movement clamps at

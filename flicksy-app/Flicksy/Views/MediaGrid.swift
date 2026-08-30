@@ -13,6 +13,7 @@ struct MediaGrid: View {
     let items: [MediaItem]
     let thumbnailSize: CGFloat
     let cardAspectRatio: CGFloat
+    let selectionCoordinateSpace: String
 
     private var gridColumns: [GridItem] {
         [GridItem(.adaptive(minimum: thumbnailSize), spacing: 12)]
@@ -31,24 +32,26 @@ struct MediaGrid: View {
     var body: some View {
         LazyVGrid(columns: gridColumns, spacing: 12) {
             ForEach(items) { item in
-                switch item.type {
-                case .image:
-                    ImageCell(
-                        item: item,
-                        targetPixels: targetPixels,
-                        cardAspectRatio: cardAspectRatio
-                    )
-                    .id(item.id)
-                case .video:
-                    VideoCell(
-                        item: item,
-                        targetPixels: targetPixels,
-                        cardAspectRatio: cardAspectRatio
-                    )
-                    .id(item.id)
-                case .audio:
-                    EmptyView() // Audio is rendered in its own full-width section.
+                Group {
+                    switch item.type {
+                    case .image:
+                        ImageCell(
+                            item: item,
+                            targetPixels: targetPixels,
+                            cardAspectRatio: cardAspectRatio
+                        )
+                    case .video:
+                        VideoCell(
+                            item: item,
+                            targetPixels: targetPixels,
+                            cardAspectRatio: cardAspectRatio
+                        )
+                    case .audio:
+                        EmptyView() // Audio is rendered in its own full-width section.
+                    }
                 }
+                .id(item.id)
+                .reportSelectionFrame(for: item, coordinateSpace: selectionCoordinateSpace)
             }
         }
     }

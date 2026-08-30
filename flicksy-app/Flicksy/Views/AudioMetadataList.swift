@@ -10,6 +10,7 @@ import UniformTypeIdentifiers
 /// scroll view preserves the columns when the detail pane is narrow.
 struct AudioMetadataList: View {
     let items: [MediaItem]
+    let selectionCoordinateSpace: String
 
     var body: some View {
         ScrollView(.horizontal) {
@@ -21,6 +22,10 @@ struct AudioMetadataList: View {
                 ForEach(items) { item in
                     AudioMetadataRow(item: item)
                         .id(item.id)
+                        .reportSelectionFrame(
+                            for: item,
+                            coordinateSpace: selectionCoordinateSpace
+                        )
                 }
             }
             .frame(minWidth: AudioListColumns.totalWidth, alignment: .leading)

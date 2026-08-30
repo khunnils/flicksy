@@ -10,16 +10,24 @@ import SwiftUI
 struct AudioSection: View {
     let items: [MediaItem]
     let viewMode: AudioViewMode
+    let selectionCoordinateSpace: String
 
     var body: some View {
         switch viewMode {
         case .list:
-            AudioMetadataList(items: items)
+            AudioMetadataList(
+                items: items,
+                selectionCoordinateSpace: selectionCoordinateSpace
+            )
         case .waveforms:
             LazyVStack(spacing: 8) {
                 ForEach(items) { item in
                     AudioRow(item: item)
                         .id(item.id)
+                        .reportSelectionFrame(
+                            for: item,
+                            coordinateSpace: selectionCoordinateSpace
+                        )
                 }
             }
         }
