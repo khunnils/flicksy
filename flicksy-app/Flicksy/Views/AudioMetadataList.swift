@@ -11,6 +11,7 @@ import UniformTypeIdentifiers
 struct AudioMetadataList: View {
     let items: [MediaItem]
     let selectionCoordinateSpace: String
+    let onSelectionFrameChange: (MediaItem.ID, CGRect?) -> Void
 
     var body: some View {
         ScrollView(.horizontal) {
@@ -24,7 +25,8 @@ struct AudioMetadataList: View {
                         .id(item.id)
                         .reportSelectionFrame(
                             for: item,
-                            coordinateSpace: selectionCoordinateSpace
+                            coordinateSpace: selectionCoordinateSpace,
+                            onChange: onSelectionFrameChange
                         )
                 }
             }

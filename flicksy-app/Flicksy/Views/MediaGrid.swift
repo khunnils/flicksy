@@ -14,6 +14,7 @@ struct MediaGrid: View {
     let thumbnailSize: CGFloat
     let cardAspectRatio: CGFloat
     let selectionCoordinateSpace: String
+    let onSelectionFrameChange: (MediaItem.ID, CGRect?) -> Void
 
     private var gridColumns: [GridItem] {
         [GridItem(.adaptive(minimum: thumbnailSize), spacing: 12)]
@@ -51,7 +52,11 @@ struct MediaGrid: View {
                     }
                 }
                 .id(item.id)
-                .reportSelectionFrame(for: item, coordinateSpace: selectionCoordinateSpace)
+                .reportSelectionFrame(
+                    for: item,
+                    coordinateSpace: selectionCoordinateSpace,
+                    onChange: onSelectionFrameChange
+                )
             }
         }
     }

@@ -11,13 +11,15 @@ struct AudioSection: View {
     let items: [MediaItem]
     let viewMode: AudioViewMode
     let selectionCoordinateSpace: String
+    let onSelectionFrameChange: (MediaItem.ID, CGRect?) -> Void
 
     var body: some View {
         switch viewMode {
         case .list:
             AudioMetadataList(
                 items: items,
-                selectionCoordinateSpace: selectionCoordinateSpace
+                selectionCoordinateSpace: selectionCoordinateSpace,
+                onSelectionFrameChange: onSelectionFrameChange
             )
         case .waveforms:
             LazyVStack(spacing: 8) {
@@ -26,7 +28,8 @@ struct AudioSection: View {
                         .id(item.id)
                         .reportSelectionFrame(
                             for: item,
-                            coordinateSpace: selectionCoordinateSpace
+                            coordinateSpace: selectionCoordinateSpace,
+                            onChange: onSelectionFrameChange
                         )
                 }
             }

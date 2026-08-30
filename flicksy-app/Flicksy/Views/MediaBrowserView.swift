@@ -36,6 +36,7 @@ struct MediaBrowserView: View {
     /// selection. The gesture deliberately ignores drags that begin on an item,
     /// leaving those to the native file-drag interaction on each cell.
     @State private var selectionFrames: [MediaItem.ID: CGRect] = [:]
+    @State private var marqueeFrames: [MediaItem.ID: CGRect] = [:]
     @State private var marqueeStart: CGPoint?
     @State private var marqueeRect: CGRect?
     @State private var marqueeBaseSelection: Set<MediaItem.ID> = []
@@ -151,9 +152,6 @@ struct MediaBrowserView: View {
                     }
             }
             .coordinateSpace(name: Self.selectionCoordinateSpace)
-            .onPreferenceChange(MediaSelectionFramePreferenceKey.self) { frames in
-                selectionFrames = frames
-            }
             .simultaneousGesture(marqueeSelectionGesture)
             .overlay {
                 if let marqueeRect {
@@ -181,7 +179,8 @@ struct MediaBrowserView: View {
             items: model.visualItems,
             thumbnailSize: effectiveThumbnailSize,
             cardAspectRatio: CGFloat(model.cardAspectRatio),
-            selectionCoordinateSpace: Self.selectionCoordinateSpace
+            selectionCoordinateSpace: Self.selectionCoordinateSpace,
+            onSelectionFrameChange: updateSelectionFrame
         )
     }
 
@@ -207,7 +206,8 @@ struct MediaBrowserView: View {
         AudioSection(
             items: model.audioItems,
             viewMode: model.audioViewMode,
-            selectionCoordinateSpace: Self.selectionCoordinateSpace
+            selectionCoordinateSpace: Self.selectionCoordinateSpace,
+            onSelectionFrameChange: updateSelectionFrame
         )
     }
 
@@ -215,7 +215,9 @@ struct MediaBrowserView: View {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.selectionCoordinateSpace))
             .onChanged { value in
                 if marqueeStart == nil, !isIgnoringMarqueeDrag {
-                    let beganOnItem = selectionFrames.values.contains { frame in
+                    let activeIDs = Set(model.orderedItems.map(\.id))
+                    let activeFrames = selectionFrames.filter { activeIDs.contains($0.key) }
+                    let beganOnItem = activeFrames.values.contains { frame in
                         frame.insetBy(dx: -2, dy: -2).contains(value.startLocation)
                     }
                     guard !beganOnItem else {
@@ -225,6 +227,7 @@ struct MediaBrowserView: View {
 
                     browserFocused = true
                     marqueeStart = value.startLocation
+                    marqueeFrames = activeFrames
                     marqueeBaseSelection = model.selectedItemIDs
 
                     let modifiers = NSEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
@@ -246,7 +249,7 @@ struct MediaBrowserView: View {
                 )
                 marqueeRect = rect
 
-                let intersecting = Set(selectionFrames.compactMap { id, frame in
+                let intersecting = Set(marqueeFrames.compactMap { id, frame in
                     rect.intersects(frame) ? id : nil
                 })
                 model.setMarqueeSelection(selectionForMarquee(intersecting))
@@ -254,9 +257,18 @@ struct MediaBrowserView: View {
             .onEnded { _ in
                 marqueeStart = nil
                 marqueeRect = nil
+                marqueeFrames = [:]
                 marqueeBaseSelection = []
                 isIgnoringMarqueeDrag = false
             }
+    }
+
+    private func updateSelectionFrame(_ id: MediaItem.ID, _ frame: CGRect?) {
+        if let frame {
+            selectionFrames[id] = frame
+        } else {
+            selectionFrames.removeValue(forKey: id)
+        }
     }
 
     private func selectionForMarquee(_ intersecting: Set<MediaItem.ID>) -> Set<MediaItem.ID> {
