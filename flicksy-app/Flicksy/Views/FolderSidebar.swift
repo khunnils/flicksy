@@ -10,6 +10,7 @@ struct FolderSidebar: View {
     @State private var confirmsClearingClipboard = false
     @State private var expandedFolderIDs: Set<MediaFolder.ID> = []
     @State private var editor: SidebarEditor?
+    @State private var dropTargetCollectionID: MediaCollection.ID?
 
     var body: some View {
         @Bindable var model = model
@@ -24,7 +25,7 @@ struct FolderSidebar: View {
                 }
             }
 
-            Section("Collections") {
+            Section {
                 if model.collections.isEmpty {
                     Text("No collections").foregroundStyle(.tertiary)
                 } else {
@@ -32,17 +33,33 @@ struct FolderSidebar: View {
                         countRow(collection.name, systemImage: "rectangle.stack.badge.play", count: collection.itemCount)
                             .tag(BrowserSource.collection(collection.id))
                             .dropDestination(for: URL.self) { urls, _ in
-                                model.addURLs(urls, to: collection)
+                                dropTargetCollectionID = nil
+                                return model.addURLs(urls, to: collection)
+                            } isTargeted: { isTargeted in
+                                if isTargeted {
+                                    dropTargetCollectionID = collection.id
+                                } else if dropTargetCollectionID == collection.id {
+                                    dropTargetCollectionID = nil
+                                }
                             }
+                            .listRowBackground(
+                                dropTargetCollectionID == collection.id
+                                    ? Color.accentColor.opacity(0.2)
+                                    : Color.clear
+                            )
                             .contextMenu {
                                 Button("Rename…") { editor = .collection(collection) }
                                 Button("Delete Collection", role: .destructive) { model.deleteCollection(collection) }
                             }
                     }
                 }
+            } header: {
+                organizationSectionHeader("Collections", help: "New Collection") {
+                    editor = .newCollection
+                }
             }
 
-            Section("Tags") {
+            Section {
                 if model.tags.isEmpty {
                     Text("No tags").foregroundStyle(.tertiary)
                 } else {
@@ -59,6 +76,10 @@ struct FolderSidebar: View {
                             Button("Delete Tag", role: .destructive) { model.deleteTag(tag) }
                         }
                     }
+                }
+            } header: {
+                organizationSectionHeader("Tags", help: "New Tag") {
+                    editor = .newTag
                 }
             }
 
@@ -127,6 +148,23 @@ struct FolderSidebar: View {
             .foregroundStyle(.secondary)
     }
 
+    private func organizationSectionHeader(
+        _ title: String,
+        help: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Button(action: action) {
+                Image(systemName: "plus")
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(help)
+            .help(help)
+        }
+    }
+
     private var clipboardRow: some View {
         HStack(spacing: 8) {
             Label("Clipboard", systemImage: "clipboard")
@@ -142,17 +180,7 @@ struct FolderSidebar: View {
     private var addBar: some View {
         VStack(spacing: 0) {
             Divider()
-            HStack(spacing: 4) {
-                Menu {
-                    Button("New Collection…") { editor = .newCollection }
-                    Button("New Tag…") { editor = .newTag }
-                } label: {
-                    Image(systemName: "plus").frame(width: 24, height: 24)
-                }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .help("New Collection or Tag")
-
+            HStack {
                 Button { model.addRootFolder() } label: {
                     Label("Add Folder…", systemImage: "folder.badge.plus")
                 }
@@ -166,6 +194,7 @@ struct FolderSidebar: View {
         .background(.bar)
     }
 }
+
 
 private enum SidebarEditor: Identifiable {
     case newCollection
@@ -304,4 +333,3 @@ private struct FolderTreeRow: View {
         else { expandedFolderIDs.insert(folder.id) }
     }
 }
-
