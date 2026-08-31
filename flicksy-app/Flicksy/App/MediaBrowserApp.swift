@@ -22,6 +22,14 @@ struct FlicksyApp: App {
 
             CommandGroup(after: .toolbar) {
                 Section {
+                    Button("Quick Goto…") {
+                        model.presentQuickGoto()
+                    }
+                    .keyboardShortcut("g", modifiers: .command)
+                    .disabled(model.viewerItemID != nil)
+
+                    Divider()
+
                     Button("All") {
                         model.selectLibraryTab(.all)
                     }
@@ -106,9 +114,9 @@ struct FlicksyApp: App {
                 }
             }
 
-            if model.isSearchFieldFocused {
+            if model.isTextFieldFocused {
                 // Preserve the system pasteboard commands while editing the
-                // search field so Command-A, Copy, and Paste stay native.
+                // search or Quick Goto field so text shortcuts stay native.
                 CommandGroup(after: .pasteboard) {
                     findMediaCommand
                 }

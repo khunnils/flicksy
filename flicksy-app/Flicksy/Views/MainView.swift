@@ -62,7 +62,14 @@ struct MainView: View {
                     .transition(.opacity)
             }
         }
+        .overlay {
+            if model.isQuickGotoPresented {
+                QuickGotoView()
+                    .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
+            }
+        }
         .animation(.easeInOut(duration: 0.15), value: model.viewerItemID)
+        .animation(.easeOut(duration: 0.12), value: model.isQuickGotoPresented)
         .task {
             model.restore()
         }

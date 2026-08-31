@@ -200,6 +200,28 @@ final class BrowserModel {
     /// not consume text-editing shortcuts while the user is typing.
     var isSearchFieldFocused = false
 
+    /// Drives the window-level destination picker opened by Command-G.
+    var isQuickGotoPresented = false
+
+    /// Keeps native pasteboard shortcuts available while the destination query
+    /// owns keyboard focus.
+    var isQuickGotoFieldFocused = false
+
+    var isTextFieldFocused: Bool {
+        isSearchFieldFocused || isQuickGotoFieldFocused
+    }
+
+    func presentQuickGoto() {
+        isSearchPresented = false
+        isQuickGotoPresented = true
+    }
+
+    func go(to source: BrowserSource) {
+        isQuickGotoPresented = false
+        isQuickGotoFieldFocused = false
+        selectedSource = source
+    }
+
     var hasActiveSearch: Bool { !normalizedSearchQuery.isEmpty }
 
     /// Which library pane is showing. Persisted so a creator who lives in Audio
