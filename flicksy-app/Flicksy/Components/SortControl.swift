@@ -33,31 +33,6 @@ struct SortControl: View {
     }
 }
 
-/// List or waveform layout, shown while the Audio tab is active.
-struct AudioViewModeControl: View {
-    @Environment(BrowserModel.self) private var model
-
-    var body: some View {
-        @Bindable var model = model
-
-        Picker("Audio View", selection: $model.audioViewMode) {
-            Image(systemName: "list.bullet")
-                .accessibilityLabel("List View")
-                .help("List View")
-                .tag(AudioViewMode.list)
-            Image(systemName: "waveform")
-                .accessibilityLabel("Waveform View")
-                .help("Waveform View")
-                .tag(AudioViewMode.waveforms)
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .controlSize(.small)
-        .frame(width: 76)
-        .help("Audio view")
-    }
-}
-
 /// All, Images & Video, and Audio, shown as a native segmented tab control.
 struct LibraryTabPicker: View {
     @Environment(BrowserModel.self) private var model
@@ -76,7 +51,7 @@ struct LibraryTabPicker: View {
         }
         .pickerStyle(.segmented)
         .labelsHidden()
-        .help("Switch library view")
+        .help("Switch library view (⌘1 All, ⌘2 Images & Video, ⌘3 Audio)")
         .accessibilityLabel("Library")
         .frame(width: 138)
     }

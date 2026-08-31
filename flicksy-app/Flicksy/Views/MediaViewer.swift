@@ -61,7 +61,7 @@ struct MediaViewer: View {
                 Color.clear
             }
         case .audio:
-            // Audio is never opened here; it lives in its own waveform section.
+            // Audio is never opened here; it lives in the list plus inspector.
             EmptyView()
         }
     }

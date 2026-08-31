@@ -3,6 +3,7 @@
 //  MediaBrowser
 //
 
+import AppKit
 import SwiftUI
 
 /// Draws normalized peaks as vertical bars with a playhead, and maps horizontal
@@ -11,7 +12,8 @@ import SwiftUI
 /// Bars are accumulated into two `Path`s — played and unplayed — and each is
 /// filled once, so a row costs two draw calls regardless of how many bars it
 /// shows. Hover is local state because it is purely a visual affordance; only a
-/// click reaches the caller.
+/// click reaches the caller. Optional in/out handles sit above the canvas so
+/// dragging a bound does not seek.
 struct WaveformView: View {
     /// Normalized 0...1 peaks, or empty while they are still being generated.
     let peaks: [Float]
@@ -19,8 +21,18 @@ struct WaveformView: View {
     /// Played fraction of the clip, 0...1.
     let progress: Double
 
+    /// Inclusive in/out range in 0...1. When `onSelectionChange` is nil the
+    /// range is display-only and handles are hidden.
+    var selection: ClosedRange<Double> = 0...1
+
+    /// Smallest allowed selection width, as a 0...1 fraction of the clip.
+    var minimumSelectionSpan: Double = 0.005
+
     /// Called with the 0...1 position the user clicked.
     let onSeek: (Double) -> Void
+
+    /// When set, start/end handles are shown and drags report a new range.
+    var onSelectionChange: ((ClosedRange<Double>) -> Void)? = nil
 
     @State private var hoverFraction: Double?
     @State private var width: CGFloat = 0
@@ -31,10 +43,36 @@ struct WaveformView: View {
     /// Keeps silent passages visible as a hairline instead of a gap.
     private let minimumBarHeight: CGFloat = 1.5
 
+    /// Visual grip is 3pt; the hit target extends several pixels on each side
+    /// so the cursor does not have to sit exactly on the marker.
+    private let handleHitWidth: CGFloat = 20
+
+    private var showsHandles: Bool { onSelectionChange != nil }
+
     var body: some View {
-        Canvas(opaque: false) { context, size in
-            draw(in: &context, size: size)
+        ZStack(alignment: .leading) {
+            Canvas(opaque: false) { context, size in
+                draw(in: &context, size: size)
+            }
+
+            if showsHandles, width > 0 {
+                WaveformHandle(
+                    x: width * CGFloat(clamp(selection.lowerBound)) - handleHitWidth / 2,
+                    hitWidth: handleHitWidth,
+                    canvasSpace: Self.canvasSpace
+                ) { locationX in
+                    moveHandle(.start, to: fraction(atX: locationX))
+                }
+                WaveformHandle(
+                    x: width * CGFloat(clamp(selection.upperBound)) - handleHitWidth / 2,
+                    hitWidth: handleHitWidth,
+                    canvasSpace: Self.canvasSpace
+                ) { locationX in
+                    moveHandle(.end, to: fraction(atX: locationX))
+                }
+            }
         }
+        .coordinateSpace(name: Self.canvasSpace)
         .onGeometryChange(for: CGFloat.self) { proxy in
             proxy.size.width
         } action: { newWidth in
@@ -51,9 +89,32 @@ struct WaveformView: View {
         }
         .gesture(
             SpatialTapGesture(coordinateSpace: .local).onEnded { value in
-                onSeek(fraction(atX: value.location.x))
+                onSeek(clampedSeek(fraction(atX: value.location.x)))
             }
         )
+    }
+
+    // MARK: - Handles
+
+    private static let canvasSpace = "waveform-canvas"
+
+    private enum HandleEdge {
+        case start, end
+    }
+
+    private func moveHandle(_ edge: HandleEdge, to raw: Double) {
+        let span = max(minimumSelectionSpan, 0.001)
+        let value = clamp(raw)
+        let next: ClosedRange<Double>
+        switch edge {
+        case .start:
+            let start = min(value, selection.upperBound - span)
+            next = max(0, start)...selection.upperBound
+        case .end:
+            let end = max(value, selection.lowerBound + span)
+            next = selection.lowerBound...min(1, end)
+        }
+        onSelectionChange?(next)
     }
 
     // MARK: - Drawing
@@ -63,15 +124,19 @@ struct WaveformView: View {
 
         guard !peaks.isEmpty else {
             drawBaseline(in: &context, size: size)
+            drawSelectionShade(in: &context, size: size)
             return
         }
 
         let step = barWidth + barSpacing
         let barCount = max(1, Int((size.width + barSpacing) / step))
         let playedWidth = size.width * clamp(progress)
+        let selectionStart = size.width * clamp(selection.lowerBound)
+        let selectionEnd = size.width * clamp(selection.upperBound)
 
         var played = Path()
         var unplayed = Path()
+        var outside = Path()
 
         for index in 0..<barCount {
             let height = max(minimumBarHeight, CGFloat(peak(forBar: index, of: barCount)) * size.height)
@@ -82,16 +147,22 @@ struct WaveformView: View {
                 height: height
             )
             let bar = Path(roundedRect: rect, cornerRadius: barWidth / 2, style: .continuous)
+            let insideSelection = rect.midX >= selectionStart && rect.midX <= selectionEnd
 
-            if rect.midX <= playedWidth {
+            if !insideSelection {
+                outside.addPath(bar)
+            } else if rect.midX <= playedWidth {
                 played.addPath(bar)
             } else {
                 unplayed.addPath(bar)
             }
         }
 
+        context.fill(outside, with: .color(.secondary.opacity(0.28)))
         context.fill(unplayed, with: .color(.secondary))
         context.fill(played, with: .color(.accentColor))
+
+        drawSelectionShade(in: &context, size: size)
 
         if progress > 0 {
             drawPlayhead(in: &context, size: size, fraction: progress, color: .accentColor)
@@ -99,6 +170,13 @@ struct WaveformView: View {
         if let hoverFraction {
             drawPlayhead(in: &context, size: size, fraction: hoverFraction, color: .primary.opacity(0.7))
         }
+    }
+
+    private func drawSelectionShade(in context: inout GraphicsContext, size: CGSize) {
+        let start = size.width * clamp(selection.lowerBound)
+        let end = size.width * clamp(selection.upperBound)
+        let rect = CGRect(x: start, y: 0, width: max(0, end - start), height: size.height)
+        context.fill(Path(rect), with: .color(.accentColor.opacity(0.12)))
     }
 
     /// Shown while peaks are generating, so the row does not change height when
@@ -130,7 +208,53 @@ struct WaveformView: View {
         return clamp(x / width)
     }
 
+    private func clampedSeek(_ value: Double) -> Double {
+        min(max(value, selection.lowerBound), selection.upperBound)
+    }
+
     private func clamp(_ value: Double) -> Double {
         min(max(value, 0), 1)
+    }
+}
+
+/// Narrow in/out grip. Kept as its own view so the waveform body stays
+/// type-checkable and so the handle's hit target does not cover the canvas.
+private struct WaveformHandle: View {
+    let x: CGFloat
+    let hitWidth: CGFloat
+    let canvasSpace: String
+    let onDrag: (CGFloat) -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Capsule()
+            .fill(Color.accentColor)
+            .frame(width: 3)
+            .frame(width: hitWidth)
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .help("Drag to set the play range")
+            .offset(x: x)
+            .onHover { hovering in
+                isHovering = hovering
+                if hovering {
+                    NSCursor.resizeLeftRight.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
+            .onDisappear {
+                if isHovering {
+                    NSCursor.pop()
+                    isHovering = false
+                }
+            }
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 1, coordinateSpace: .named(canvasSpace))
+                    .onChanged { value in
+                        onDrag(value.location.x)
+                    }
+            )
     }
 }

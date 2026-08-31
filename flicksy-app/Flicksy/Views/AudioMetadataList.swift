@@ -86,11 +86,10 @@ private struct AudioMetadataRow: View {
     @Environment(BrowserModel.self) private var model
 
     @State private var metadata: MediaMetadataService.Metadata?
-    @State private var playback: AudioPlayback?
 
     private var isActive: Bool { model.playingAudioID == item.id }
     private var isSelected: Bool { model.selectedItemIDs.contains(item.id) }
-    private var isPlaying: Bool { playback?.isPlaying ?? false }
+    private var isPlaying: Bool { isActive && model.isAudioPlaying }
 
     var body: some View {
         HStack(spacing: AudioListColumns.spacing) {
@@ -131,19 +130,6 @@ private struct AudioMetadataRow: View {
         .task(id: item.contentVersion) {
             metadata = await MediaMetadataService.shared.metadata(for: item.url)
         }
-        .onChange(of: isActive) { _, nowActive in
-            if nowActive {
-                startPlayback()
-            } else {
-                stopPlayback()
-            }
-        }
-        .onDisappear {
-            stopPlayback()
-            if isActive {
-                model.playingAudioID = nil
-            }
-        }
     }
 
     private var playButton: some View {
@@ -182,25 +168,10 @@ private struct AudioMetadataRow: View {
 
     private func togglePlayback() {
         model.selectItem(item)
-        guard let playback, isActive else {
-            if isActive {
-                startPlayback()
-            } else {
-                model.playingAudioID = item.id
-            }
-            return
+        if isActive {
+            model.isAudioPlaying.toggle()
+        } else {
+            model.playingAudioID = item.id
         }
-        playback.togglePlayPause()
-    }
-
-    private func startPlayback() {
-        let controller = playback ?? AudioPlayback(url: item.url, duration: metadata?.duration)
-        playback = controller
-        controller.play()
-    }
-
-    private func stopPlayback() {
-        playback?.tearDown()
-        playback = nil
     }
 }

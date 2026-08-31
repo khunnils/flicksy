@@ -42,14 +42,8 @@ private enum FolderLoadEvent: Sendable {
     case failed
 }
 
-/// The presentations available for audio media.
-enum AudioViewMode: String, CaseIterable {
-    case list
-    case waveforms
-}
-
 /// The library panes. All media shares a metadata list, images and video use a
-/// visual grid, and audio has its own list/waveform view.
+/// visual grid, and audio uses a metadata list with a bottom waveform inspector.
 enum MediaLibraryTab: String, CaseIterable, Identifiable {
     case all
     case visual
@@ -123,6 +117,14 @@ enum MediaSortKey: String, CaseIterable, Identifiable {
         case .modified, .size: false
         }
     }
+}
+
+/// Inspector transport jumps and skips.
+enum AudioSeekKind {
+    case start
+    case end
+    case rewind
+    case forward
 }
 
 /// The single source of truth for the browser UI.
@@ -200,14 +202,6 @@ final class BrowserModel {
 
     var hasActiveSearch: Bool { !normalizedSearchQuery.isEmpty }
 
-    /// Audio defaults to a metadata-rich list; a user's explicit choice is
-    /// retained between launches.
-    var audioViewMode: AudioViewMode {
-        didSet {
-            UserDefaults.standard.set(audioViewMode.rawValue, forKey: Self.audioViewModeKey)
-        }
-    }
-
     /// Which library pane is showing. Persisted so a creator who lives in Audio
     /// does not keep getting bounced back to stills.
     var libraryTab: MediaLibraryTab = .visual {
@@ -218,19 +212,23 @@ final class BrowserModel {
         }
     }
 
-    func toggleLibraryTab() {
-        guard !isClipboardSelected else {
-            libraryTab = .visual
-            return
-        }
-        switch libraryTab {
-        case .all:
-            libraryTab = .visual
-        case .visual:
-            libraryTab = .audio
-        case .audio:
-            libraryTab = .all
-        }
+    func selectLibraryTab(_ tab: MediaLibraryTab) {
+        if isClipboardSelected, tab == .audio { return }
+        libraryTab = tab
+    }
+
+    /// Incremented when the inspector should jump or skip.
+    private(set) var audioSeekRequestID = 0
+    private(set) var audioSeekKind: AudioSeekKind = .start
+
+    var canControlInspectorAudio: Bool {
+        selectedAudioItem != nil || playingAudioID != nil
+    }
+
+    func requestAudioSeek(_ kind: AudioSeekKind) {
+        guard canControlInspectorAudio else { return }
+        audioSeekKind = kind
+        audioSeekRequestID += 1
     }
 
     /// Shared sort, applied to whichever tab is visible.
@@ -281,9 +279,31 @@ final class BrowserModel {
     /// and a sound effect at once tells you nothing about either.
     var playingAudioID: MediaItem.ID? {
         didSet {
+            if playingAudioID != oldValue {
+                isAudioPlaying = playingAudioID != nil
+            }
             if playingAudioID != nil { playingVideoID = nil }
         }
     }
+
+    /// True while the audio inspector (or All-tab row) is actually outputting
+    /// sound. Distinct from `playingAudioID`, which only claims the slot.
+    var isAudioPlaying = false
+
+    /// Session transport: loop the inspector's current in/out range. Not saved.
+    var isAudioLooping = false
+
+    /// The single selected audio item, when the inspector should be shown.
+    var selectedAudioItem: MediaItem? {
+        guard selectedItemIDs.count == 1,
+              let id = selectedItemIDs.first,
+              let item = orderedItems.first(where: { $0.id == id }),
+              item.type == .audio
+        else { return nil }
+        return item
+    }
+
+    private(set) var isApplyingAudioTrim = false
 
     /// The item shown in the focused full-screen viewer, if any (spec section 16).
     private(set) var viewerItemID: MediaItem.ID?
@@ -523,24 +543,53 @@ final class BrowserModel {
         }
     }
 
+    /// Overwrite the selected audio file with the inspector's in/out range.
+    func trimSelectedAudio(start: TimeInterval, end: TimeInterval) {
+        guard !isApplyingAudioTrim, let item = selectedAudioItem else { return }
+        let url = item.url
+        isApplyingAudioTrim = true
+        playingAudioID = nil
+        isAudioPlaying = false
+        Task {
+            defer { isApplyingAudioTrim = false }
+            do {
+                let duration = try await AudioTrimmer.trim(url: url, start: start, end: end)
+                noteRewrittenFile(at: url, duration: duration)
+                if isLibrarySourceSelected {
+                    await reconcileLibrary(roots: rootStore.urls)
+                } else {
+                    refreshAfterFileMutation()
+                }
+            } catch {
+                loadError = error.localizedDescription
+            }
+        }
+    }
+
     /// Keep the open viewer and listing in sync after an in-place rewrite so
     /// `contentVersion` changes and previews reload.
-    private func noteRewrittenFile(at url: URL, pixelSize: CGSize) {
+    private func noteRewrittenFile(at url: URL, pixelSize: CGSize? = nil, duration: TimeInterval? = nil) {
         let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
         let size = values?.fileSize.map(Int64.init)
         let modified = values?.contentModificationDate
         if let index = mediaItems.firstIndex(where: { $0.url.standardizedFileURL == url.standardizedFileURL }) {
             mediaItems[index].fileSize = size
             mediaItems[index].modifiedAt = modified
-            mediaItems[index].width = Int(pixelSize.width.rounded())
-            mediaItems[index].height = Int(pixelSize.height.rounded())
+            if let pixelSize {
+                mediaItems[index].width = Int(pixelSize.width.rounded())
+                mediaItems[index].height = Int(pixelSize.height.rounded())
+            }
+            if let duration {
+                mediaItems[index].duration = duration
+            }
             rebuildVisibleItems()
         }
-        cropImageSize = pixelSize
+        if let pixelSize {
+            cropImageSize = pixelSize
+        }
     }
 
     private static let thumbnailSizeKey = "thumbnailSize"
-    private static let audioViewModeKey = "audioViewMode"
     private static let libraryTabKey = "libraryTab"
     private static let sortKeyKey = "sortKey"
     private static let sortAscendingKey = "sortAscending"
@@ -567,10 +616,6 @@ final class BrowserModel {
 
         let storedSize = UserDefaults.standard.object(forKey: Self.thumbnailSizeKey) as? Double
         thumbnailSize = storedSize.map(Self.clampedThumbnailSize) ?? Self.defaultThumbnailSize
-
-        let storedAudioMode = UserDefaults.standard.string(forKey: Self.audioViewModeKey)
-            .flatMap(AudioViewMode.init(rawValue:))
-        audioViewMode = storedAudioMode ?? .list
 
         let storedTab = UserDefaults.standard.string(forKey: Self.libraryTabKey)
             .flatMap(MediaLibraryTab.init(rawValue:))
@@ -1938,7 +1983,11 @@ final class BrowserModel {
                 playingVideoID = (playingVideoID == item.id) ? nil : item.id
             }
         case .audio:
-            playingAudioID = (playingAudioID == item.id) ? nil : item.id
+            if libraryTab == .audio, playingAudioID == item.id {
+                isAudioPlaying.toggle()
+            } else {
+                playingAudioID = (playingAudioID == item.id) ? nil : item.id
+            }
         case .image:
             break
         }

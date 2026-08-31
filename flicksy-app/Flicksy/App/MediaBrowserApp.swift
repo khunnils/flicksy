@@ -22,11 +22,47 @@ struct FlicksyApp: App {
 
             CommandGroup(after: .toolbar) {
                 Section {
-                    Button("Cycle Library View") {
-                        model.toggleLibraryTab()
+                    Button("All") {
+                        model.selectLibraryTab(.all)
                     }
-                    .keyboardShortcut(.tab, modifiers: [.control])
+                    .keyboardShortcut("1", modifiers: .command)
                     .disabled(model.viewerItemID != nil)
+
+                    Button("Images & Video") {
+                        model.selectLibraryTab(.visual)
+                    }
+                    .keyboardShortcut("2", modifiers: .command)
+                    .disabled(model.viewerItemID != nil)
+
+                    Button("Audio") {
+                        model.selectLibraryTab(.audio)
+                    }
+                    .keyboardShortcut("3", modifiers: .command)
+                    .disabled(model.viewerItemID != nil || model.isClipboardSelected)
+
+                    Button("Jump to Start") {
+                        model.requestAudioSeek(.start)
+                    }
+                    .keyboardShortcut(.leftArrow, modifiers: .command)
+                    .disabled(!model.canControlInspectorAudio)
+
+                    Button("Rewind") {
+                        model.requestAudioSeek(.rewind)
+                    }
+                    .keyboardShortcut(.leftArrow, modifiers: [])
+                    .disabled(!model.canControlInspectorAudio)
+
+                    Button("Forward") {
+                        model.requestAudioSeek(.forward)
+                    }
+                    .keyboardShortcut(.rightArrow, modifiers: [])
+                    .disabled(!model.canControlInspectorAudio)
+
+                    Button("Jump to End") {
+                        model.requestAudioSeek(.end)
+                    }
+                    .keyboardShortcut(.rightArrow, modifiers: .command)
+                    .disabled(!model.canControlInspectorAudio)
 
                     Button("Organize…") {
                         model.isOrganizePresented = true

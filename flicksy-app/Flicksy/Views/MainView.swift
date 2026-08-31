@@ -18,7 +18,6 @@ struct MainView: View {
     @Environment(BrowserModel.self) private var model
 
     @State private var scrollMonitor: Any?
-    @State private var tabMonitor: Any?
     @State private var zoomAccumulator = ZoomScrollAccumulator()
 
     /// Points of accumulated scroll needed to move one zoom step.
@@ -43,13 +42,8 @@ struct MainView: View {
                             OrganizationControl()
                         }
                         ToolbarItem(placement: .primaryAction) {
-                            switch model.libraryTab {
-                            case .all:
-                                EmptyView()
-                            case .visual:
+                            if model.libraryTab == .visual {
                                 GridZoomControl()
-                            case .audio:
-                                AudioViewModeControl()
                             }
                         }
                     } else {
@@ -74,11 +68,9 @@ struct MainView: View {
         }
         .onAppear {
             installScrollMonitor()
-            installTabMonitor()
         }
         .onDisappear {
             removeScrollMonitor()
-            removeTabMonitor()
         }
         .alert(
             "Folder Problem",
@@ -145,32 +137,6 @@ struct MainView: View {
             NSEvent.removeMonitor(scrollMonitor)
         }
         scrollMonitor = nil
-    }
-
-    /// SwiftUI's command system loses Control-Tab to native focus traversal when
-    /// controls such as the sidebar or search field own focus. Intercept it at
-    /// the window event level so library switching works consistently.
-    private func installTabMonitor() {
-        guard tabMonitor == nil else { return }
-        tabMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-            guard event.keyCode == 48, // macOS virtual key code for Tab.
-                  modifiers.contains(.control),
-                  !modifiers.contains(.command),
-                  !modifiers.contains(.option),
-                  model.viewerItemID == nil
-            else { return event }
-
-            model.toggleLibraryTab()
-            return nil
-        }
-    }
-
-    private func removeTabMonitor() {
-        if let tabMonitor {
-            NSEvent.removeMonitor(tabMonitor)
-        }
-        tabMonitor = nil
     }
 
     private func handleZoomScroll(_ event: NSEvent) {

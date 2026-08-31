@@ -5,34 +5,18 @@
 
 import SwiftUI
 
-/// Audio media shown as a metadata list or full waveform rows. Both layouts are
-/// lazy so off-screen files do not create playback or waveform resources.
+/// Audio media shown as a metadata list. The selected clip's waveform lives in
+/// the bottom inspector, not in a second layout mode.
 struct AudioSection: View {
     let items: [MediaItem]
-    let viewMode: AudioViewMode
     let selectionCoordinateSpace: String
     let onSelectionFrameChange: (MediaItem.ID, UUID, CGRect?) -> Void
 
     var body: some View {
-        switch viewMode {
-        case .list:
-            AudioMetadataList(
-                items: items,
-                selectionCoordinateSpace: selectionCoordinateSpace,
-                onSelectionFrameChange: onSelectionFrameChange
-            )
-        case .waveforms:
-            LazyVStack(spacing: 8) {
-                ForEach(items) { item in
-                    AudioRow(item: item)
-                        .id(item.id)
-                        .reportSelectionFrame(
-                            for: item,
-                            coordinateSpace: selectionCoordinateSpace,
-                            onChange: onSelectionFrameChange
-                        )
-                }
-            }
-        }
+        AudioMetadataList(
+            items: items,
+            selectionCoordinateSpace: selectionCoordinateSpace,
+            onSelectionFrameChange: onSelectionFrameChange
+        )
     }
 }

@@ -23,6 +23,14 @@ final class AudioPlayback {
     /// `nil` until the asset reports a usable duration.
     private(set) var duration: TimeInterval?
 
+    /// Inclusive in/out times. `nil` plays the whole file.
+    var playbackRange: ClosedRange<TimeInterval>? {
+        didSet { applyPlaybackBounds() }
+    }
+
+    /// When true, reaching the range end seeks back to the start and continues.
+    var isLooping = false
+
     /// Played fraction of the clip, 0...1.
     var progress: Double {
         guard let duration, duration > 0 else { return 0 }
@@ -44,7 +52,7 @@ final class AudioPlayback {
         self.duration = duration
 
         // Hold at the end rather than stopping abruptly; `handlePlaybackEnded`
-        // rewinds so the play button becomes Replay.
+        // either loops or rewinds so the play button becomes Replay.
         player.actionAtItemEnd = .pause
 
         // 20 Hz is smooth for a playhead a few hundred points wide while leaving
@@ -70,6 +78,8 @@ final class AudioPlayback {
             }
         }
 
+        applyPlaybackBounds()
+
         if duration == nil {
             // Goes through the shared metadata cache, so the parse is usually
             // already done by the time the row asks for playback.
@@ -78,6 +88,7 @@ final class AudioPlayback {
                 guard let self, let resolved = metadata.duration else { return }
                 self.duration = resolved
                 self.applyPendingSeek()
+                self.applyPlaybackBounds()
             }
         }
     }
@@ -85,6 +96,12 @@ final class AudioPlayback {
     // MARK: - Transport
 
     func play() {
+        if let range = effectiveRange {
+            let epsilon = 0.02
+            if currentTime < range.lowerBound - epsilon || currentTime >= range.upperBound - epsilon {
+                seek(toTime: range.lowerBound)
+            }
+        }
         player.play()
         isPlaying = true
     }
@@ -102,7 +119,9 @@ final class AudioPlayback {
         }
     }
 
-    /// Seek to a 0...1 position within the clip.
+    static let skipInterval: TimeInterval = 5
+
+    /// Seek to a 0...1 position within the clip, clamped to `playbackRange`.
     func seek(toFraction fraction: Double) {
         let clamped = min(max(fraction, 0), 1)
 
@@ -111,15 +130,17 @@ final class AudioPlayback {
             return
         }
 
-        let time = clamped * duration
-        // Move the playhead now rather than waiting for the seek to complete, so
-        // clicking the waveform feels immediate.
-        currentTime = time
-        player.seek(
-            to: CMTime(seconds: time, preferredTimescale: 600),
-            toleranceBefore: .zero,
-            toleranceAfter: .zero
-        )
+        var time = clamped * duration
+        if let range = effectiveRange {
+            time = min(max(time, range.lowerBound), range.upperBound)
+        }
+        seek(toTime: time)
+    }
+
+    /// Skip forward or backward by `seconds`, staying inside the play range.
+    func skip(by seconds: TimeInterval) {
+        let bounds = effectiveRange ?? (0...(duration ?? 0))
+        seek(toTime: min(max(currentTime + seconds, bounds.lowerBound), bounds.upperBound))
     }
 
     /// Stop playback and release the decode pipeline.
@@ -145,10 +166,46 @@ final class AudioPlayback {
 
     // MARK: - Private
 
+    private var effectiveRange: ClosedRange<TimeInterval>? {
+        guard let playbackRange else { return nil }
+        guard let duration, duration > 0 else { return playbackRange }
+        let start = min(max(playbackRange.lowerBound, 0), duration)
+        let end = min(max(playbackRange.upperBound, start), duration)
+        return start...end
+    }
+
+    private func seek(toTime time: TimeInterval) {
+        currentTime = time
+        player.seek(
+            to: CMTime(seconds: time, preferredTimescale: 600),
+            toleranceBefore: .zero,
+            toleranceAfter: .zero
+        )
+    }
+
+    private func applyPlaybackBounds() {
+        guard let item = player.currentItem else { return }
+        if let range = effectiveRange {
+            item.forwardPlaybackEndTime = CMTime(seconds: range.upperBound, preferredTimescale: 600)
+            if currentTime < range.lowerBound || currentTime > range.upperBound {
+                seek(toTime: range.lowerBound)
+            }
+        } else {
+            item.forwardPlaybackEndTime = .invalid
+        }
+    }
+
     private func handlePlaybackEnded() {
-        isPlaying = false
-        currentTime = 0
-        player.seek(to: .zero)
+        let start = effectiveRange?.lowerBound ?? 0
+        if isLooping {
+            seek(toTime: start)
+            player.play()
+            isPlaying = true
+        } else {
+            isPlaying = false
+            currentTime = start
+            player.seek(to: CMTime(seconds: start, preferredTimescale: 600))
+        }
     }
 
     private func applyPendingSeek() {

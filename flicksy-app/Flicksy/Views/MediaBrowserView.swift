@@ -146,6 +146,11 @@ struct MediaBrowserView: View {
                     )
                 } else {
                     scrollingPane(audioList)
+                        .safeAreaInset(edge: .bottom) {
+                            if let item = model.selectedAudioItem {
+                                AudioInspectorPanel(item: item)
+                            }
+                        }
                 }
             }
         }
@@ -229,7 +234,6 @@ struct MediaBrowserView: View {
     private var audioList: some View {
         AudioSection(
             items: model.audioItems,
-            viewMode: model.audioViewMode,
             selectionCoordinateSpace: Self.selectionCoordinateSpace,
             onSelectionFrameChange: { id, reporterID, frame in
                 guard model.libraryTab == .audio else { return }
@@ -371,17 +375,36 @@ struct MediaBrowserView: View {
         guard model.viewerItemID == nil, !searchFieldFocused else { return .ignored }
 
         let extend = press.modifiers.contains(.shift)
+        let command = press.modifiers.contains(.command)
         switch press.key {
         case .leftArrow:
-            moveFocus(.left, extending: extend)
+            if command {
+                guard model.canControlInspectorAudio else { return .ignored }
+                model.requestAudioSeek(.start)
+            } else if model.canControlInspectorAudio {
+                model.requestAudioSeek(.rewind)
+            } else {
+                moveFocus(.left, extending: extend)
+            }
         case .rightArrow:
-            moveFocus(.right, extending: extend)
+            if command {
+                guard model.canControlInspectorAudio else { return .ignored }
+                model.requestAudioSeek(.end)
+            } else if model.canControlInspectorAudio {
+                model.requestAudioSeek(.forward)
+            } else {
+                moveFocus(.right, extending: extend)
+            }
         case .upArrow:
             moveFocus(.up, extending: extend)
         case .downArrow:
             moveFocus(.down, extending: extend)
         case .space:
-            model.openPreview()
+            if shouldSpaceTogglePlayback {
+                model.togglePlaybackOfFocusedItem()
+            } else {
+                model.openPreview()
+            }
         case .return:
             model.togglePlaybackOfFocusedItem()
         case .delete, .deleteForward:
@@ -390,6 +413,16 @@ struct MediaBrowserView: View {
             return .ignored
         }
         return .handled
+    }
+
+    private var shouldSpaceTogglePlayback: Bool {
+        if model.libraryTab == .audio { return true }
+        if let focusedItemID = model.focusedItemID,
+           let item = model.orderedItems.first(where: { $0.id == focusedItemID }),
+           item.type == .audio {
+            return true
+        }
+        return model.selectedAudioItem != nil
     }
 
     private func moveFocus(_ direction: MoveDirection, extending: Bool) {
