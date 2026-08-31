@@ -13,14 +13,24 @@ struct AllMetadataList: View {
     let selectionCoordinateSpace: String
     let onSelectionFrameChange: (MediaItem.ID, UUID, CGRect?) -> Void
 
+    @Environment(BrowserModel.self) private var model
+
     var body: some View {
+        // Read selection in the parent so LazyVStack rows receive an explicit
+        // `isSelected` input. Rows that only observe the model via Environment
+        // can miss invalidation and keep a stale highlight.
+        let selectedIDs = model.selectedItemIDs
+
         ScrollView(.horizontal) {
             LazyVStack(spacing: 0) {
                 header
                 Divider()
 
                 ForEach(items) { item in
-                    AllMetadataRow(item: item)
+                    AllMetadataRow(
+                        item: item,
+                        isSelected: selectedIDs.contains(item.id)
+                    )
                         .id(item.id)
                         .reportSelectionFrame(
                             for: item,
@@ -79,6 +89,7 @@ private enum AllListColumns {
 
 private struct AllMetadataRow: View {
     let item: MediaItem
+    let isSelected: Bool
 
     @Environment(BrowserModel.self) private var model
 
@@ -89,7 +100,6 @@ private struct AllMetadataRow: View {
         item.type == .audio && model.playingAudioID == item.id
     }
 
-    private var isSelected: Bool { model.selectedItemIDs.contains(item.id) }
     private var isPlayingAudio: Bool { audioPlayback?.isPlaying ?? false }
 
     var body: some View {
@@ -115,7 +125,10 @@ private struct AllMetadataRow: View {
         .font(.callout)
         .padding(.horizontal, AllListColumns.horizontalPadding)
         .padding(.vertical, 6)
-        .background(isSelected ? AnyShapeStyle(.quaternary.opacity(0.5)) : AnyShapeStyle(.clear))
+        .background {
+            Rectangle()
+                .fill(.quaternary.opacity(isSelected ? 0.5 : 0))
+        }
         .overlay(alignment: .bottom) {
             Divider()
         }
