@@ -58,7 +58,7 @@ struct AudioViewModeControl: View {
     }
 }
 
-/// Images & Video vs Audio, shown as a native segmented tab control.
+/// All, Images & Video, and Audio, shown as a native segmented tab control.
 struct LibraryTabPicker: View {
     @Environment(BrowserModel.self) private var model
 
@@ -76,8 +76,8 @@ struct LibraryTabPicker: View {
         }
         .pickerStyle(.segmented)
         .labelsHidden()
-        .help("Switch between Images & Video and Audio")
+        .help("Switch library view")
         .accessibilityLabel("Library")
-        .frame(width: 92)
+        .frame(width: 138)
     }
 }

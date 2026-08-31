@@ -133,16 +133,13 @@ extension View {
     func reportSelectionFrame(
         for item: MediaItem,
         coordinateSpace: String,
-        onChange: @escaping (MediaItem.ID, CGRect?) -> Void
+        onChange: @escaping (MediaItem.ID, UUID, CGRect?) -> Void
     ) -> some View {
-        onGeometryChange(for: CGRect.self) { proxy in
-            proxy.frame(in: .named(coordinateSpace))
-        } action: { frame in
-            onChange(item.id, frame)
-        }
-        .onDisappear {
-            onChange(item.id, nil)
-        }
+        modifier(SelectionFrameReporter(
+            itemID: item.id,
+            coordinateSpace: coordinateSpace,
+            onChange: onChange
+        ))
     }
 
     /// Finder-style click-to-select behaviour for a media element.
@@ -151,6 +148,30 @@ extension View {
     /// the double-click recognizer to fail. A double click still opens the preview.
     func selectableCell(_ item: MediaItem, model: BrowserModel) -> some View {
         modifier(SelectableCellModifier(item: item, model: model))
+    }
+}
+
+/// Identifies each rendered cell independently from its media item. During a tab
+/// change, the outgoing and incoming views can briefly render the same item ID;
+/// the reporter token prevents the old view's `onDisappear` from unregistering
+/// the new view's frame.
+private struct SelectionFrameReporter: ViewModifier {
+    let itemID: MediaItem.ID
+    let coordinateSpace: String
+    let onChange: (MediaItem.ID, UUID, CGRect?) -> Void
+
+    @State private var reporterID = UUID()
+
+    func body(content: Content) -> some View {
+        content
+            .onGeometryChange(for: CGRect.self) { proxy in
+                proxy.frame(in: .named(coordinateSpace))
+            } action: { frame in
+                onChange(itemID, reporterID, frame)
+            }
+            .onDisappear {
+                onChange(itemID, reporterID, nil)
+            }
     }
 }
 

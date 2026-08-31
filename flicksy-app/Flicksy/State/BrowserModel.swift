@@ -48,9 +48,10 @@ enum AudioViewMode: String, CaseIterable {
     case waveforms
 }
 
-/// The two library panes. Images and video share a visual grid; audio has its
-/// own list/waveform view so the two are never mixed in one scrolling list.
+/// The library panes. All media shares a metadata list, images and video use a
+/// visual grid, and audio has its own list/waveform view.
 enum MediaLibraryTab: String, CaseIterable, Identifiable {
+    case all
     case visual
     case audio
 
@@ -58,6 +59,7 @@ enum MediaLibraryTab: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
+        case .all: "All"
         case .visual: "Images & Video"
         case .audio: "Audio"
         }
@@ -65,6 +67,7 @@ enum MediaLibraryTab: String, CaseIterable, Identifiable {
 
     var systemImage: String {
         switch self {
+        case .all: "tray.full"
         case .visual: "photo.on.rectangle"
         case .audio: "waveform"
         }
@@ -217,10 +220,12 @@ final class BrowserModel {
             return
         }
         switch libraryTab {
+        case .all:
+            libraryTab = .visual
         case .visual:
             libraryTab = .audio
         case .audio:
-            libraryTab = .visual
+            libraryTab = .all
         }
     }
 
@@ -243,7 +248,8 @@ final class BrowserModel {
     }
 
     /// `mediaItems` filtered by `searchQuery`, split by type, and ordered by
-    /// `sortKey`. Images and videos share the visual tab; audio has its own.
+    /// `sortKey`. The All tab retains the complete filtered listing.
+    private(set) var allItems: [MediaItem] = []
     private(set) var visualItems: [MediaItem] = []
     private(set) var audioItems: [MediaItem] = []
 
@@ -564,7 +570,7 @@ final class BrowserModel {
 
         let storedTab = UserDefaults.standard.string(forKey: Self.libraryTabKey)
             .flatMap(MediaLibraryTab.init(rawValue:))
-        libraryTab = storedTab ?? .visual
+        libraryTab = storedTab ?? .all
 
         let storedSort = UserDefaults.standard.string(forKey: Self.sortKeyKey)
             .flatMap(MediaSortKey.init(rawValue:))
@@ -1608,8 +1614,9 @@ final class BrowserModel {
             ? mediaItems
             : mediaItems.filter { $0.name.localizedStandardContains(query) }
 
-        visualItems = sortedItems(visibleItems.filter { $0.type == .image || $0.type == .video })
-        audioItems = sortedItems(visibleItems.filter { $0.type == .audio })
+        allItems = sortedItems(visibleItems)
+        visualItems = allItems.filter { $0.type == .image || $0.type == .video }
+        audioItems = allItems.filter { $0.type == .audio }
 
         isolateCurrentTab()
     }
@@ -1620,14 +1627,14 @@ final class BrowserModel {
         let visibleIDs = Set(orderedItems.map(\.id))
         selectedItemIDs.formIntersection(visibleIDs)
 
-        if libraryTab != .visual {
+        if libraryTab == .audio {
             playingVideoID = nil
             viewerItemID = nil
         } else if let playingVideoID, !visibleIDs.contains(playingVideoID) {
             self.playingVideoID = nil
         }
 
-        if libraryTab != .audio {
+        if libraryTab == .visual {
             playingAudioID = nil
         } else if let playingAudioID, !visibleIDs.contains(playingAudioID) {
             self.playingAudioID = nil
@@ -1653,6 +1660,8 @@ final class BrowserModel {
         let hasVisual = mediaItems.contains { $0.type == .image || $0.type == .video }
         let hasAudio = mediaItems.contains { $0.type == .audio }
         switch libraryTab {
+        case .all:
+            break
         case .visual where !hasVisual && hasAudio:
             libraryTab = .audio
         case .audio where !hasAudio && hasVisual:
@@ -1726,6 +1735,7 @@ final class BrowserModel {
     /// hidden tab.
     var orderedItems: [MediaItem] {
         switch libraryTab {
+        case .all: allItems
         case .visual: visualItems
         case .audio: audioItems
         }
@@ -1872,7 +1882,11 @@ final class BrowserModel {
 
         switch item.type {
         case .video:
-            playingVideoID = (playingVideoID == item.id) ? nil : item.id
+            if libraryTab == .all {
+                openViewer(item)
+            } else {
+                playingVideoID = (playingVideoID == item.id) ? nil : item.id
+            }
         case .audio:
             playingAudioID = (playingAudioID == item.id) ? nil : item.id
         case .image:

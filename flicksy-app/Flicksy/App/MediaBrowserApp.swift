@@ -21,7 +21,7 @@ struct FlicksyApp: App {
 
             CommandGroup(after: .toolbar) {
                 Section {
-                    Button("Toggle Images & Video / Audio") {
+                    Button("Cycle Library View") {
                         model.toggleLibraryTab()
                     }
                     .keyboardShortcut(.tab, modifiers: [.control])

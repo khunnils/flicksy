@@ -44,6 +44,8 @@ struct MainView: View {
                         }
                         ToolbarItem(placement: .primaryAction) {
                             switch model.libraryTab {
+                            case .all:
+                                EmptyView()
                             case .visual:
                                 GridZoomControl()
                             case .audio:

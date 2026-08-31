@@ -11,7 +11,7 @@ struct AudioSection: View {
     let items: [MediaItem]
     let viewMode: AudioViewMode
     let selectionCoordinateSpace: String
-    let onSelectionFrameChange: (MediaItem.ID, CGRect?) -> Void
+    let onSelectionFrameChange: (MediaItem.ID, UUID, CGRect?) -> Void
 
     var body: some View {
         switch viewMode {

@@ -14,7 +14,7 @@ struct MediaGrid: View {
     let thumbnailSize: CGFloat
     let cardAspectRatio: CGFloat
     let selectionCoordinateSpace: String
-    let onSelectionFrameChange: (MediaItem.ID, CGRect?) -> Void
+    let onSelectionFrameChange: (MediaItem.ID, UUID, CGRect?) -> Void
 
     private var gridColumns: [GridItem] {
         [GridItem(.adaptive(minimum: thumbnailSize), spacing: 12)]

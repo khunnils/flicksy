@@ -6,8 +6,8 @@
 import AppKit
 import SwiftUI
 
-/// The main content area. Images/video and audio live on separate tabs so a
-/// stills review never scrolls past a waveform list, and vice versa.
+/// The main content area. All media can be scanned in one metadata list, while
+/// images/video and audio retain their purpose-built views.
 struct MediaBrowserView: View {
     @Environment(BrowserModel.self) private var model
 
@@ -35,7 +35,7 @@ struct MediaBrowserView: View {
     /// Cell frames and transient state for Finder-style empty-space marquee
     /// selection. The gesture deliberately ignores drags that begin on an item,
     /// leaving those to the native file-drag interaction on each cell.
-    @State private var selectionFrames: [MediaItem.ID: CGRect] = [:]
+    @State private var selectionFrames: [MediaItem.ID: SelectionFrameRegistration] = [:]
     @State private var marqueeFrames: [MediaItem.ID: CGRect] = [:]
     @State private var marqueeStart: CGPoint?
     @State private var marqueeRect: CGRect?
@@ -116,6 +116,16 @@ struct MediaBrowserView: View {
     private var content: some View {
         Group {
             switch model.libraryTab {
+            case .all:
+                if model.allItems.isEmpty {
+                    emptyTab(
+                        title: "No Media",
+                        systemImage: "tray.full",
+                        otherTabHint: nil
+                    )
+                } else {
+                    scrollingPane(allList)
+                }
             case .visual:
                 if model.visualItems.isEmpty {
                     emptyTab(
@@ -180,7 +190,21 @@ struct MediaBrowserView: View {
             thumbnailSize: effectiveThumbnailSize,
             cardAspectRatio: CGFloat(model.cardAspectRatio),
             selectionCoordinateSpace: Self.selectionCoordinateSpace,
-            onSelectionFrameChange: updateSelectionFrame
+            onSelectionFrameChange: { id, reporterID, frame in
+                guard model.libraryTab == .visual else { return }
+                updateSelectionFrame(id, reporterID: reporterID, source: .visual, frame: frame)
+            }
+        )
+    }
+
+    private var allList: some View {
+        AllMetadataList(
+            items: model.allItems,
+            selectionCoordinateSpace: Self.selectionCoordinateSpace,
+            onSelectionFrameChange: { id, reporterID, frame in
+                guard model.libraryTab == .all else { return }
+                updateSelectionFrame(id, reporterID: reporterID, source: .all, frame: frame)
+            }
         )
     }
 
@@ -207,7 +231,10 @@ struct MediaBrowserView: View {
             items: model.audioItems,
             viewMode: model.audioViewMode,
             selectionCoordinateSpace: Self.selectionCoordinateSpace,
-            onSelectionFrameChange: updateSelectionFrame
+            onSelectionFrameChange: { id, reporterID, frame in
+                guard model.libraryTab == .audio else { return }
+                updateSelectionFrame(id, reporterID: reporterID, source: .audio, frame: frame)
+            }
         )
     }
 
@@ -216,7 +243,12 @@ struct MediaBrowserView: View {
             .onChanged { value in
                 if marqueeStart == nil, !isIgnoringMarqueeDrag {
                     let activeIDs = Set(model.orderedItems.map(\.id))
-                    let activeFrames = selectionFrames.filter { activeIDs.contains($0.key) }
+                    let activeFrames = selectionFrames
+                        .filter {
+                            activeIDs.contains($0.key)
+                                && $0.value.source == activeSelectionFrameSource
+                        }
+                        .mapValues(\.frame)
                     let beganOnItem = activeFrames.values.contains { frame in
                         frame.insetBy(dx: -2, dy: -2).contains(value.startLocation)
                     }
@@ -263,11 +295,28 @@ struct MediaBrowserView: View {
             }
     }
 
-    private func updateSelectionFrame(_ id: MediaItem.ID, _ frame: CGRect?) {
+    private func updateSelectionFrame(
+        _ id: MediaItem.ID,
+        reporterID: UUID,
+        source: SelectionFrameSource,
+        frame: CGRect?
+    ) {
         if let frame {
-            selectionFrames[id] = frame
-        } else {
+            selectionFrames[id] = SelectionFrameRegistration(
+                reporterID: reporterID,
+                source: source,
+                frame: frame
+            )
+        } else if selectionFrames[id]?.reporterID == reporterID {
             selectionFrames.removeValue(forKey: id)
+        }
+    }
+
+    private var activeSelectionFrameSource: SelectionFrameSource {
+        switch model.libraryTab {
+        case .all: .all
+        case .visual: .visual
+        case .audio: .audio
         }
     }
 
@@ -307,6 +356,8 @@ struct MediaBrowserView: View {
 
     private var navigationColumns: Int {
         switch model.libraryTab {
+        case .all:
+            1
         case .visual:
             columnCount(forWidth: browserWidth)
         case .audio:
@@ -355,6 +406,18 @@ private enum MarqueeMode {
     case replacing
     case adding
     case toggling
+}
+
+private struct SelectionFrameRegistration {
+    let reporterID: UUID
+    let source: SelectionFrameSource
+    let frame: CGRect
+}
+
+private enum SelectionFrameSource {
+    case all
+    case visual
+    case audio
 }
 
 private struct MissingCollectionItemsView: View {
