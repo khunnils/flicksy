@@ -258,3 +258,61 @@ private struct WaveformHandle: View {
             )
     }
 }
+
+/// Quiet placeholder shown while peaks are still being generated. A faint
+/// waveform silhouette breathes and a soft highlight travels across it, then
+/// the real bars fade in over the top.
+struct WaveformLoadingView: View {
+    private let barWidth: CGFloat = 2
+    private let barSpacing: CGFloat = 1
+    private let minimumBarHeight: CGFloat = 1.5
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1 / 24, paused: false)) { timeline in
+            Canvas(opaque: false) { context, size in
+                draw(
+                    in: &context,
+                    size: size,
+                    time: timeline.date.timeIntervalSinceReferenceDate
+                )
+            }
+        }
+        .accessibilityLabel("Loading waveform")
+    }
+
+    private func draw(in context: inout GraphicsContext, size: CGSize, time: TimeInterval) {
+        guard size.width > 0, size.height > 0 else { return }
+
+        let step = barWidth + barSpacing
+        let barCount = max(1, Int((size.width + barSpacing) / step))
+        let breathe = 0.86 + 0.14 * sin(time * 1.05)
+        let scan = time.truncatingRemainder(dividingBy: 3.2) / 3.2
+
+        var bars = Path()
+        for index in 0..<barCount {
+            let x = Double(index) / Double(max(barCount - 1, 1))
+            let height = max(minimumBarHeight, placeholderHeight(x: x, breathe: breathe, scan: scan) * size.height)
+            bars.addPath(
+                Path(roundedRect: CGRect(
+                    x: CGFloat(index) * step,
+                    y: (size.height - height) / 2,
+                    width: barWidth,
+                    height: height
+                ), cornerRadius: barWidth / 2, style: .continuous)
+            )
+        }
+
+        context.fill(bars, with: .color(.secondary.opacity(0.28)))
+    }
+
+    /// Deterministic silhouette so it reads as a waveform, not a uniform equalizer.
+    private func placeholderHeight(x: Double, breathe: Double, scan: Double) -> CGFloat {
+        let shape = 0.18
+            + 0.16 * sin(x * 6.8)
+            + 0.09 * sin(x * 17.4 + 0.8)
+            + 0.05 * abs(sin(x * 37.0 + 1.3))
+        let distance = min(abs(x - scan), 1 - abs(x - scan))
+        let highlight = exp(-pow(distance * 12, 2))
+        return CGFloat(min(0.72, shape * breathe + highlight * 0.16))
+    }
+}

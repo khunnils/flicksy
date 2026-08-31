@@ -13,6 +13,7 @@ struct AudioInspectorPanel: View {
     @Environment(BrowserModel.self) private var model
 
     @State private var peaks: [Float] = []
+    @State private var isLoadingWaveform = true
     @State private var waveformFailed = false
     @State private var metadata: MediaMetadataService.Metadata?
     @State private var playback: AudioPlayback?
@@ -57,6 +58,9 @@ struct AudioInspectorPanel: View {
         }
         .background(.bar)
         .task(id: item.contentVersion) {
+            peaks = []
+            waveformFailed = false
+            isLoadingWaveform = true
             await loadWaveform()
             await loadMetadata()
         }
@@ -175,25 +179,34 @@ struct AudioInspectorPanel: View {
 
     @ViewBuilder
     private var waveform: some View {
-        if waveformFailed {
-            HStack(spacing: 6) {
-                Image(systemName: "exclamationmark.triangle")
-                Text("Waveform unavailable")
+        Group {
+            if waveformFailed {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle")
+                    Text("Waveform unavailable")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(height: Self.waveformHeight, alignment: .leading)
+            } else if isLoadingWaveform {
+                WaveformLoadingView()
+                    .frame(height: Self.waveformHeight)
+                    .transition(.opacity)
+            } else {
+                WaveformView(
+                    peaks: peaks,
+                    progress: playback?.progress ?? 0,
+                    selection: selection,
+                    minimumSelectionSpan: minimumSelectionSpan,
+                    onSeek: seek(toFraction:),
+                    onSelectionChange: { selection = $0 }
+                )
+                .frame(height: Self.waveformHeight)
+                .transition(.opacity)
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .frame(height: Self.waveformHeight, alignment: .leading)
-        } else {
-            WaveformView(
-                peaks: peaks,
-                progress: playback?.progress ?? 0,
-                selection: selection,
-                minimumSelectionSpan: minimumSelectionSpan,
-                onSeek: seek(toFraction:),
-                onSelectionChange: { selection = $0 }
-            )
-            .frame(height: Self.waveformHeight)
         }
+        .animation(.easeInOut(duration: 0.32), value: isLoadingWaveform)
+        .animation(.easeInOut(duration: 0.32), value: waveformFailed)
     }
 
     private var timeLabel: String {
@@ -227,6 +240,7 @@ struct AudioInspectorPanel: View {
         } else {
             waveformFailed = true
         }
+        isLoadingWaveform = false
     }
 
     private func loadMetadata() async {
