@@ -16,6 +16,7 @@ struct MediaItemInteractionsModifier: ViewModifier {
     @State private var isDragging = false
     @State private var isRenaming = false
     @State private var proposedName = ""
+    @Environment(\.openWindow) private var openWindow
 
     func body(content: Content) -> some View {
         content
@@ -63,6 +64,13 @@ struct MediaItemInteractionsModifier: ViewModifier {
             }
         } label: {
             Label("Open With", systemImage: "macwindow.on.rectangle")
+        }
+
+        Button {
+            model.registerInfoItem(item)
+            openWindow(id: MediaInfoView.windowID, value: item.id)
+        } label: {
+            Label("Get Info", systemImage: "info.circle")
         }
 
         Divider()

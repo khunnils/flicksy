@@ -178,6 +178,10 @@ final class BrowserModel {
     private(set) var missingCollectionItems: [MissingCollectionItem] = []
     private(set) var isIndexingLibrary = false
 
+    /// Snapshots backing open Get Info windows. Keeping these independent from
+    /// the current folder lets an inspector remain useful while browsing away.
+    private var infoItems: [MediaItem.ID: MediaItem] = [:]
+
     /// The current search text. Filtering is cheap filename matching over the
     /// already-loaded folder contents, so results update on every keystroke.
     var searchQuery = "" {
@@ -669,6 +673,17 @@ final class BrowserModel {
         }
     }
 
+    func createTag(name: String, color: LibraryTagColor, applyingTo item: MediaItem) {
+        guard let assetID = item.libraryID else { return }
+        Task {
+            do {
+                let tag = try await libraryRepository.createTag(name: name, color: color)
+                try await libraryRepository.setTag(tag.id, on: [assetID], enabled: true)
+                await refreshOrganization(reloadSelection: true)
+            } catch { organizationError = error.localizedDescription }
+        }
+    }
+
     func updateTag(_ tag: LibraryTag, name: String, color: LibraryTagColor) {
         Task {
             do {
@@ -729,6 +744,23 @@ final class BrowserModel {
                 await refreshOrganization(reloadSelection: true)
             } catch { organizationError = error.localizedDescription }
         }
+    }
+
+    /// Change a tag on exactly one file. Get Info is item-specific even when the
+    /// inspected file also belongs to a larger browser selection.
+    func setTag(_ tag: LibraryTag, enabled: Bool, on item: MediaItem) {
+        guard let assetID = item.libraryID else { return }
+        Task {
+            do {
+                try await libraryRepository.setTag(tag.id, on: [assetID], enabled: enabled)
+                await refreshOrganization(reloadSelection: true)
+            } catch { organizationError = error.localizedDescription }
+        }
+    }
+
+    func tagIDs(for item: MediaItem) async -> Set<UUID> {
+        guard let assetID = item.libraryID else { return [] }
+        return (try? await libraryRepository.tagIDs(for: [assetID])) ?? []
     }
 
     func tagsAppliedToEverySelectedItem(clicked item: MediaItem? = nil) async -> Set<UUID> {
@@ -928,6 +960,24 @@ final class BrowserModel {
         case .audio:
             playingAudioID = item.id
         }
+    }
+
+    /// The single file targeted by the Get Info menu command.
+    var getInfoTarget: MediaItem? {
+        if let viewerItem { return viewerItem }
+        if let focusedItemID,
+           let focused = orderedItems.first(where: { $0.id == focusedItemID }) {
+            return focused
+        }
+        return orderedItems.first { selectedItemIDs.contains($0.id) }
+    }
+
+    func registerInfoItem(_ item: MediaItem) {
+        infoItems[item.id] = item
+    }
+
+    func mediaItemForInfo(id: MediaItem.ID) -> MediaItem? {
+        mediaItems.first(where: { $0.id == id }) ?? infoItems[id]
     }
 
     /// Open the clicked item (or every selected item when it is part of the

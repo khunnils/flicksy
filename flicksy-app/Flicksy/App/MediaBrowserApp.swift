@@ -18,6 +18,7 @@ struct FlicksyApp: App {
         }
         .commands {
             AboutCommands()
+            GetInfoCommands(model: model)
 
             CommandGroup(after: .toolbar) {
                 Section {
@@ -125,6 +126,18 @@ struct FlicksyApp: App {
         }
         .defaultPosition(.center)
         .windowResizability(.contentSize)
+
+        WindowGroup("Info", id: MediaInfoView.windowID, for: String.self) { $itemID in
+            if let itemID, let item = model.mediaItemForInfo(id: itemID) {
+                MediaInfoView(item: item)
+                    .environment(model)
+            } else {
+                ContentUnavailableView("File Unavailable", systemImage: "questionmark.folder")
+                    .frame(width: 440, height: 560)
+            }
+        }
+        .defaultSize(width: 440, height: 560)
+        .windowResizability(.contentSize)
     }
 
     private var findMediaCommand: some View {
@@ -133,6 +146,23 @@ struct FlicksyApp: App {
         }
         .keyboardShortcut("f", modifiers: .command)
         .disabled(!model.hasSelectedSource || model.viewerItemID != nil)
+    }
+}
+
+private struct GetInfoCommands: Commands {
+    let model: BrowserModel
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some Commands {
+        CommandGroup(after: .newItem) {
+            Button("Get Info") {
+                guard let item = model.getInfoTarget else { return }
+                model.registerInfoItem(item)
+                openWindow(id: MediaInfoView.windowID, value: item.id)
+            }
+            .keyboardShortcut("i", modifiers: .command)
+            .disabled(model.getInfoTarget == nil)
+        }
     }
 }
 
