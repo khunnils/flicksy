@@ -32,6 +32,9 @@ struct MediaBrowserView: View {
     /// leave it false — selecting an already-visible tile should not recenter it.
     @State private var shouldScrollFocusIntoView = false
 
+    /// Highlights the empty-state drop target while folders are dragged over it.
+    @State private var isSourceDropTargeted = false
+
     /// Cell frames and transient state for Finder-style empty-space marquee
     /// selection. The gesture deliberately ignores drags that begin on an item,
     /// leaving those to the native file-drag interaction on each cell.
@@ -53,7 +56,15 @@ struct MediaBrowserView: View {
                 ContentUnavailableView(
                     "No Source Selected",
                     systemImage: "sidebar.left",
-                    description: Text("Select Clipboard or a folder in the sidebar to browse media.")
+                    description: Text("Select a source from the sidebar, or drag folders here to add them.")
+                )
+                .dropDestination(for: URL.self) { urls, _ in
+                    model.addRootFolders(urls)
+                } isTargeted: { isSourceDropTargeted = $0 }
+                .background(
+                    isSourceDropTargeted
+                        ? Color.accentColor.opacity(0.12)
+                        : Color.clear
                 )
             } else if model.mediaItems.isEmpty && !model.missingCollectionItems.isEmpty {
                 MissingCollectionItemsView(items: model.missingCollectionItems)

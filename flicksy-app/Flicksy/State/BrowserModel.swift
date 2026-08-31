@@ -655,6 +655,17 @@ final class BrowserModel {
         rescanRoots()
     }
 
+    /// Add one or more folders dropped from Finder, refreshing the library once
+    /// after the complete batch has been persisted.
+    @discardableResult
+    func addRootFolders(_ urls: [URL]) -> Bool {
+        guard !rootStore.addFolders(urls).isEmpty else { return false }
+        loadError = nil
+        restartFilesystemMonitoring()
+        rescanRoots()
+        return true
+    }
+
     func removeRootFolder(id: MediaFolder.ID) {
         let url = URL(fileURLWithPath: id)
         rootStore.removeFolder(url)

@@ -11,6 +11,7 @@ struct FolderSidebar: View {
     @State private var expandedFolderIDs: Set<MediaFolder.ID> = []
     @State private var editor: SidebarEditor?
     @State private var dropTargetCollectionID: MediaCollection.ID?
+    @State private var isFoldersDropTargeted = false
 
     var body: some View {
         @Bindable var model = model
@@ -83,7 +84,7 @@ struct FolderSidebar: View {
                 }
             }
 
-            Section("Folders") {
+            Section {
                 if model.rootTrees.isEmpty {
                     Text("No folders added").foregroundStyle(.tertiary)
                 } else {
@@ -91,6 +92,19 @@ struct FolderSidebar: View {
                         FolderTreeRow(folder: root, expandedFolderIDs: $expandedFolderIDs)
                     }
                 }
+            } header: {
+                Text("Folders")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .dropDestination(for: URL.self) { urls, _ in
+                        model.addRootFolders(urls)
+                    } isTargeted: { isFoldersDropTargeted = $0 }
+                    .padding(.vertical, 3)
+                    .background(
+                        isFoldersDropTargeted
+                            ? Color.accentColor.opacity(0.2)
+                            : Color.clear
+                    )
             }
         }
         .safeAreaInset(edge: .bottom) { addBar }

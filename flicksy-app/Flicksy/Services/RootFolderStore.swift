@@ -99,21 +99,39 @@ final class RootFolderStore {
 
         guard panel.runModal() == .OK, let url = panel.url else { return nil }
 
-        // Ignore duplicates so the same root cannot be added twice.
-        if entries.contains(where: { $0.url == url }) { return nil }
+        return addFolders([url]).first
+    }
 
-        guard let bookmark = try? url.bookmarkData(
-            options: [.withSecurityScope],
-            includingResourceValuesForKeys: nil,
-            relativeTo: nil
-        ) else {
-            return nil
+    /// Persist folders received from a Finder drag. Non-directory URLs and roots
+    /// that are already present are ignored. The drag grants the same temporary
+    /// sandbox extension as an open panel, allowing us to mint durable bookmarks.
+    @discardableResult
+    func addFolders(_ urls: [URL]) -> [URL] {
+        var added: [URL] = []
+
+        for droppedURL in urls {
+            let url = droppedURL.standardizedFileURL
+            guard (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true else {
+                continue
+            }
+            guard !entries.contains(where: { $0.url.standardizedFileURL == url }) else {
+                continue
+            }
+            guard let bookmark = try? url.bookmarkData(
+                options: [.withSecurityScope],
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            ) else {
+                continue
+            }
+
+            let didAccess = url.startAccessingSecurityScopedResource()
+            entries.append(Entry(url: url, bookmark: bookmark, isAccessing: didAccess))
+            added.append(url)
         }
 
-        let didAccess = url.startAccessingSecurityScopedResource()
-        entries.append(Entry(url: url, bookmark: bookmark, isAccessing: didAccess))
-        persist()
-        return url
+        if !added.isEmpty { persist() }
+        return added
     }
 
     /// Remove a root folder, releasing its security-scoped access claim.
