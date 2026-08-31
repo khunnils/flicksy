@@ -259,13 +259,14 @@ private struct WaveformHandle: View {
     }
 }
 
-/// Quiet placeholder shown while peaks are still being generated. A faint
-/// waveform silhouette breathes and a soft highlight travels across it, then
-/// the real bars fade in over the top.
+/// Compact placeholder shown while peaks are still being generated. Kept
+/// smaller than the inspector waveform so it reads as a loader, not the clip.
 struct WaveformLoadingView: View {
     private let barWidth: CGFloat = 2
     private let barSpacing: CGFloat = 1
     private let minimumBarHeight: CGFloat = 1.5
+    private let previewWidth: CGFloat = 192
+    private let previewHeight: CGFloat = 56
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1 / 24, paused: false)) { timeline in
@@ -277,6 +278,8 @@ struct WaveformLoadingView: View {
                 )
             }
         }
+        .frame(width: previewWidth, height: previewHeight)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityLabel("Loading waveform")
     }
 
