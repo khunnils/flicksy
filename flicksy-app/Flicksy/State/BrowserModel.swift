@@ -207,18 +207,34 @@ final class BrowserModel {
     /// owns keyboard focus.
     var isQuickGotoFieldFocused = false
 
+    /// Drives the window-level keyboard shortcuts helper opened by Command-/.
+    var isShortcutsHelpPresented = false
+
     var isTextFieldFocused: Bool {
         isSearchFieldFocused || isQuickGotoFieldFocused
     }
 
     func presentQuickGoto() {
         isSearchPresented = false
+        isShortcutsHelpPresented = false
         isQuickGotoPresented = true
+    }
+
+    func presentShortcutsHelp() {
+        if isShortcutsHelpPresented {
+            isShortcutsHelpPresented = false
+            return
+        }
+        isSearchPresented = false
+        isQuickGotoPresented = false
+        isQuickGotoFieldFocused = false
+        isShortcutsHelpPresented = true
     }
 
     func go(to source: BrowserSource) {
         isQuickGotoPresented = false
         isQuickGotoFieldFocused = false
+        isShortcutsHelpPresented = false
         selectedSource = source
     }
 

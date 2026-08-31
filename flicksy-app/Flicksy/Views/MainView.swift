@@ -68,8 +68,15 @@ struct MainView: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
             }
         }
+        .overlay {
+            if model.isShortcutsHelpPresented {
+                KeyboardShortcutsView()
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
+            }
+        }
         .animation(.easeInOut(duration: 0.15), value: model.viewerItemID)
         .animation(.easeOut(duration: 0.12), value: model.isQuickGotoPresented)
+        .animation(.easeOut(duration: 0.12), value: model.isShortcutsHelpPresented)
         .task {
             model.restore()
         }

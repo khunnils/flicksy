@@ -20,6 +20,13 @@ struct FlicksyApp: App {
             AboutCommands()
             GetInfoCommands(model: model)
 
+            CommandGroup(after: .help) {
+                Button("Keyboard Shortcuts…") {
+                    model.presentShortcutsHelp()
+                }
+                .keyboardShortcut("/", modifiers: .command)
+            }
+
             CommandGroup(after: .toolbar) {
                 Section {
                     Button("Quick Goto…") {
