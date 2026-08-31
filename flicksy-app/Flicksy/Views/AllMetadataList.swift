@@ -10,31 +10,30 @@ import UniformTypeIdentifiers
 /// are intentionally limited to metadata that is meaningful across media types.
 struct AllMetadataList: View {
     let items: [MediaItem]
-    let selectedItemIDs: Set<MediaItem.ID>
     let selectionCoordinateSpace: String
     let onSelectionFrameChange: (MediaItem.ID, UUID, CGRect?) -> Void
 
-    var body: some View {
-        ScrollView(.horizontal) {
-            LazyVStack(spacing: 0) {
-                header
-                Divider()
+    @Environment(BrowserModel.self) private var model
 
-                ForEach(items) { item in
-                    AllMetadataRow(
-                        item: item,
-                        isSelected: selectedItemIDs.contains(item.id)
+    var body: some View {
+        LazyVStack(spacing: 0) {
+            header
+            Divider()
+
+            ForEach(items) { item in
+                AllMetadataRow(
+                    item: item,
+                    selectionState: model.selectionState(for: item.id)
+                )
+                    .id(item.id)
+                    .reportSelectionFrame(
+                        for: item,
+                        coordinateSpace: selectionCoordinateSpace,
+                        onChange: onSelectionFrameChange
                     )
-                        .id(item.id)
-                        .reportSelectionFrame(
-                            for: item,
-                            coordinateSpace: selectionCoordinateSpace,
-                            onChange: onSelectionFrameChange
-                        )
-                }
             }
-            .frame(minWidth: AllListColumns.totalWidth, alignment: .leading)
         }
+        .frame(minWidth: AllListColumns.totalWidth, alignment: .leading)
     }
 
     private var header: some View {
@@ -83,7 +82,7 @@ private enum AllListColumns {
 
 private struct AllMetadataRow: View {
     let item: MediaItem
-    let isSelected: Bool
+    let selectionState: MediaItemSelectionState
 
     @Environment(BrowserModel.self) private var model
 
@@ -121,7 +120,7 @@ private struct AllMetadataRow: View {
         .padding(.vertical, 6)
         .background {
             Rectangle()
-                .fill(.quaternary.opacity(isSelected ? 0.5 : 0))
+                .fill(.quaternary.opacity(selectionState.isSelected ? 0.5 : 0))
         }
         .overlay(alignment: .bottom) {
             Divider()

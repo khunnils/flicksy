@@ -127,6 +127,21 @@ enum AudioSeekKind {
     case forward
 }
 
+/// Fine-grained selection state used by an individual media cell.
+///
+/// Keeping this separate from the complete selection set means changing one
+/// selected item only invalidates the rows whose highlight actually changed.
+/// Large lazy lists otherwise have to rebuild every row to pass a new Set down.
+@Observable
+@MainActor
+final class MediaItemSelectionState {
+    var isSelected: Bool
+
+    init(isSelected: Bool) {
+        self.isSelected = isSelected
+    }
+}
+
 /// The single source of truth for the browser UI.
 ///
 /// Deliberately kept to plain `@Observable` state with no additional architectural
@@ -335,7 +350,7 @@ final class BrowserModel {
     var selectedAudioItem: MediaItem? {
         guard selectedItemIDs.count == 1,
               let id = selectedItemIDs.first,
-              let item = orderedItems.first(where: { $0.id == id }),
+              let item = orderedItemByID[id],
               item.type == .audio
         else { return nil }
         return item
@@ -349,7 +364,14 @@ final class BrowserModel {
     /// Items the user has selected in the browser. Selection is independent of
     /// playback and viewer state: clicking selects (Finder-style) rather than
     /// opening, so the user can act on one or many items at once.
-    var selectedItemIDs: Set<MediaItem.ID> = []
+    var selectedItemIDs: Set<MediaItem.ID> = [] {
+        didSet {
+            selectionSnapshot = selectedItemIDs
+            for id in oldValue.symmetricDifference(selectedItemIDs) {
+                selectionStateByID[id]?.isSelected = selectedItemIDs.contains(id)
+            }
+        }
+    }
 
     /// The anchor for Shift-click / Shift-arrow range selection.
     var selectionAnchorID: MediaItem.ID?
@@ -647,6 +669,15 @@ final class BrowserModel {
     private var clipboardMonitorTask: Task<Void, Never>?
     private var lastPasteboardChangeCount: Int?
 
+    /// Derived indexes are rebuilt only when the visible ordering changes. They
+    /// are deliberately ignored by Observation: UI dependencies belong to the
+    /// source arrays, while selection/navigation uses these for constant-time
+    /// identity resolution.
+    @ObservationIgnored private var orderedItemByID: [MediaItem.ID: MediaItem] = [:]
+    @ObservationIgnored private var orderedItemIndexByID: [MediaItem.ID: Int] = [:]
+    @ObservationIgnored private var selectionSnapshot: Set<MediaItem.ID> = []
+    @ObservationIgnored private var selectionStateByID: [MediaItem.ID: MediaItemSelectionState] = [:]
+
     // MARK: - Lifecycle
 
     init() {
@@ -718,7 +749,8 @@ final class BrowserModel {
     // MARK: - Creator organization
 
     var canOrganizeSelection: Bool {
-        actionItemsPreview(clicked: nil).contains { $0.libraryID != nil }
+        if let viewerItem { return viewerItem.libraryID != nil }
+        return selectedItemIDs.contains { orderedItemByID[$0]?.libraryID != nil }
     }
 
     private var selectedLibraryAssetIDs: [UUID] {
@@ -730,14 +762,14 @@ final class BrowserModel {
     func actionItemsPreview(clicked item: MediaItem?) -> [MediaItem] {
         if let item {
             if selectedItemIDs.contains(item.id) {
-                return orderedItems.filter { selectedItemIDs.contains($0.id) }
+                return selectedItemsInOrder
             }
             return [item]
         }
         if let viewerItem {
             return [viewerItem]
         }
-        return orderedItems.filter { selectedItemIDs.contains($0.id) }
+        return selectedItemsInOrder
     }
 
     /// Whether every organizable item in the pending action is already a
@@ -1035,7 +1067,7 @@ final class BrowserModel {
     func itemsForAction(clicked item: MediaItem?) -> [MediaItem] {
         if let item {
             if selectedItemIDs.contains(item.id) {
-                return orderedItems.filter { selectedItemIDs.contains($0.id) }
+                return selectedItemsInOrder
             }
             selectItem(item)
             return [item]
@@ -1043,7 +1075,7 @@ final class BrowserModel {
         if let viewerItem {
             return [viewerItem]
         }
-        return orderedItems.filter { selectedItemIDs.contains($0.id) }
+        return selectedItemsInOrder
     }
 
     func openFromContextMenu(_ item: MediaItem) {
@@ -1060,10 +1092,10 @@ final class BrowserModel {
     var getInfoTarget: MediaItem? {
         if let viewerItem { return viewerItem }
         if let focusedItemID,
-           let focused = orderedItems.first(where: { $0.id == focusedItemID }) {
+           let focused = orderedItemByID[focusedItemID] {
             return focused
         }
-        return orderedItems.first { selectedItemIDs.contains($0.id) }
+        return selectedItemsInOrder.first
     }
 
     func registerInfoItem(_ item: MediaItem) {
@@ -1315,7 +1347,7 @@ final class BrowserModel {
     /// URLs to put on the pasteboard for a drag starting at `item`.
     func prepareDrag(from item: MediaItem) -> [URL] {
         if selectedItemIDs.contains(item.id) {
-            return orderedItems.filter { selectedItemIDs.contains($0.id) }.map(\.url)
+            return selectedItemsInOrder.map(\.url)
         }
         selectItem(item)
         return [item.url]
@@ -1694,6 +1726,7 @@ final class BrowserModel {
             playingAudioID = nil
             viewerItemID = nil
             selectedItemIDs = []
+            selectionStateByID.removeAll(keepingCapacity: true)
             selectionAnchorID = nil
             focusedItemID = nil
         }
@@ -1768,6 +1801,7 @@ final class BrowserModel {
     /// Keep selection, playback and the viewer inside the active tab, and drop
     /// anything that refers to a file the current listing no longer contains.
     private func isolateCurrentTab() {
+        rebuildOrderedItemIndexes()
         let visibleIDs = Set(orderedItems.map(\.id))
         selectedItemIDs.formIntersection(visibleIDs)
 
@@ -1789,9 +1823,7 @@ final class BrowserModel {
         }
 
         if let focusedItemID, !visibleIDs.contains(focusedItemID) {
-            self.focusedItemID = orderedItems.first {
-                selectedItemIDs.contains($0.id)
-            }?.id
+            self.focusedItemID = selectedItemsInOrder.first?.id
         }
         if let selectionAnchorID, !visibleIDs.contains(selectionAnchorID) {
             self.selectionAnchorID = focusedItemID
@@ -1885,6 +1917,56 @@ final class BrowserModel {
         }
     }
 
+    /// The focused item without a linear walk through a potentially huge folder.
+    var focusedItem: MediaItem? {
+        focusedItemID.flatMap { orderedItemByID[$0] }
+    }
+
+    /// Stable, fine-grained highlight state for a rendered row or grid cell.
+    func selectionState(for id: MediaItem.ID) -> MediaItemSelectionState {
+        if let state = selectionStateByID[id] { return state }
+        let state = MediaItemSelectionState(isSelected: selectionSnapshot.contains(id))
+        selectionStateByID[id] = state
+        return state
+    }
+
+    /// Resolve the selection in visible sort order. The common one-item case is
+    /// constant time; large range selections avoid an O(k log k) sort by walking
+    /// the already ordered array once.
+    private var selectedItemsInOrder: [MediaItem] {
+        guard !selectedItemIDs.isEmpty else { return [] }
+        if selectedItemIDs.count == 1,
+           let id = selectedItemIDs.first,
+           let item = orderedItemByID[id] {
+            return [item]
+        }
+        if selectedItemIDs.count * 2 >= orderedItems.count {
+            return orderedItems.filter { selectedItemIDs.contains($0.id) }
+        }
+        return selectedItemIDs.compactMap { id -> (Int, MediaItem)? in
+            guard let item = orderedItemByID[id],
+                  let index = orderedItemIndexByID[id]
+            else { return nil }
+            return (index, item)
+        }
+        .sorted { $0.0 < $1.0 }
+        .map(\.1)
+    }
+
+    private func rebuildOrderedItemIndexes() {
+        let items = orderedItems
+        var itemsByID: [MediaItem.ID: MediaItem] = [:]
+        var indicesByID: [MediaItem.ID: Int] = [:]
+        itemsByID.reserveCapacity(items.count)
+        indicesByID.reserveCapacity(items.count)
+        for (index, item) in items.enumerated() {
+            itemsByID[item.id] = item
+            indicesByID[item.id] = index
+        }
+        orderedItemByID = itemsByID
+        orderedItemIndexByID = indicesByID
+    }
+
     /// Update the selection for a click on `item`.
     ///
     /// - `extend`: Shift-click — select the range from the anchor to `item`.
@@ -1916,8 +1998,8 @@ final class BrowserModel {
 
     private func selectRange(from: MediaItem.ID, to: MediaItem.ID) {
         let ordered = orderedItems
-        guard let a = ordered.firstIndex(where: { $0.id == from }),
-              let b = ordered.firstIndex(where: { $0.id == to })
+        guard let a = orderedItemIndexByID[from],
+              let b = orderedItemIndexByID[to]
         else {
             selectedItemIDs = [to]
             return
@@ -1967,8 +2049,7 @@ final class BrowserModel {
         guard !ordered.isEmpty else { return }
 
         let cols = max(1, columns)
-        let currentIndex = focusedItemID
-            .flatMap { id in ordered.firstIndex { $0.id == id } } ?? 0
+        let currentIndex = focusedItemID.flatMap { orderedItemIndexByID[$0] } ?? 0
 
         var target: Int
         switch direction {
@@ -1997,13 +2078,12 @@ final class BrowserModel {
     /// an image or video, otherwise the first selected visual item. Audio-only
     /// selections do nothing (audio is not previewable).
     func openPreview() {
-        if let focusedItemID,
-           let focused = orderedItems.first(where: { $0.id == focusedItemID }),
+        if let focused = focusedItem,
            focused.type != .audio {
             openViewer(focused)
             return
         }
-        if let firstVisual = visualItems.first(where: { selectedItemIDs.contains($0.id) }) {
+        if let firstVisual = selectedItemsInOrder.first(where: { $0.type != .audio }) {
             openViewer(firstVisual)
         }
     }
@@ -2021,7 +2101,7 @@ final class BrowserModel {
     /// `playingVideoID`, audio toggles `playingAudioID`, images are ignored.
     func togglePlaybackOfFocusedItem() {
         guard let focusedItemID,
-              let item = orderedItems.first(where: { $0.id == focusedItemID })
+              let item = orderedItemByID[focusedItemID]
         else { return }
 
         switch item.type {

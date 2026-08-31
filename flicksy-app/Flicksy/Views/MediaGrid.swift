@@ -16,6 +16,8 @@ struct MediaGrid: View {
     let selectionCoordinateSpace: String
     let onSelectionFrameChange: (MediaItem.ID, UUID, CGRect?) -> Void
 
+    @Environment(BrowserModel.self) private var model
+
     private var gridColumns: [GridItem] {
         [GridItem(.adaptive(minimum: thumbnailSize), spacing: 12)]
     }
@@ -38,12 +40,14 @@ struct MediaGrid: View {
                     case .image:
                         ImageCell(
                             item: item,
+                            selectionState: model.selectionState(for: item.id),
                             targetPixels: targetPixels,
                             cardAspectRatio: cardAspectRatio
                         )
                     case .video:
                         VideoCell(
                             item: item,
+                            selectionState: model.selectionState(for: item.id),
                             targetPixels: targetPixels,
                             cardAspectRatio: cardAspectRatio
                         )

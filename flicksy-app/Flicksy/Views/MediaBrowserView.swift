@@ -24,6 +24,10 @@ struct MediaBrowserView: View {
     /// current column count after toolbar or pinch zoom changes the tile size.
     @State private var browserWidth: CGFloat = 0
 
+    /// Visible scroll viewport used to avoid asking ScrollViewReader to locate
+    /// an item that is already fully on screen.
+    @State private var browserViewportSize: CGSize = .zero
+
     /// Live magnification while a trackpad pinch is in progress. The persisted
     /// thumbnail size is committed only when the gesture ends.
     @GestureState private var gridMagnification: CGFloat = 1
@@ -135,7 +139,7 @@ struct MediaBrowserView: View {
                         otherTabHint: nil
                     )
                 } else {
-                    scrollingPane(allList)
+                    scrollingPane(allList, axes: [.horizontal, .vertical])
                 }
             case .visual:
                 if model.visualItems.isEmpty {
@@ -156,7 +160,7 @@ struct MediaBrowserView: View {
                         otherTabHint: model.visualItems.isEmpty ? nil : "Matching images and video are in the Images & Video tab."
                     )
                 } else {
-                    scrollingPane(audioList)
+                    scrollingPane(audioList, axes: [.horizontal, .vertical])
                         .safeAreaInset(edge: .bottom) {
                             if let item = model.selectedAudioItem {
                                 AudioInspectorPanel(item: item)
@@ -167,9 +171,12 @@ struct MediaBrowserView: View {
         }
     }
 
-    private func scrollingPane<Content: View>(_ content: Content) -> some View {
+    private func scrollingPane<Content: View>(
+        _ content: Content,
+        axes: Axis.Set = .vertical
+    ) -> some View {
         ScrollViewReader { proxy in
-            ScrollView {
+            ScrollView(axes) {
                 content
                     .padding(16)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -178,6 +185,9 @@ struct MediaBrowserView: View {
                     }
             }
             .coordinateSpace(name: Self.selectionCoordinateSpace)
+            .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
+                browserViewportSize = size
+            }
             .simultaneousGesture(marqueeSelectionGesture)
             .overlay {
                 if let marqueeRect {
@@ -190,12 +200,19 @@ struct MediaBrowserView: View {
                 }
             }
             .clipped()
-            .onChange(of: model.focusedItemID) { _, id in
+            .onChange(of: model.focusedItemID) {
+                let id = model.focusedItemID
                 guard shouldScrollFocusIntoView, let id else { return }
                 shouldScrollFocusIntoView = false
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    proxy.scrollTo(id, anchor: .center)
+                if let frame = selectionFrames[id]?.frame,
+                   browserViewportSize.height > 0,
+                   frame.minY >= 0,
+                   frame.maxY <= browserViewportSize.height {
+                    return
                 }
+                // With no anchor SwiftUI moves only when needed and by the
+                // shortest distance. Selection itself remains instantaneous.
+                proxy.scrollTo(id)
             }
         }
     }
@@ -216,7 +233,6 @@ struct MediaBrowserView: View {
     private var allList: some View {
         AllMetadataList(
             items: model.allItems,
-            selectedItemIDs: model.selectedItemIDs,
             selectionCoordinateSpace: Self.selectionCoordinateSpace,
             onSelectionFrameChange: { id, reporterID, frame in
                 guard model.libraryTab == .all else { return }
@@ -246,10 +262,6 @@ struct MediaBrowserView: View {
     private var audioList: some View {
         AudioSection(
             items: model.audioItems,
-            // Keep selection in this parent dependency graph. The inspector
-            // already invalidates here; relying on a nested lazy list to observe
-            // the model can leave its cached row backgrounds stale.
-            selectedItemIDs: model.selectedItemIDs,
             selectionCoordinateSpace: Self.selectionCoordinateSpace,
             onSelectionFrameChange: { id, reporterID, frame in
                 guard model.libraryTab == .audio else { return }
@@ -433,8 +445,7 @@ struct MediaBrowserView: View {
 
     private var shouldSpaceTogglePlayback: Bool {
         if model.libraryTab == .audio { return true }
-        if let focusedItemID = model.focusedItemID,
-           let item = model.orderedItems.first(where: { $0.id == focusedItemID }),
+        if let item = model.focusedItem,
            item.type == .audio {
             return true
         }

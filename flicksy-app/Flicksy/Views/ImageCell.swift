@@ -12,6 +12,7 @@ import SwiftUI
 /// grid never blocks the main thread decoding images (spec sections 10 and 23).
 struct ImageCell: View {
     let item: MediaItem
+    let selectionState: MediaItemSelectionState
     let targetPixels: CGFloat
     let cardAspectRatio: CGFloat
 
@@ -23,7 +24,7 @@ struct ImageCell: View {
     @State private var didFail = false
     @State private var cardSize: CGSize = .zero
 
-    private var isSelected: Bool { model.selectedItemIDs.contains(item.id) }
+    private var isSelected: Bool { selectionState.isSelected }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {

@@ -15,6 +15,7 @@ import SwiftUI
 /// `AVPlayer` is ever alive in the grid.
 struct VideoCell: View {
     let item: MediaItem
+    let selectionState: MediaItemSelectionState
     let targetPixels: CGFloat
     let cardAspectRatio: CGFloat
 
@@ -32,7 +33,7 @@ struct VideoCell: View {
 
     private var isActive: Bool { model.playingVideoID == item.id }
 
-    private var isSelected: Bool { model.selectedItemIDs.contains(item.id) }
+    private var isSelected: Bool { selectionState.isSelected }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {

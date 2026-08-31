@@ -6,36 +6,35 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Finder-style audio list with stable, scannable metadata columns. A horizontal
-/// scroll view preserves the columns when the detail pane is narrow.
+/// Finder-style audio list with stable, scannable metadata columns. Its parent
+/// owns both scroll axes so the lazy stack remains directly inside one viewport.
 struct AudioMetadataList: View {
     let items: [MediaItem]
-    let selectedItemIDs: Set<MediaItem.ID>
     let selectionCoordinateSpace: String
     let onSelectionFrameChange: (MediaItem.ID, UUID, CGRect?) -> Void
 
+    @Environment(BrowserModel.self) private var model
+
     var body: some View {
-        ScrollView(.horizontal) {
-            LazyVStack(spacing: 0) {
-                header
+        LazyVStack(spacing: 0) {
+            header
 
-                Divider()
+            Divider()
 
-                ForEach(items) { item in
-                    AudioMetadataRow(
-                        item: item,
-                        isSelected: selectedItemIDs.contains(item.id)
+            ForEach(items) { item in
+                AudioMetadataRow(
+                    item: item,
+                    selectionState: model.selectionState(for: item.id)
+                )
+                    .id(item.id)
+                    .reportSelectionFrame(
+                        for: item,
+                        coordinateSpace: selectionCoordinateSpace,
+                        onChange: onSelectionFrameChange
                     )
-                        .id(item.id)
-                        .reportSelectionFrame(
-                            for: item,
-                            coordinateSpace: selectionCoordinateSpace,
-                            onChange: onSelectionFrameChange
-                        )
-                }
             }
-            .frame(minWidth: AudioListColumns.totalWidth, alignment: .leading)
         }
+        .frame(minWidth: AudioListColumns.totalWidth, alignment: .leading)
     }
 
     private var header: some View {
@@ -86,7 +85,7 @@ private enum AudioListColumns {
 
 private struct AudioMetadataRow: View {
     let item: MediaItem
-    let isSelected: Bool
+    let selectionState: MediaItemSelectionState
 
     @Environment(BrowserModel.self) private var model
 
@@ -121,7 +120,7 @@ private struct AudioMetadataRow: View {
         .padding(.vertical, 6)
         .background {
             Rectangle()
-                .fill(.quaternary.opacity(isSelected ? 0.5 : 0))
+                .fill(.quaternary.opacity(selectionState.isSelected ? 0.5 : 0))
         }
         .overlay(alignment: .bottom) {
             Divider()

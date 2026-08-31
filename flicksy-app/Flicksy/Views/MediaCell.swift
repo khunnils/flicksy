@@ -179,12 +179,24 @@ private struct SelectableCellModifier: ViewModifier {
     let item: MediaItem
     let model: BrowserModel
 
+    /// A zero-distance drag receives the initial pointer-down immediately. Keep
+    /// one selection per press while still allowing the outer file-drag gesture
+    /// and the double-click recognizer to run simultaneously.
+    @State private var didSelectForCurrentPress = false
+
     func body(content: Content) -> some View {
         content
             .contentShape(Rectangle())
             .simultaneousGesture(
-                LongPressGesture(minimumDuration: 0)
-                    .onEnded { _ in select() }
+                DragGesture(minimumDistance: 0, coordinateSpace: .local)
+                    .onChanged { _ in
+                        guard !didSelectForCurrentPress else { return }
+                        didSelectForCurrentPress = true
+                        select()
+                    }
+                    .onEnded { _ in
+                        didSelectForCurrentPress = false
+                    }
             )
             .simultaneousGesture(
                 TapGesture(count: 2)
