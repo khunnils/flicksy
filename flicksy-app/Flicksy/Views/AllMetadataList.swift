@@ -10,17 +10,11 @@ import UniformTypeIdentifiers
 /// are intentionally limited to metadata that is meaningful across media types.
 struct AllMetadataList: View {
     let items: [MediaItem]
+    let selectedItemIDs: Set<MediaItem.ID>
     let selectionCoordinateSpace: String
     let onSelectionFrameChange: (MediaItem.ID, UUID, CGRect?) -> Void
 
-    @Environment(BrowserModel.self) private var model
-
     var body: some View {
-        // Read selection in the parent so LazyVStack rows receive an explicit
-        // `isSelected` input. Rows that only observe the model via Environment
-        // can miss invalidation and keep a stale highlight.
-        let selectedIDs = model.selectedItemIDs
-
         ScrollView(.horizontal) {
             LazyVStack(spacing: 0) {
                 header
@@ -29,7 +23,7 @@ struct AllMetadataList: View {
                 ForEach(items) { item in
                     AllMetadataRow(
                         item: item,
-                        isSelected: selectedIDs.contains(item.id)
+                        isSelected: selectedItemIDs.contains(item.id)
                     )
                         .id(item.id)
                         .reportSelectionFrame(

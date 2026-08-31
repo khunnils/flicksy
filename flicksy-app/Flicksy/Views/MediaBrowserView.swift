@@ -205,6 +205,7 @@ struct MediaBrowserView: View {
     private var allList: some View {
         AllMetadataList(
             items: model.allItems,
+            selectedItemIDs: model.selectedItemIDs,
             selectionCoordinateSpace: Self.selectionCoordinateSpace,
             onSelectionFrameChange: { id, reporterID, frame in
                 guard model.libraryTab == .all else { return }
@@ -234,6 +235,10 @@ struct MediaBrowserView: View {
     private var audioList: some View {
         AudioSection(
             items: model.audioItems,
+            // Keep selection in this parent dependency graph. The inspector
+            // already invalidates here; relying on a nested lazy list to observe
+            // the model can leave its cached row backgrounds stale.
+            selectedItemIDs: model.selectedItemIDs,
             selectionCoordinateSpace: Self.selectionCoordinateSpace,
             onSelectionFrameChange: { id, reporterID, frame in
                 guard model.libraryTab == .audio else { return }
