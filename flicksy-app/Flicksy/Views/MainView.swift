@@ -109,6 +109,13 @@ struct MainView: View {
         } message: {
             Text(model.organizationError ?? "")
         }
+        .sheet(item: Binding(
+            get: { model.editAudioTagsItem },
+            set: { model.editAudioTagsItem = $0 }
+        )) { item in
+            AudioTagsEditor(item: item)
+                .environment(model)
+        }
     }
 
     private var selectedSourceTitle: String {

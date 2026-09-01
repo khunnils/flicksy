@@ -73,6 +73,14 @@ struct MediaItemInteractionsModifier: ViewModifier {
             Label("Get Info", systemImage: "info.circle")
         }
 
+        if AudioTagService.canWrite(url: item.url) {
+            Button {
+                model.presentAudioTagsEditor(for: item)
+            } label: {
+                Label("Edit Meta Tags…", systemImage: "music.note.list")
+            }
+        }
+
         Divider()
 
         if item.libraryID != nil {

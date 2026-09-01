@@ -213,6 +213,12 @@ private struct GetInfoCommands: Commands {
             }
             .keyboardShortcut("i", modifiers: .command)
             .disabled(model.getInfoTarget == nil)
+
+            Button("Edit Meta Tags…") {
+                guard let item = model.editAudioTagsTarget else { return }
+                model.presentAudioTagsEditor(for: item)
+            }
+            .disabled(model.editAudioTagsTarget == nil)
         }
     }
 }

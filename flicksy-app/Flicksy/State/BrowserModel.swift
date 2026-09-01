@@ -222,11 +222,15 @@ final class BrowserModel {
     /// owns keyboard focus.
     var isQuickGotoFieldFocused = false
 
+    /// The MP3 whose meta-tag editor sheet is open. Also used so Command-C copies
+    /// field text instead of the selected files while the dialog is up.
+    var editAudioTagsItem: MediaItem?
+
     /// Drives the window-level keyboard shortcuts helper opened by Command-/.
     var isShortcutsHelpPresented = false
 
     var isTextFieldFocused: Bool {
-        isSearchFieldFocused || isQuickGotoFieldFocused
+        isSearchFieldFocused || isQuickGotoFieldFocused || editAudioTagsItem != nil
     }
 
     func presentQuickGoto() {
@@ -626,6 +630,16 @@ final class BrowserModel {
         }
     }
 
+    /// Write Apple Music Details tags onto an audio file and refresh listings.
+    func saveAudioTags(_ tags: AudioTags, for item: MediaItem) async throws {
+        if playingAudioID == item.id {
+            playingAudioID = nil
+            isAudioPlaying = false
+        }
+        try await AudioTagService.write(tags, to: item.url)
+        noteRewrittenFile(at: item.url)
+    }
+
     /// Keep the open viewer and listing in sync after an in-place rewrite so
     /// `contentVersion` changes and previews reload.
     private func noteRewrittenFile(at url: URL, pixelSize: CGSize? = nil, duration: TimeInterval? = nil) {
@@ -643,6 +657,19 @@ final class BrowserModel {
                 mediaItems[index].duration = duration
             }
             rebuildVisibleItems()
+        }
+        for (id, snapshot) in infoItems where snapshot.url.standardizedFileURL == url.standardizedFileURL {
+            var updated = snapshot
+            updated.fileSize = size
+            updated.modifiedAt = modified
+            if let pixelSize {
+                updated.width = Int(pixelSize.width.rounded())
+                updated.height = Int(pixelSize.height.rounded())
+            }
+            if let duration {
+                updated.duration = duration
+            }
+            infoItems[id] = updated
         }
         if let pixelSize {
             cropImageSize = pixelSize
@@ -1120,6 +1147,17 @@ final class BrowserModel {
             return focused
         }
         return selectedItemsInOrder.first
+    }
+
+    /// The single MP3 targeted by Edit Meta Tags.
+    var editAudioTagsTarget: MediaItem? {
+        guard let item = getInfoTarget, AudioTagService.canWrite(url: item.url) else { return nil }
+        return item
+    }
+
+    func presentAudioTagsEditor(for item: MediaItem) {
+        guard AudioTagService.canWrite(url: item.url) else { return }
+        editAudioTagsItem = item
     }
 
     func registerInfoItem(_ item: MediaItem) {
