@@ -75,7 +75,7 @@ struct MediaItemInteractionsModifier: ViewModifier {
 
         if AudioTagService.canWrite(url: item.url) {
             Button {
-                model.presentAudioTagsEditor(for: item)
+                model.presentAudioTagsEditor(clicked: item)
             } label: {
                 Label("Edit Meta Tags…", systemImage: "music.note.list")
             }
@@ -298,15 +298,15 @@ private final class PassThroughView: NSView {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
-/// Shared drag source for file-URL sessions. Copy-only: the app never moves
-/// or deletes files as a result of a drop.
+/// Shared drag source for file-URL sessions. Flicksy folder drops are moves;
+/// drags into Finder and other apps remain copies so external behavior stays safe.
 final class FileDragSource: NSObject, NSDraggingSource {
     static let shared = FileDragSource()
 
     var onEnd: (() -> Void)?
 
     func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
-        .copy
+        context == .withinApplication ? .move : .copy
     }
 
     func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {

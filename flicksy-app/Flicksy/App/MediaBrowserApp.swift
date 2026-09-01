@@ -215,10 +215,9 @@ private struct GetInfoCommands: Commands {
             .disabled(model.getInfoTarget == nil)
 
             Button("Edit Meta Tags…") {
-                guard let item = model.editAudioTagsTarget else { return }
-                model.presentAudioTagsEditor(for: item)
+                model.presentAudioTagsEditor()
             }
-            .disabled(model.editAudioTagsTarget == nil)
+            .disabled(model.editAudioTagsTargets.isEmpty)
         }
     }
 }

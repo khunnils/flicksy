@@ -12,6 +12,7 @@ struct FolderSidebar: View {
     @State private var expandedFolderIDs: Set<MediaFolder.ID> = []
     @State private var editor: SidebarEditor?
     @State private var dropTargetCollectionID: MediaCollection.ID?
+    @State private var dropTargetStandardFolder: StandardBrowserFolder?
     @State private var isFoldersDropTargeted = false
 
     var body: some View {
@@ -25,7 +26,21 @@ struct FolderSidebar: View {
                     .sidebarSource(.clipboard, selected: model.selectedSource)
                 ForEach(StandardBrowserFolder.allCases, id: \.self) { folder in
                     Label(folder.title, systemImage: folder.systemImage)
-                        .sidebarSource(.standardFolder(folder), selected: model.selectedSource)
+                        .sidebarSource(
+                            .standardFolder(folder),
+                            selected: model.selectedSource,
+                            isDropTarget: dropTargetStandardFolder == folder
+                        )
+                        .dropDestination(for: URL.self) { urls, _ in
+                            dropTargetStandardFolder = nil
+                            return model.moveDraggedMedia(urls, into: folder)
+                        } isTargeted: { isTargeted in
+                            if isTargeted {
+                                dropTargetStandardFolder = folder
+                            } else if dropTargetStandardFolder == folder {
+                                dropTargetStandardFolder = nil
+                            }
+                        }
                 }
             }
 
@@ -309,11 +324,16 @@ private struct FolderTreeRow: View {
     let folder: MediaFolder
     @Binding var expandedFolderIDs: Set<MediaFolder.ID>
     @State private var isHovering = false
+    @State private var isDropTargeted = false
 
     var body: some View {
         if folder.children.isEmpty {
             folderRow
-                .sidebarSource(.folder(folder.id), selected: model.selectedSource)
+                .sidebarSource(
+                    .folder(folder.id),
+                    selected: model.selectedSource,
+                    isDropTarget: isDropTargeted
+                )
                 .listRowInsets(Self.rowInsets)
         } else {
             DisclosureGroup(isExpanded: isExpanded) {
@@ -324,7 +344,11 @@ private struct FolderTreeRow: View {
                 folderRow(togglesExpansion: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .sidebarSource(.folder(folder.id), selected: model.selectedSource)
+            .sidebarSource(
+                .folder(folder.id),
+                selected: model.selectedSource,
+                isDropTarget: isDropTargeted
+            )
             .listRowInsets(Self.rowInsets)
         }
     }
@@ -358,6 +382,10 @@ private struct FolderTreeRow: View {
             }
         }
         .onHover { isHovering = $0 }
+        .dropDestination(for: URL.self) { urls, _ in
+            isDropTargeted = false
+            return model.moveDraggedMedia(urls, into: folder.url)
+        } isTargeted: { isDropTargeted = $0 }
         .contextMenu {
             Button("Reveal in Finder") { model.revealInFinder(folder) }
             Divider()
@@ -412,9 +440,16 @@ private struct FolderTreeRow: View {
 // MARK: - Neutral sidebar selection
 
 private extension View {
-    func sidebarSource(_ source: BrowserSource, selected: BrowserSource?) -> some View {
+    func sidebarSource(
+        _ source: BrowserSource,
+        selected: BrowserSource?,
+        isDropTarget: Bool = false
+    ) -> some View {
         tag(source)
-            .listRowBackground(SidebarRowBackground(isSelected: selected == source))
+            .listRowBackground(SidebarRowBackground(
+                isSelected: selected == source,
+                isDropTarget: isDropTarget
+            ))
     }
 }
 

@@ -104,6 +104,67 @@ final class AudioTagServiceTests: XCTestCase {
         XCTAssertNil(AudioTagIndex.joined(number: "", count: ""))
     }
 
+    func testConsensusMarksDifferingFieldsMixedAndKeepsSharedValues() {
+        var a = sampleTags()
+        var b = sampleTags()
+        b.title = "Dawn Drive"
+        b.trackNumber = "5"
+        b.artist = "The Couriers"
+        a.album = "Interstate"
+        b.album = "Interstate"
+
+        let consensus = AudioTags.consensus(of: [a, b])
+        XCTAssertEqual(consensus.values.album, "Interstate")
+        XCTAssertEqual(consensus.values.artist, "The Couriers")
+        XCTAssertTrue(consensus.mixed.contains(.title))
+        XCTAssertTrue(consensus.mixed.contains(.trackNumber))
+        XCTAssertFalse(consensus.mixed.contains(.album))
+        XCTAssertFalse(consensus.mixed.contains(.artist))
+        XCTAssertEqual(consensus.values.title, "")
+        XCTAssertEqual(consensus.values.trackNumber, "")
+    }
+
+    func testApplyingOverlayWritesOnlyRequestedFields() {
+        let original = sampleTags()
+        var overlay = AudioTags.empty
+        overlay.album = "Night Roads"
+        overlay.artist = "The Couriers"
+        overlay.title = "Should Not Apply"
+
+        let merged = original.applying(overlay, fields: [.album, .artist])
+        XCTAssertEqual(merged.album, "Night Roads")
+        XCTAssertEqual(merged.artist, "The Couriers")
+        XCTAssertEqual(merged.title, original.title)
+        XCTAssertEqual(merged.trackNumber, original.trackNumber)
+        XCTAssertEqual(merged.isCompilation, original.isCompilation)
+    }
+
+    func testBatchAlbumWriteLeavesPerFileTitles() throws {
+        let first = uniqueURL(extension: "mp3")
+        let second = uniqueURL(extension: "mp3")
+        var tagsA = sampleTags()
+        tagsA.title = "Track A"
+        tagsA.album = "Old"
+        var tagsB = sampleTags()
+        tagsB.title = "Track B"
+        tagsB.album = "Old"
+        try writeTagged(tagsA, to: first)
+        try writeTagged(tagsB, to: second)
+
+        var overlay = AudioTags.empty
+        overlay.album = "New Album"
+        try ID3Tag.write(tagsA.applying(overlay, fields: [.album]), to: first)
+        try ID3Tag.write(tagsB.applying(overlay, fields: [.album]), to: second)
+
+        let parsedA = ID3Tag.parse(try Data(contentsOf: first))?.tags
+        let parsedB = ID3Tag.parse(try Data(contentsOf: second))?.tags
+        XCTAssertEqual(parsedA?.title, "Track A")
+        XCTAssertEqual(parsedB?.title, "Track B")
+        XCTAssertEqual(parsedA?.album, "New Album")
+        XCTAssertEqual(parsedB?.album, "New Album")
+        XCTAssertEqual(parsedA?.artist, sampleTags().artist)
+    }
+
     // MARK: - Fixtures
 
     private func sampleTags() -> AudioTags {
@@ -131,5 +192,11 @@ final class AudioTagServiceTests: XCTestCase {
             .appending(path: "FlicksyTags-\(UUID().uuidString).\(fileExtension)")
         scratchURLs.append(url)
         return url
+    }
+
+    private func writeTagged(_ tags: AudioTags, to url: URL) throws {
+        var file = ID3Tag.encode(tags)
+        file.append(contentsOf: Array("AUDIO".utf8))
+        try file.write(to: url)
     }
 }

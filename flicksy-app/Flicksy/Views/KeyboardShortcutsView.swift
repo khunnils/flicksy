@@ -134,6 +134,7 @@ struct KeyboardShortcutsView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
     }
 
     private var header: some View {

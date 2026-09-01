@@ -45,6 +45,45 @@ nonisolated struct AudioTags: Equatable, Sendable {
         )
     }
 
+    /// Overwrites only `fields` from `overlay`, leaving every other value as-is.
+    func applying(_ overlay: AudioTags, fields: Set<AudioTagField>) -> AudioTags {
+        var result = self
+        for field in fields {
+            if let path = field.stringKeyPath {
+                result[keyPath: path] = overlay[keyPath: path]
+            } else if field == .isCompilation {
+                result.isCompilation = overlay.isCompilation
+            }
+        }
+        return result
+    }
+
+    /// Shared values across `tags`. Differing fields are empty and listed in `mixed`.
+    static func consensus(of tags: [AudioTags]) -> (values: AudioTags, mixed: Set<AudioTagField>) {
+        guard let first = tags.first?.normalized else { return (.empty, []) }
+        guard tags.count > 1 else { return (first, []) }
+
+        let normalized = tags.map(\.normalized)
+        var values = first
+        var mixed: Set<AudioTagField> = []
+
+        for field in AudioTagField.allCases {
+            if let path = field.stringKeyPath {
+                let unique = Set(normalized.map { $0[keyPath: path] })
+                if unique.count > 1 {
+                    mixed.insert(field)
+                    values[keyPath: path] = ""
+                }
+            } else if field == .isCompilation {
+                if Set(normalized.map(\.isCompilation)).count > 1 {
+                    mixed.insert(.isCompilation)
+                    values.isCompilation = false
+                }
+            }
+        }
+        return (values, mixed)
+    }
+
     /// Fills blank fields from `other` without overwriting values already set.
     func fillingEmpty(from other: AudioTags) -> AudioTags {
         AudioTags(
@@ -64,6 +103,35 @@ nonisolated struct AudioTags: Equatable, Sendable {
             bpm: bpm.or(other.bpm),
             isCompilation: isCompilation || other.isCompilation
         )
+    }
+}
+
+/// One Details field. Used so a multi-file edit can write only the values the
+/// user actually changed, leaving mixed per-file data (names, track numbers)
+/// untouched.
+nonisolated enum AudioTagField: Hashable, CaseIterable, Sendable {
+    case title, artist, albumArtist, album, grouping, composer, comments
+    case genre, year, trackNumber, trackCount, discNumber, discCount, bpm
+    case isCompilation
+
+    var stringKeyPath: WritableKeyPath<AudioTags, String>? {
+        switch self {
+        case .title: \.title
+        case .artist: \.artist
+        case .albumArtist: \.albumArtist
+        case .album: \.album
+        case .grouping: \.grouping
+        case .composer: \.composer
+        case .comments: \.comments
+        case .genre: \.genre
+        case .year: \.year
+        case .trackNumber: \.trackNumber
+        case .trackCount: \.trackCount
+        case .discNumber: \.discNumber
+        case .discCount: \.discCount
+        case .bpm: \.bpm
+        case .isCompilation: nil
+        }
     }
 }
 
@@ -89,7 +157,7 @@ nonisolated enum AudioTagIndex {
     }
 }
 
-private extension String {
+nonisolated private extension String {
     var trimmed: String {
         trimmingCharacters(in: .whitespacesAndNewlines)
     }

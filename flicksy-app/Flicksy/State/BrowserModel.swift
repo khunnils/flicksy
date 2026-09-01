@@ -22,6 +22,13 @@ struct PendingTagMerge: Identifiable {
     let color: LibraryTagColor
 }
 
+/// MP3s opened in the Edit Meta Tags sheet. `id` is stable for the sheet while
+/// those files stay selected.
+struct AudioTagsEditRequest: Identifiable, Equatable {
+    let items: [MediaItem]
+    var id: String { items.map(\.id).joined(separator: "\u{1e}") }
+}
+
 /// A sidebar selection can be a real media folder or Flicksy's app-owned virtual
 /// clipboard history.
 enum BrowserSource: Hashable {
@@ -251,15 +258,15 @@ final class BrowserModel {
     /// owns keyboard focus.
     var isQuickGotoFieldFocused = false
 
-    /// The MP3 whose meta-tag editor sheet is open. Also used so Command-C copies
+    /// The MP3s whose meta-tag editor sheet is open. Also used so Command-C copies
     /// field text instead of the selected files while the dialog is up.
-    var editAudioTagsItem: MediaItem?
+    var editAudioTagsRequest: AudioTagsEditRequest?
 
     /// Drives the window-level keyboard shortcuts helper opened by Command-/.
     var isShortcutsHelpPresented = false
 
     var isTextFieldFocused: Bool {
-        isSearchFieldFocused || isQuickGotoFieldFocused || editAudioTagsItem != nil
+        isSearchFieldFocused || isQuickGotoFieldFocused || editAudioTagsRequest != nil
     }
 
     func presentQuickGoto() {
@@ -668,14 +675,28 @@ final class BrowserModel {
         }
     }
 
-    /// Write Apple Music Details tags onto an audio file and refresh listings.
-    func saveAudioTags(_ tags: AudioTags, for item: MediaItem) async throws {
-        if playingAudioID == item.id {
+    /// Write Apple Music Details tags and refresh listings. When `fields` is set,
+    /// only those fields are copied onto each file’s existing tags.
+    func saveAudioTags(
+        _ tags: AudioTags,
+        applying fields: Set<AudioTagField>? = nil,
+        to items: [MediaItem]
+    ) async throws {
+        if let playing = playingAudioID, items.contains(where: { $0.id == playing }) {
             playingAudioID = nil
             isAudioPlaying = false
         }
-        try await AudioTagService.write(tags, to: item.url)
-        noteRewrittenFile(at: item.url)
+        for item in items {
+            let next: AudioTags
+            if let fields {
+                let current = await AudioTagService.load(from: item.url)
+                next = current.applying(tags, fields: fields)
+            } else {
+                next = tags
+            }
+            try await AudioTagService.write(next, to: item.url)
+            noteRewrittenFile(at: item.url)
+        }
     }
 
     /// Keep the open viewer and listing in sync after an in-place rewrite so
@@ -1226,15 +1247,29 @@ final class BrowserModel {
         return selectedItemsInOrder.first
     }
 
-    /// The single MP3 targeted by Edit Meta Tags.
-    var editAudioTagsTarget: MediaItem? {
-        guard let item = getInfoTarget, AudioTagService.canWrite(url: item.url) else { return nil }
-        return item
+    /// MP3s the File menu should open in Edit Meta Tags: the viewer clip, or every
+    /// writable MP3 in the selection.
+    var editAudioTagsTargets: [MediaItem] {
+        if let viewerItem {
+            return AudioTagService.canWrite(url: viewerItem.url) ? [viewerItem] : []
+        }
+        let selected = selectedItemsInOrder.filter { AudioTagService.canWrite(url: $0.url) }
+        if !selected.isEmpty { return selected }
+        if let item = getInfoTarget, AudioTagService.canWrite(url: item.url) {
+            return [item]
+        }
+        return []
     }
 
-    func presentAudioTagsEditor(for item: MediaItem) {
-        guard AudioTagService.canWrite(url: item.url) else { return }
-        editAudioTagsItem = item
+    func presentAudioTagsEditor(clicked item: MediaItem? = nil) {
+        let targets: [MediaItem]
+        if let item {
+            targets = itemsForAction(clicked: item).filter { AudioTagService.canWrite(url: $0.url) }
+        } else {
+            targets = editAudioTagsTargets
+        }
+        guard !targets.isEmpty else { return }
+        editAudioTagsRequest = AudioTagsEditRequest(items: targets)
     }
 
     func registerInfoItem(_ item: MediaItem) {
@@ -1494,6 +1529,59 @@ final class BrowserModel {
         }
         selectItem(item)
         return [item.url]
+    }
+
+    /// Move an internal media drag into a real folder shown in the sidebar.
+    /// External Finder drags are deliberately not accepted here: a drop should
+    /// never unexpectedly move files that were not dragged out of Flicksy.
+    @discardableResult
+    func moveDraggedMedia(_ urls: [URL], into destinationFolder: URL) -> Bool {
+        guard !isClipboardSelected, !urls.isEmpty else { return false }
+
+        let visibleURLs = Set(mediaItems.map { $0.url.standardizedFileURL })
+        let sources = urls.map(\.standardizedFileURL)
+        guard sources.allSatisfy(visibleURLs.contains) else { return false }
+
+        let destination = destinationFolder.standardizedFileURL
+        guard (try? destination.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true,
+              sources.contains(where: {
+                  $0.deletingLastPathComponent().standardizedFileURL != destination
+              })
+        else { return false }
+
+        Task {
+            let result = await Task.detached(priority: .userInitiated) {
+                MediaFileMover.move(sources, into: destination)
+            }.value
+
+            if result.movedCount > 0 {
+                refreshAfterFileMutation(rescanTree: true)
+            }
+            if result.hasFailures {
+                loadError = Self.fileMoveErrorMessage(result, destination: destination)
+            }
+        }
+        return true
+    }
+
+    @discardableResult
+    func moveDraggedMedia(_ urls: [URL], into folder: StandardBrowserFolder) -> Bool {
+        guard let destination = urlForStandardFolder(folder) else { return false }
+        return moveDraggedMedia(urls, into: destination)
+    }
+
+    nonisolated private static func fileMoveErrorMessage(
+        _ result: MediaFileMoveResult,
+        destination: URL
+    ) -> String {
+        let folderName = destination.lastPathComponent
+        if !result.conflictingNames.isEmpty, result.failedNames.isEmpty {
+            if result.conflictingNames.count == 1 {
+                return "A file was not moved to \(folderName) because a file with the same name already exists there."
+            }
+            return "Some files were not moved to \(folderName) because files with the same names already exist there."
+        }
+        return "Some files could not be moved to \(folderName)."
     }
 
     // MARK: - Clipboard history

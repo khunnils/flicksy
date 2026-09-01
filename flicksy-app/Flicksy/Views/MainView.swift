@@ -110,10 +110,10 @@ struct MainView: View {
             Text(model.organizationError ?? "")
         }
         .sheet(item: Binding(
-            get: { model.editAudioTagsItem },
-            set: { model.editAudioTagsItem = $0 }
-        )) { item in
-            AudioTagsEditor(item: item)
+            get: { model.editAudioTagsRequest },
+            set: { model.editAudioTagsRequest = $0 }
+        )) { request in
+            AudioTagsEditor(items: request.items)
                 .environment(model)
         }
     }
