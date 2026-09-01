@@ -6,25 +6,25 @@
 import AppKit
 import Foundation
 
-enum StandardBrowserFolder: String, CaseIterable, Hashable {
+enum StandardBrowserFolder: String, CaseIterable, Hashable, Sendable {
     case desktop
     case downloads
 
-    var title: String {
+    nonisolated var title: String {
         switch self {
         case .desktop: "Desktop"
         case .downloads: "Downloads"
         }
     }
 
-    var systemImage: String {
+    nonisolated var systemImage: String {
         switch self {
         case .desktop: "desktopcomputer"
         case .downloads: "arrow.down.circle"
         }
     }
 
-    var url: URL? {
+    nonisolated var url: URL? {
         let directory: FileManager.SearchPathDirectory = switch self {
         case .desktop: .desktopDirectory
         case .downloads: .downloadsDirectory
@@ -86,6 +86,17 @@ final class StandardFolderStore {
             return folder.url
         case .desktop:
             return entries[folder]?.url ?? requestAccess(to: folder)
+        }
+    }
+
+    /// Return an already-authorized location without presenting a Powerbox panel.
+    /// Global search uses this so opening Cmd-K is always immediate and nonmodal.
+    func availableURL(for folder: StandardBrowserFolder) -> URL? {
+        switch folder {
+        case .downloads:
+            folder.url
+        case .desktop:
+            entries[folder]?.url
         }
     }
 

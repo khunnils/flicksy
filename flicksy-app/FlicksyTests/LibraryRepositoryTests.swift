@@ -180,6 +180,25 @@ final class LibraryRepositoryTests: XCTestCase {
         XCTAssertEqual(item.tags.map(\.name), ["Hero"])
     }
 
+    func testSearchRecordsIncludeFavoriteTagAndCollectionMemberships() async throws {
+        let repo = makeRepository()
+        let root = try makeRoot()
+        try writeFile("photo.png", in: root)
+        try await repo.reconcile(roots: [root])
+        let id = try await repo.query(.all).items.first!.libraryID!
+
+        let tag = try await repo.createTag(name: "Campaign", color: .blue)
+        try await repo.setTag(tag.id, on: [id], enabled: true)
+        try await repo.setFavorite(true, assetIDs: [id])
+        let collection = try await repo.createCollection(name: "Launch")
+        try await repo.add(assetIDs: [id], to: collection.id)
+
+        let record = try await repo.searchRecords().first!
+        XCTAssertTrue(record.item.isFavorite)
+        XCTAssertEqual(record.item.tags.map(\.name), ["Campaign"])
+        XCTAssertEqual(record.collections.map(\.name), ["Launch"])
+    }
+
     // MARK: - Favorites
 
     func testFavoritePersistsAcrossReopen() async throws {

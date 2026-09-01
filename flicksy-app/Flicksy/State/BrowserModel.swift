@@ -31,7 +31,7 @@ struct AudioTagsEditRequest: Identifiable, Equatable {
 
 /// A sidebar selection can be a real media folder or Flicksy's app-owned virtual
 /// clipboard history.
-enum BrowserSource: Hashable {
+enum BrowserSource: Hashable, Sendable {
     case favorites
     case tag(UUID)
     case collection(UUID)
@@ -258,6 +258,12 @@ final class BrowserModel {
     /// owns keyboard focus.
     var isQuickGotoFieldFocused = false
 
+    /// Drives the window-level command palette opened by Command-K.
+    var isCommandPalettePresented = false
+    var isCommandPaletteFieldFocused = false
+    private(set) var commandPaletteSearchIndex: CommandPaletteSearchIndex?
+    private(set) var isLoadingCommandPaletteIndex = false
+
     /// The MP3s whose meta-tag editor sheet is open. Also used so Command-C copies
     /// field text instead of the selected files while the dialog is up.
     var editAudioTagsRequest: AudioTagsEditRequest?
@@ -266,13 +272,39 @@ final class BrowserModel {
     var isShortcutsHelpPresented = false
 
     var isTextFieldFocused: Bool {
-        isSearchFieldFocused || isQuickGotoFieldFocused || editAudioTagsRequest != nil
+        isSearchFieldFocused
+            || isQuickGotoFieldFocused
+            || isCommandPaletteFieldFocused
+            || editAudioTagsRequest != nil
     }
 
     func presentQuickGoto() {
         isSearchPresented = false
         isShortcutsHelpPresented = false
+        dismissCommandPalette()
         isQuickGotoPresented = true
+    }
+
+    func toggleCommandPalette() {
+        if isCommandPalettePresented {
+            dismissCommandPalette()
+        } else {
+            presentCommandPalette()
+        }
+    }
+
+    func presentCommandPalette() {
+        isSearchPresented = false
+        isQuickGotoPresented = false
+        isQuickGotoFieldFocused = false
+        isShortcutsHelpPresented = false
+        isCommandPalettePresented = true
+        loadCommandPaletteIndexIfNeeded()
+    }
+
+    func dismissCommandPalette() {
+        isCommandPalettePresented = false
+        isCommandPaletteFieldFocused = false
     }
 
     func presentShortcutsHelp() {
@@ -283,6 +315,7 @@ final class BrowserModel {
         isSearchPresented = false
         isQuickGotoPresented = false
         isQuickGotoFieldFocused = false
+        dismissCommandPalette()
         isShortcutsHelpPresented = true
     }
 
@@ -290,6 +323,7 @@ final class BrowserModel {
         isQuickGotoPresented = false
         isQuickGotoFieldFocused = false
         isShortcutsHelpPresented = false
+        dismissCommandPalette()
         selectedSource = source
     }
 
@@ -433,6 +467,7 @@ final class BrowserModel {
     private(set) var isLoadingMedia = false
     private(set) var clipboardItemCount = 0
     private(set) var pasteboardContainsFileURLs = false
+    var confirmsClearingClipboard = false
 
     /// A user-facing message when folders cannot be restored or read. Cleared once
     /// the situation is resolved (spec section 24).
@@ -446,6 +481,13 @@ final class BrowserModel {
     /// Drives the toolbar Organize popover so it can also be opened with the
     /// keyboard (Command-T).
     var isOrganizePresented = false
+
+    /// Organization editor shared by every command surface.
+    var organizationEditorRequest: OrganizationEditorRequest?
+
+    /// Shared rename prompt used by contextual menus and the command palette.
+    var renameItemRequest: MediaItem?
+    var renameProposedName = ""
 
     /// A rename that collided with an existing tag, awaiting the user's explicit
     /// confirmation to merge the two tags.
@@ -794,6 +836,8 @@ final class BrowserModel {
     private var clipboardMonitorTask: Task<Void, Never>?
     private var lastPasteboardChangeCount: Int?
     private var sortRefreshTask: Task<Void, Never>?
+    private var commandPaletteIndexTask: Task<Void, Never>?
+    private var pendingCommandPaletteOpen: CommandPaletteFileLocation?
 
     /// Derived indexes are rebuilt only when the visible ordering changes. They
     /// are deliberately ignored by Observation: UI dependencies belong to the
@@ -1148,6 +1192,59 @@ final class BrowserModel {
         }
     }
 
+    /// Selection snapshot used to build contextual command-palette actions.
+    var commandPaletteSelectionItems: [MediaItem] {
+        actionItemsPreview(clicked: nil)
+    }
+
+    func duplicateCommandPaletteSelection() {
+        guard let first = commandPaletteSelectionItems.first else { return }
+        duplicate(clicked: first)
+    }
+
+    func copyCommandPaletteSelection() {
+        guard let first = commandPaletteSelectionItems.first else { return }
+        copySelectedFiles(clicked: first)
+    }
+
+    func copyCommandPaletteSelectionPath() {
+        guard let first = commandPaletteSelectionItems.first else { return }
+        copyPath(clicked: first)
+    }
+
+    func revealCommandPaletteSelection() {
+        guard let first = commandPaletteSelectionItems.first else { return }
+        revealInFinder(clicked: first)
+    }
+
+    func trashCommandPaletteSelection() {
+        guard let first = commandPaletteSelectionItems.first else { return }
+        moveSelectedFilesToTrashExplicitly(clicked: first)
+    }
+
+    func openCommandPaletteSelection() {
+        guard commandPaletteSelectionItems.count == 1,
+              let item = commandPaletteSelectionItems.first
+        else { return }
+        openFromContextMenu(item)
+    }
+
+    func presentRenameForCommandPaletteSelection() {
+        guard commandPaletteSelectionItems.count == 1,
+              let item = commandPaletteSelectionItems.first
+        else { return }
+        dismissCommandPalette()
+        renameProposedName = item.name
+        renameItemRequest = item
+    }
+
+    func confirmCommandPaletteRename() {
+        guard let item = renameItemRequest else { return }
+        let name = renameProposedName
+        renameItemRequest = nil
+        rename(item, to: name)
+    }
+
     func removeMissingCollectionItem(_ item: MissingCollectionItem) {
         Task {
             do {
@@ -1204,6 +1301,7 @@ final class BrowserModel {
             async let loadedCollections = libraryRepository.collections()
             tags = try await loadedTags
             collections = try await loadedCollections
+            invalidateCommandPaletteSearchIndex()
             if reloadSelection { loadMediaForSelection(preservingInteraction: true) }
         } catch { organizationError = error.localizedDescription }
     }
@@ -1421,6 +1519,7 @@ final class BrowserModel {
     }
 
     private func refreshAfterFileMutation(rescanTree: Bool = false) {
+        invalidateCommandPaletteSearchIndex()
         if rescanTree {
             rescanRoots()
         }
@@ -1657,6 +1756,7 @@ final class BrowserModel {
     /// burst so large roots are scanned once, and cancel an obsolete pending pass
     /// if more changes arrive before it starts.
     private func filesystemDidChange(hasStructuralChanges: Bool) {
+        invalidateCommandPaletteSearchIndex()
         pendingStructuralRefresh = pendingStructuralRefresh || hasStructuralChanges
 
         // Keep the selected directory responsive independently of the recursive
@@ -1792,9 +1892,14 @@ final class BrowserModel {
                         preservingInteraction: preservingInteraction
                     )
                 }
+                resolvePendingCommandPaletteOpen()
+                if pendingCommandPaletteOpen?.source == source {
+                    pendingCommandPaletteOpen = nil
+                }
             } catch is CancellationError {
                 return
             } catch {
+                pendingCommandPaletteOpen = nil
                 setMediaItems([])
                 loadError = source == .clipboard
                     ? "Clipboard history could not be loaded."
@@ -1940,7 +2045,12 @@ final class BrowserModel {
            }) {
             return authorizedRoot
         }
-        return standardFolderStore.url(for: folder)
+        let wasAvailable = standardFolderStore.availableURL(for: folder) != nil
+        let url = standardFolderStore.url(for: folder)
+        if !wasAvailable, url != nil {
+            invalidateCommandPaletteSearchIndex()
+        }
+        return url
     }
 
     /// Replace the current listing, rebuild the per-section splits, and drop any
@@ -1964,6 +2074,7 @@ final class BrowserModel {
         }
         rebuildVisibleItems()
         preferPopulatedTab()
+        resolvePendingCommandPaletteOpen()
     }
 
     private func appendMediaItems(_ items: [MediaItem]) {
@@ -1973,6 +2084,196 @@ final class BrowserModel {
         // so their stable initial layout is square.
         cardAspectRatio = 1
         rebuildVisibleItems()
+    }
+
+    // MARK: - Command palette search
+
+    func openCommandPaletteDestination(_ destination: BrowserDestination) {
+        dismissCommandPalette()
+        go(to: destination.source)
+    }
+
+    func openCommandPaletteFile(_ location: CommandPaletteFileLocation) {
+        dismissCommandPalette()
+        pendingCommandPaletteOpen = location
+        if selectedSource == location.source {
+            resolvePendingCommandPaletteOpen()
+            if pendingCommandPaletteOpen != nil, !isLoadingMedia {
+                pendingCommandPaletteOpen = nil
+            }
+        } else {
+            selectedSource = location.source
+        }
+    }
+
+    private func resolvePendingCommandPaletteOpen() {
+        guard let pending = pendingCommandPaletteOpen,
+              pending.source == selectedSource,
+              let item = Self.resolveCommandPaletteItem(pending, in: mediaItems)
+        else { return }
+
+        pendingCommandPaletteOpen = nil
+        selectedItemIDs = [item.id]
+        focusedItemID = item.id
+        selectionAnchorID = item.id
+
+        switch item.type {
+        case .image, .video:
+            libraryTab = .visual
+            openViewer(item)
+        case .audio:
+            libraryTab = .audio
+            playingAudioID = item.id
+            isAudioPlaying = true
+        }
+    }
+
+    nonisolated static func resolveCommandPaletteItem(
+        _ pending: CommandPaletteFileLocation,
+        in items: [MediaItem]
+    ) -> MediaItem? {
+        items.first { item in
+            if let libraryID = pending.item.libraryID,
+               item.libraryID == libraryID {
+                return true
+            }
+            return item.url.standardizedFileURL == pending.item.url.standardizedFileURL
+        }
+    }
+
+    func invalidateCommandPaletteSearchIndex() {
+        commandPaletteIndexTask?.cancel()
+        commandPaletteIndexTask = nil
+        commandPaletteSearchIndex = nil
+        isLoadingCommandPaletteIndex = false
+        if isCommandPalettePresented {
+            loadCommandPaletteIndexIfNeeded()
+        }
+    }
+
+    private func loadCommandPaletteIndexIfNeeded() {
+        guard commandPaletteSearchIndex == nil,
+              commandPaletteIndexTask == nil
+        else { return }
+
+        let destinations = browserDestinations
+        let standardLocations = StandardBrowserFolder.allCases.compactMap { folder in
+            standardFolderStore.availableURL(for: folder).map { (folder, $0.standardizedFileURL) }
+        }
+
+        isLoadingCommandPaletteIndex = true
+        commandPaletteIndexTask = Task {
+            async let libraryRecords = (try? libraryRepository.searchRecords()) ?? []
+            var standardItems: [(StandardBrowserFolder, URL, [MediaItem])] = []
+            for (folder, url) in standardLocations {
+                let items = (try? await FolderScanner.mediaItems(in: url)) ?? []
+                standardItems.append((folder, url, items))
+            }
+
+            let records = await libraryRecords
+            guard !Task.isCancelled else { return }
+            commandPaletteSearchIndex = Self.makeCommandPaletteSearchIndex(
+                destinations: destinations,
+                libraryRecords: records,
+                standardItems: standardItems
+            )
+            commandPaletteIndexTask = nil
+            isLoadingCommandPaletteIndex = false
+        }
+    }
+
+    nonisolated static func makeCommandPaletteSearchIndex(
+        destinations: [BrowserDestination],
+        libraryRecords: [LibrarySearchRecord],
+        standardItems: [(StandardBrowserFolder, URL, [MediaItem])]
+    ) -> CommandPaletteSearchIndex {
+        struct MergedFile {
+            var item: MediaItem
+            var collections: [MediaCollection]
+        }
+
+        var filesByPath: [String: MergedFile] = [:]
+        for record in libraryRecords {
+            filesByPath[record.item.url.standardizedFileURL.path] = MergedFile(
+                item: record.item,
+                collections: record.collections
+            )
+        }
+        for (_, _, items) in standardItems {
+            for item in items {
+                let key = item.url.standardizedFileURL.path
+                if filesByPath[key] == nil {
+                    filesByPath[key] = MergedFile(item: item, collections: [])
+                }
+            }
+        }
+
+        let standardByPath = Dictionary(uniqueKeysWithValues: standardItems.map {
+            ($0.1.standardizedFileURL.path, $0.0)
+        })
+        var locations: [CommandPaletteFileLocation] = []
+        var seenLocationIDs: Set<String> = []
+
+        func append(_ location: CommandPaletteFileLocation) {
+            if seenLocationIDs.insert(location.id).inserted {
+                locations.append(location)
+            }
+        }
+
+        for merged in filesByPath.values {
+            let item = merged.item
+            let parent = item.url.deletingLastPathComponent().standardizedFileURL
+            if let standard = standardByPath[parent.path] {
+                append(CommandPaletteFileLocation(
+                    item: item,
+                    source: .standardFolder(standard),
+                    locationTitle: standard.title,
+                    locationKind: "Folder"
+                ))
+            } else {
+                append(CommandPaletteFileLocation(
+                    item: item,
+                    source: .folder(parent.path),
+                    locationTitle: parent.lastPathComponent,
+                    locationKind: "Folder"
+                ))
+            }
+
+            guard item.libraryID != nil else { continue }
+            if item.isFavorite {
+                append(CommandPaletteFileLocation(
+                    item: item,
+                    source: .favorites,
+                    locationTitle: "Favorites",
+                    locationKind: "Library"
+                ))
+            }
+            for tag in item.tags {
+                append(CommandPaletteFileLocation(
+                    item: item,
+                    source: .tag(tag.id),
+                    locationTitle: tag.name,
+                    locationKind: "Tag"
+                ))
+            }
+            for collection in merged.collections {
+                append(CommandPaletteFileLocation(
+                    item: item,
+                    source: .collection(collection.id),
+                    locationTitle: collection.name,
+                    locationKind: "Collection"
+                ))
+            }
+        }
+
+        locations.sort {
+            let nameOrder = $0.item.name.localizedStandardCompare($1.item.name)
+            if nameOrder != .orderedSame { return nameOrder == .orderedAscending }
+            let kindOrder = $0.locationKind.localizedStandardCompare($1.locationKind)
+            if kindOrder != .orderedSame { return kindOrder == .orderedAscending }
+            return $0.locationTitle.localizedStandardCompare($1.locationTitle) == .orderedAscending
+        }
+        return CommandPaletteSearchIndex(destinations: destinations, files: locations)
     }
 
     /// Use the median image ratio when every image is landscape. Missing or

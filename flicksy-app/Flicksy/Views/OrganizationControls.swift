@@ -9,7 +9,6 @@ struct OrganizationControl: View {
     @Environment(BrowserModel.self) private var model
     @State private var appliedTagIDs: Set<UUID> = []
     @State private var allFavorite = false
-    @State private var editor: OrganizationEditor?
 
     var body: some View {
         @Bindable var model = model
@@ -17,18 +16,6 @@ struct OrganizationControl: View {
             .help("Organize selected media")
             .disabled(!model.canOrganizeSelection || model.viewerItemID != nil)
             .popover(isPresented: $model.isOrganizePresented) { popover }
-            .sheet(item: $editor) { editor in
-                switch editor {
-                case .tag:
-                    TagEditor(title: "New Tag", initialName: "", initialColor: .gray) { name, color in
-                        model.createTag(name: name, color: color, applyingToSelected: true)
-                    }
-                case .collection:
-                    CollectionEditor(title: "New Collection", initialName: "") {
-                        model.createCollection(name: $0, addingSelected: true)
-                    }
-                }
-            }
     }
 
     private var popover: some View {
@@ -66,14 +53,14 @@ struct OrganizationControl: View {
                     .toggleStyle(.checkbox)
                 }
             }
-            Button("New Tag…") { editor = .tag }
+            Button("New Tag…") { model.organizationEditorRequest = .newTag(applyingSelection: true) }
 
             Divider()
             Text("Add to Collection").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
             ForEach(model.collections) { collection in
                 Button(collection.name) { model.addToCollection(collection) }.buttonStyle(.plain)
             }
-            Button("New Collection…") { editor = .collection }
+            Button("New Collection…") { model.organizationEditorRequest = .newCollection(addingSelection: true) }
         }
         .padding(14)
         .frame(minWidth: 240, alignment: .leading)
@@ -83,9 +70,3 @@ struct OrganizationControl: View {
         }
     }
 }
-
-private enum OrganizationEditor: String, Identifiable {
-    case tag, collection
-    var id: String { rawValue }
-}
-

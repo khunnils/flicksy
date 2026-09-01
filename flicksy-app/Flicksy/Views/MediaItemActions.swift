@@ -225,7 +225,7 @@ struct MediaItemInteractionsModifier: ViewModifier {
     }
 }
 
-private struct OpenWithApplication: Identifiable {
+struct OpenWithApplication: Identifiable, Hashable {
     var id: String { url.path }
 
     let url: URL
@@ -240,7 +240,7 @@ private struct OpenWithApplication: Identifiable {
 /// Application handlers are extension-based, making this small session cache a
 /// natural fit while keeping the actual context-menu contents unchanged.
 @MainActor
-private final class OpenWithApplicationsCache {
+final class OpenWithApplicationsCache {
     static let shared = OpenWithApplicationsCache()
 
     private var applicationsByExtension: [String: [OpenWithApplication]] = [:]
@@ -263,6 +263,17 @@ private final class OpenWithApplicationsCache {
             .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
         applicationsByExtension[key] = applications
         return applications
+    }
+
+    func applications(for items: [MediaItem]) -> [OpenWithApplication] {
+        guard let first = items.first else { return [] }
+        var common = applications(for: first.url)
+        for item in items.dropFirst() {
+            let supportedURLs = Set(applications(for: item.url).map(\.url))
+            common.removeAll { !supportedURLs.contains($0.url) }
+            if common.isEmpty { break }
+        }
+        return common
     }
 }
 

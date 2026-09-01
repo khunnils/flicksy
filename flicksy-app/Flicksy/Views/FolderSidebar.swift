@@ -8,9 +8,7 @@ import SwiftUI
 
 struct FolderSidebar: View {
     @Environment(BrowserModel.self) private var model
-    @State private var confirmsClearingClipboard = false
     @State private var expandedFolderIDs: Set<MediaFolder.ID> = []
-    @State private var editor: SidebarEditor?
     @State private var dropTargetCollectionID: MediaCollection.ID?
     @State private var dropTargetStandardFolder: StandardBrowserFolder?
     @State private var isFoldersDropTargeted = false
@@ -68,14 +66,14 @@ struct FolderSidebar: View {
                                 }
                             }
                             .contextMenu {
-                                Button("Rename…") { editor = .collection(collection) }
+                                Button("Rename…") { model.organizationEditorRequest = .editCollection(collection) }
                                 Button("Delete Collection", role: .destructive) { model.deleteCollection(collection) }
                             }
                     }
                 }
             } header: {
                 organizationSectionHeader("Collections", help: "New Collection") {
-                    editor = .newCollection
+                    model.organizationEditorRequest = .newCollection(addingSelection: false)
                 }
             }
 
@@ -92,14 +90,14 @@ struct FolderSidebar: View {
                         }
                         .sidebarSource(.tag(tag.id), selected: model.selectedSource)
                         .contextMenu {
-                            Button("Edit Tag…") { editor = .tag(tag) }
+                            Button("Edit Tag…") { model.organizationEditorRequest = .editTag(tag) }
                             Button("Delete Tag", role: .destructive) { model.deleteTag(tag) }
                         }
                     }
                 }
             } header: {
                 organizationSectionHeader("Tags", help: "New Tag") {
-                    editor = .newTag
+                    model.organizationEditorRequest = .newTag(applyingSelection: false)
                 }
             }
 
@@ -130,24 +128,6 @@ struct FolderSidebar: View {
         // fill ourselves and suppress the system accent highlight underneath.
         .background(DisableSystemListSelectionHighlight())
         .safeAreaInset(edge: .bottom) { addBar }
-        .sheet(item: $editor) { editor in
-            switch editor {
-            case .newCollection:
-                CollectionEditor(title: "New Collection", initialName: "") { model.createCollection(name: $0) }
-            case .collection(let collection):
-                CollectionEditor(title: "Rename Collection", initialName: collection.name) {
-                    model.renameCollection(collection, to: $0)
-                }
-            case .newTag:
-                TagEditor(title: "New Tag", initialName: "", initialColor: .gray) { name, color in
-                    model.createTag(name: name, color: color)
-                }
-            case .tag(let tag):
-                TagEditor(title: "Edit Tag", initialName: tag.name, initialColor: tag.color) { name, color in
-                    model.updateTag(tag, name: name, color: color)
-                }
-            }
-        }
         .alert(
             "Merge Tags?",
             isPresented: Binding(
@@ -162,7 +142,7 @@ struct FolderSidebar: View {
                 Text("A tag named \"\(pending.name)\" already exists. Merging moves everything tagged \"\(pending.tag.name)\" onto \"\(pending.name)\" and removes \"\(pending.tag.name)\".")
             }
         }
-        .alert("Clear Clipboard History?", isPresented: $confirmsClearingClipboard) {
+        .alert("Clear Clipboard History?", isPresented: $model.confirmsClearingClipboard) {
             Button("Clear History", role: .destructive) { model.clearClipboardHistory() }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -208,7 +188,7 @@ struct FolderSidebar: View {
             if model.clipboardItemCount > 0 { count(model.clipboardItemCount) }
         }
         .contextMenu {
-            Button("Clear Clipboard History", role: .destructive) { confirmsClearingClipboard = true }
+            Button("Clear Clipboard History", role: .destructive) { model.confirmsClearingClipboard = true }
                 .disabled(model.clipboardItemCount == 0)
         }
     }
@@ -231,22 +211,6 @@ struct FolderSidebar: View {
     }
 }
 
-
-private enum SidebarEditor: Identifiable {
-    case newCollection
-    case collection(MediaCollection)
-    case newTag
-    case tag(LibraryTag)
-
-    var id: String {
-        switch self {
-        case .newCollection: "new-collection"
-        case .collection(let value): "collection-\(value.id)"
-        case .newTag: "new-tag"
-        case .tag(let value): "tag-\(value.id)"
-        }
-    }
-}
 
 struct CollectionEditor: View {
     let title: String

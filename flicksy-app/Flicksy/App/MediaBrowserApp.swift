@@ -29,6 +29,11 @@ struct FlicksyApp: App {
 
             CommandGroup(after: .toolbar) {
                 Section {
+                    Button("Command Palette…") {
+                        model.toggleCommandPalette()
+                    }
+                    .keyboardShortcut("k", modifiers: .command)
+
                     Button("Quick Goto…") {
                         model.presentQuickGoto()
                     }

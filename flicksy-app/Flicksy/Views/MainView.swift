@@ -69,10 +69,16 @@ struct MainView: View {
             }
         }
         .background {
-            KeyboardShortcutsWindowPresenter(
-                model: model,
-                isPresented: model.isShortcutsHelpPresented
-            )
+            ZStack {
+                KeyboardShortcutsWindowPresenter(
+                    model: model,
+                    isPresented: model.isShortcutsHelpPresented
+                )
+                CommandPaletteWindowPresenter(
+                    model: model,
+                    isPresented: model.isCommandPalettePresented
+                )
+            }
             .frame(width: 0, height: 0)
         }
         .animation(.easeInOut(duration: 0.15), value: model.viewerItemID)
@@ -109,12 +115,57 @@ struct MainView: View {
         } message: {
             Text(model.organizationError ?? "")
         }
+        .alert(
+            "Rename",
+            isPresented: Binding(
+                get: { model.renameItemRequest != nil },
+                set: { if !$0 { model.renameItemRequest = nil } }
+            )
+        ) {
+            TextField("Filename", text: Binding(
+                get: { model.renameProposedName },
+                set: { model.renameProposedName = $0 }
+            ))
+            Button("Cancel", role: .cancel) { model.renameItemRequest = nil }
+            Button("Rename") { model.confirmCommandPaletteRename() }
+                .disabled(model.renameProposedName.isEmpty)
+        } message: {
+            Text("Enter a new name for \(model.renameItemRequest?.name ?? "this file").")
+        }
         .sheet(item: Binding(
             get: { model.editAudioTagsRequest },
             set: { model.editAudioTagsRequest = $0 }
         )) { request in
             AudioTagsEditor(items: request.items)
                 .environment(model)
+        }
+        .sheet(item: Binding(
+            get: { model.organizationEditorRequest },
+            set: { model.organizationEditorRequest = $0 }
+        )) { request in
+            organizationEditor(request)
+        }
+    }
+
+    @ViewBuilder
+    private func organizationEditor(_ request: OrganizationEditorRequest) -> some View {
+        switch request {
+        case .newCollection(let addingSelection):
+            CollectionEditor(title: "New Collection", initialName: "") {
+                model.createCollection(name: $0, addingSelected: addingSelection)
+            }
+        case .editCollection(let collection):
+            CollectionEditor(title: "Rename Collection", initialName: collection.name) {
+                model.renameCollection(collection, to: $0)
+            }
+        case .newTag(let applyingSelection):
+            TagEditor(title: "New Tag", initialName: "", initialColor: .gray) { name, color in
+                model.createTag(name: name, color: color, applyingToSelected: applyingSelection)
+            }
+        case .editTag(let tag):
+            TagEditor(title: "Edit Tag", initialName: tag.name, initialColor: tag.color) { name, color in
+                model.updateTag(tag, name: name, color: color)
+            }
         }
     }
 

@@ -169,6 +169,45 @@ actor LibraryRepository {
         return LibraryQueryResult(items: items, missingItems: missing)
     }
 
+    /// Hydrated assets and their virtual collection locations for global search.
+    /// This intentionally reuses the catalog instead of walking root folders when
+    /// the command palette opens.
+    func searchRecords() throws -> [LibrarySearchRecord] {
+        let items = try query(.all).items
+        guard !items.isEmpty else { return [] }
+
+        let statement = try prepare("""
+            SELECT ci.asset_id, c.id, c.name,
+                   (SELECT COUNT(*) FROM collection_items count_items
+                    WHERE count_items.collection_id = c.id)
+            FROM collection_items ci
+            JOIN collections c ON c.id = ci.collection_id
+            JOIN assets a ON a.id = ci.asset_id
+            WHERE a.available = 1
+            ORDER BY c.name COLLATE NOCASE
+            """)
+        defer { sqlite3_finalize(statement) }
+
+        var collectionsByAsset: [UUID: [MediaCollection]] = [:]
+        while sqlite3_step(statement) == SQLITE_ROW {
+            guard let assetID = UUID(uuidString: text(statement, 0)),
+                  let collectionID = UUID(uuidString: text(statement, 1))
+            else { continue }
+            collectionsByAsset[assetID, default: []].append(MediaCollection(
+                id: collectionID,
+                name: text(statement, 2),
+                itemCount: Int(sqlite3_column_int64(statement, 3))
+            ))
+        }
+
+        return items.map { item in
+            LibrarySearchRecord(
+                item: item,
+                collections: item.libraryID.flatMap { collectionsByAsset[$0] } ?? []
+            )
+        }
+    }
+
     func tags() throws -> [LibraryTag] {
         let statement = try prepare("""
             SELECT t.id, t.name, t.color, COUNT(at.asset_id)

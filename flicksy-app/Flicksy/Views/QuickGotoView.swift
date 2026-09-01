@@ -5,128 +5,15 @@
 
 import SwiftUI
 
-/// One searchable destination in the Command-G picker. Destinations use the
-/// same `BrowserSource` values as the sidebar, so choosing one follows the exact
-/// same loading and selection path as clicking its row.
-struct QuickGotoDestination: Identifiable, Hashable {
-    enum Kind: String {
-        case library = "Library"
-        case collection = "Collection"
-        case tag = "Tag"
-        case folder = "Folder"
-    }
-
-    let id: String
-    let title: String
-    let detail: String?
-    let systemImage: String
-    let kind: Kind
-    let source: BrowserSource
-
-    fileprivate func matchRank(for query: String) -> Int? {
-        let query = query.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
-        guard !query.isEmpty else { return 3 }
-
-        let title = title.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
-        let detail = detail?.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current) ?? ""
-        let kind = kind.rawValue.lowercased()
-
-        if title == query { return 0 }
-        if title.hasPrefix(query) { return 1 }
-        if title.contains(query) { return 2 }
-        if detail.contains(query) || kind.contains(query) { return 3 }
-        return nil
-    }
-}
-
-extension BrowserModel {
-    var quickGotoDestinations: [QuickGotoDestination] {
-        var destinations = [
-            QuickGotoDestination(
-                id: "library-favorites",
-                title: "Favorites",
-                detail: "Library",
-                systemImage: "star.fill",
-                kind: .library,
-                source: .favorites
-            ),
-            QuickGotoDestination(
-                id: "library-clipboard",
-                title: "Clipboard",
-                detail: "Library",
-                systemImage: "clipboard",
-                kind: .library,
-                source: .clipboard
-            )
-        ]
-
-        destinations += StandardBrowserFolder.allCases.map { folder in
-            QuickGotoDestination(
-                id: "standard-\(folder.rawValue)",
-                title: folder.title,
-                detail: "Library",
-                systemImage: folder.systemImage,
-                kind: .library,
-                source: .standardFolder(folder)
-            )
-        }
-
-        destinations += collections.map { collection in
-            QuickGotoDestination(
-                id: "collection-\(collection.id)",
-                title: collection.name,
-                detail: "Collection",
-                systemImage: "rectangle.stack.badge.play",
-                kind: .collection,
-                source: .collection(collection.id)
-            )
-        }
-
-        destinations += tags.map { tag in
-            QuickGotoDestination(
-                id: "tag-\(tag.id)",
-                title: tag.name,
-                detail: "Tag",
-                systemImage: "tag",
-                kind: .tag,
-                source: .tag(tag.id)
-            )
-        }
-
-        for root in rootTrees {
-            appendQuickGotoFolders(root, to: &destinations)
-        }
-        return destinations
-    }
-
-    private func appendQuickGotoFolders(
-        _ folder: MediaFolder,
-        to destinations: inout [QuickGotoDestination]
-    ) {
-        let parentPath = folder.url.deletingLastPathComponent().path(percentEncoded: false)
-        destinations.append(QuickGotoDestination(
-            id: "folder-\(folder.id)",
-            title: folder.name,
-            detail: parentPath,
-            systemImage: folder.isRoot ? "folder.badge.gearshape" : "folder",
-            kind: .folder,
-            source: .folder(folder.id)
-        ))
-        for child in folder.children {
-            appendQuickGotoFolders(child, to: &destinations)
-        }
-    }
-}
-
 struct QuickGotoView: View {
     @Environment(BrowserModel.self) private var model
     @FocusState private var queryFocused: Bool
     @State private var query = ""
-    @State private var selectedID: QuickGotoDestination.ID?
+    @State private var selectedID: BrowserDestination.ID?
 
-    private var filteredDestinations: [QuickGotoDestination] {
-        model.quickGotoDestinations.enumerated()
-            .compactMap { index, destination -> (QuickGotoDestination, Int, Int)? in
+    private var filteredDestinations: [BrowserDestination] {
+        model.browserDestinations.enumerated()
+            .compactMap { index, destination -> (BrowserDestination, Int, Int)? in
                 destination.matchRank(for: query).map { (destination, $0, index) }
             }
             .sorted { lhs, rhs in
@@ -232,7 +119,7 @@ struct QuickGotoView: View {
         }
     }
 
-    private func resultRow(_ destination: QuickGotoDestination) -> some View {
+    private func resultRow(_ destination: BrowserDestination) -> some View {
         Button {
             open(destination)
         } label: {
@@ -287,7 +174,7 @@ struct QuickGotoView: View {
         open(destination)
     }
 
-    private func open(_ destination: QuickGotoDestination) {
+    private func open(_ destination: BrowserDestination) {
         model.go(to: destination.source)
     }
 

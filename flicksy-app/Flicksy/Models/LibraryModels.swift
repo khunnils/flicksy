@@ -79,3 +79,27 @@ struct LibraryQueryResult: Sendable {
     var missingItems: [MissingCollectionItem] = []
 }
 
+/// One available library asset plus every collection that can display it.
+/// Favorite and tag membership already live on the hydrated `MediaItem`.
+struct LibrarySearchRecord: Sendable {
+    let item: MediaItem
+    let collections: [MediaCollection]
+}
+
+/// Shared sheet routing for organization editors opened from the sidebar,
+/// toolbar, or command palette.
+enum OrganizationEditorRequest: Identifiable {
+    case newCollection(addingSelection: Bool)
+    case editCollection(MediaCollection)
+    case newTag(applyingSelection: Bool)
+    case editTag(LibraryTag)
+
+    var id: String {
+        switch self {
+        case .newCollection(let applies): "new-collection-\(applies)"
+        case .editCollection(let collection): "collection-\(collection.id)"
+        case .newTag(let applies): "new-tag-\(applies)"
+        case .editTag(let tag): "tag-\(tag.id)"
+        }
+    }
+}
