@@ -39,4 +39,43 @@ final class FolderScannerTests: XCTestCase {
         let items = try await FolderScanner.mediaItems(in: root)
         XCTAssertEqual(Set(items.map(\.name)), ["direct.png", "clip.mov"])
     }
+
+    func testTreeSkipsExcludedHiddenPackagedAndSymlinkedDirectories() async throws {
+        try write("Photos/shot.png")
+        try write("node_modules/dep.png")
+        try write("Dummy.app/Contents/Resources/icon.png")
+        try write(".secret/hidden.png")
+
+        let photos = root.appending(path: "Photos", directoryHint: .isDirectory)
+        try FileManager.default.createSymbolicLink(
+            at: root.appending(path: "Alias", directoryHint: .isDirectory),
+            withDestinationURL: photos
+        )
+
+        let tree = try await FolderScanner.buildTree(for: root)
+        XCTAssertEqual(Set(tree.children.map(\.name)), ["Photos"])
+        XCTAssertEqual(tree.children.first?.children.map(\.name) ?? [], [])
+    }
+
+    func testTreeEntersExcludedNameWhenItIsTheScanRoot() async throws {
+        let nested = root.appending(path: "node_modules", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+        try write("node_modules/Photos/shot.png")
+        try write("node_modules/.git/ignored.png")
+
+        let tree = try await FolderScanner.buildTree(for: nested)
+        XCTAssertEqual(tree.name, "node_modules")
+        XCTAssertEqual(Set(tree.children.map(\.name)), ["Photos"])
+    }
+
+    func testCustomPolicyCanScanAnOtherwiseExcludedDirectory() async throws {
+        try write("node_modules/dep.png")
+        try write("Photos/shot.png")
+
+        var policy = FolderScanPolicy.default
+        policy.excludedDirectoryNames.remove("node_modules")
+
+        let tree = try await FolderScanner.buildTree(for: root, policy: policy)
+        XCTAssertEqual(Set(tree.children.map(\.name)), ["Photos", "node_modules"])
+    }
 }

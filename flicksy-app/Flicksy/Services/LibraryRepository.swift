@@ -63,10 +63,10 @@ actor LibraryRepository {
 
     deinit { sqlite3_close(db) }
 
-    func reconcile(roots: [URL]) throws {
+    func reconcile(roots: [URL], policy: FolderScanPolicy = .default) throws {
         try requireDatabase()
         let standardizedRoots = roots.map(\.standardizedFileURL)
-        let candidates = try standardizedRoots.flatMap { try Self.candidates(in: $0) }
+        let candidates = try standardizedRoots.flatMap { try Self.candidates(in: $0, policy: policy) }
 
         try transaction {
             // Mark everything unavailable first so assets under removed roots stop
@@ -532,19 +532,12 @@ actor LibraryRepository {
         .addedToDirectoryDateKey, .fileResourceIdentifierKey,
     ]
 
-    private static func candidates(in root: URL) throws -> [Candidate] {
-        guard let enumerator = FileManager.default.enumerator(
-            at: root,
-            includingPropertiesForKeys: Array(resourceKeys),
-            options: [.skipsHiddenFiles, .skipsPackageDescendants]
-        ) else { return [] }
+    /// Recursively collect media under `root`, applying `policy` before entering
+    /// any subdirectory so trees such as `node_modules` are never listed.
+    private static func candidates(in root: URL, policy: FolderScanPolicy) throws -> [Candidate] {
         var result: [Candidate] = []
-        for case let url as URL in enumerator {
-            try Task.checkCancellation()
-            guard let values = try? url.resourceValues(forKeys: resourceKeys),
-                  values.isRegularFile == true,
-                  let type = mediaType(for: url)
-            else { continue }
+        try FolderScanWalker.forEachRegularFile(in: root, keys: resourceKeys, policy: policy) { url, values in
+            guard values.isRegularFile == true, let type = mediaType(for: url) else { return }
             let relative = String(url.standardizedFileURL.path.dropFirst(root.path.count + (root.path.hasSuffix("/") ? 0 : 1)))
             result.append(Candidate(
                 rootPath: root.path,

@@ -23,10 +23,8 @@ enum FolderScanner {
     ]
 
     nonisolated private static var resourceKeySet: Set<URLResourceKey> { Set(resourceKeys) }
-    nonisolated private static let treeResourceKeySet: Set<URLResourceKey> = [
-        .isDirectoryKey,
-        .isRegularFileKey,
-    ]
+    nonisolated private static let treeResourceKeySet: Set<URLResourceKey> =
+        FolderScanPolicy.directoryResourceKeys.union([.isRegularFileKey])
 
     // MARK: - Sidebar tree
 
@@ -36,11 +34,16 @@ enum FolderScanner {
     /// descendant that does, matching the spec's "smart" sidebar (folders such as
     /// `Admin` that contain only non-media files disappear). The root node itself
     /// is always returned so the user can see the folder they added, even if empty.
+    /// Excluded directories are never entered, so a `node_modules` sibling cannot
+    /// keep an otherwise empty parent visible.
     ///
     /// Declared `nonisolated async` so it executes on the concurrent pool (off the
     /// main actor) while still propagating cancellation from the caller's `Task`.
-    nonisolated static func buildTree(for root: URL) async throws -> MediaFolder {
-        let children = try scanDirectory(root).children
+    nonisolated static func buildTree(
+        for root: URL,
+        policy: FolderScanPolicy = .default
+    ) async throws -> MediaFolder {
+        let children = try scanDirectory(root, policy: policy).children
         return MediaFolder(url: root, isRoot: true, children: children)
     }
 
@@ -48,16 +51,19 @@ enum FolderScanner {
     /// whether anything in the subtree is media-bearing. The previous approach
     /// recursively scanned a child and then enumerated it a second time merely to
     /// answer `folderHasDirectMedia`.
+    ///
+    /// Descent is gated by `policy` before `contentsOfDirectory` is called on a
+    /// child, so expensive trees are never listed.
     nonisolated private static func scanDirectory(
-        _ directory: URL
+        _ directory: URL,
+        policy: FolderScanPolicy
     ) throws -> (children: [MediaFolder], containsMedia: Bool) {
         try Task.checkCancellation()
 
-        let contents = (try? FileManager.default.contentsOfDirectory(
-            at: directory,
-            includingPropertiesForKeys: Array(treeResourceKeySet),
-            options: [.skipsHiddenFiles, .skipsPackageDescendants]
-        )) ?? []
+        let contents = policy.contentsOfDirectory(
+            directory,
+            includingPropertiesForKeys: Array(treeResourceKeySet)
+        )
 
         var subfolders: [MediaFolder] = []
         var hasDirectMedia = false
@@ -66,8 +72,9 @@ enum FolderScanner {
             try Task.checkCancellation()
             let values = try? url.resourceValues(forKeys: treeResourceKeySet)
 
-            if values?.isDirectory == true {
-                let result = try scanDirectory(url)
+            if values?.isDirectory == true || policy.excludesDirectoryName(url.lastPathComponent) {
+                guard policy.shouldDescend(into: url, values: values) else { continue }
+                let result = try scanDirectory(url, policy: policy)
                 if result.containsMedia {
                     subfolders.append(MediaFolder(
                         url: url,

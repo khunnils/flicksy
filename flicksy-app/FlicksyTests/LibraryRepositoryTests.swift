@@ -48,6 +48,39 @@ final class LibraryRepositoryTests: XCTestCase {
 
     // MARK: - Indexing
 
+    func testRecursiveIndexSkipsExcludedDirectories() async throws {
+        let repo = makeRepository()
+        let root = try makeRoot()
+        try writeFile("Photos/shot.png", in: root)
+        try writeFile("node_modules/dep.png", in: root)
+        try writeFile("Dummy.app/Contents/Resources/icon.png", in: root)
+        try writeFile(".secret/hidden.png", in: root)
+        try writeFile("venv/clip.mov", in: root)
+
+        let photos = root.appending(path: "Photos", directoryHint: .isDirectory)
+        try FileManager.default.createSymbolicLink(
+            at: root.appending(path: "Alias", directoryHint: .isDirectory),
+            withDestinationURL: photos
+        )
+
+        try await repo.reconcile(roots: [root])
+        let all = try await repo.query(.all)
+        XCTAssertEqual(Set(all.items.map(\.name)), ["shot.png"])
+    }
+
+    func testRecursiveIndexRespectsCustomPolicy() async throws {
+        let repo = makeRepository()
+        let root = try makeRoot()
+        try writeFile("node_modules/dep.png", in: root)
+
+        var policy = FolderScanPolicy.default
+        policy.excludedDirectoryNames.remove("node_modules")
+
+        try await repo.reconcile(roots: [root], policy: policy)
+        let all = try await repo.query(.all)
+        XCTAssertEqual(all.items.map(\.name), ["dep.png"])
+    }
+
     func testRecursiveIndexAcrossRoots() async throws {
         let repo = makeRepository()
         let rootA = try makeRoot("A")
