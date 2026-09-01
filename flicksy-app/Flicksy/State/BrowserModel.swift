@@ -73,9 +73,15 @@ enum MediaLibraryTab: String, CaseIterable, Identifiable {
 enum MediaSortKey: String, CaseIterable, Identifiable {
     case manual
     case name
-    case modified
-    case size
     case kind
+    case added
+    case modified
+    case duration
+    case dimensions
+    case bitRate
+    case sampleRate
+    case channels
+    case size
 
     var id: String { rawValue }
 
@@ -83,9 +89,15 @@ enum MediaSortKey: String, CaseIterable, Identifiable {
         switch self {
         case .manual: "Manual Order"
         case .name: "Name"
-        case .modified: "Date Modified"
-        case .size: "Size"
         case .kind: "Kind"
+        case .added: "Date Added"
+        case .modified: "Date Modified"
+        case .duration: "Duration"
+        case .dimensions: "Dimensions"
+        case .bitRate: "Bit Rate"
+        case .sampleRate: "Sample Rate"
+        case .channels: "Channels"
+        case .size: "Size"
         }
     }
 
@@ -93,9 +105,13 @@ enum MediaSortKey: String, CaseIterable, Identifiable {
         switch self {
         case .manual: "First to Last"
         case .name: "A to Z"
-        case .modified: "Oldest First"
-        case .size: "Smallest First"
         case .kind: "Ascending"
+        case .added, .modified: "Oldest First"
+        case .duration: "Shortest First"
+        case .dimensions: "Smallest First"
+        case .bitRate, .sampleRate: "Lowest First"
+        case .channels: "Fewest First"
+        case .size: "Smallest First"
         }
     }
 
@@ -103,9 +119,13 @@ enum MediaSortKey: String, CaseIterable, Identifiable {
         switch self {
         case .manual: "Last to First"
         case .name: "Z to A"
-        case .modified: "Newest First"
-        case .size: "Largest First"
         case .kind: "Descending"
+        case .added, .modified: "Newest First"
+        case .duration: "Longest First"
+        case .dimensions: "Largest First"
+        case .bitRate, .sampleRate: "Highest First"
+        case .channels: "Most First"
+        case .size: "Largest First"
         }
     }
 
@@ -113,8 +133,17 @@ enum MediaSortKey: String, CaseIterable, Identifiable {
     /// dates newest first, sizes largest first.
     var defaultAscending: Bool {
         switch self {
-        case .manual, .name, .kind: true
-        case .modified, .size: false
+        case .manual, .name, .kind, .channels: true
+        case .added, .modified, .duration, .dimensions, .bitRate, .sampleRate, .size: false
+        }
+    }
+
+    /// These values are filled in after the folder scan, as list rows load
+    /// `AVAsset` metadata. Re-sorting waits until that data exists.
+    var usesDeferredMetadata: Bool {
+        switch self {
+        case .duration, .dimensions, .bitRate, .sampleRate, .channels: true
+        default: false
         }
     }
 }
@@ -303,6 +332,15 @@ final class BrowserModel {
             guard sortAscending != oldValue else { return }
             UserDefaults.standard.set(sortAscending, forKey: Self.sortAscendingKey)
             rebuildVisibleItems()
+        }
+    }
+
+    /// Clicking a list column sorts by it, or reverses the current direction.
+    func sortByColumn(_ key: MediaSortKey) {
+        if sortKey == key {
+            sortAscending.toggle()
+        } else {
+            sortKey = key
         }
     }
 
@@ -676,6 +714,44 @@ final class BrowserModel {
         }
     }
 
+    /// Fold duration and audio-stream details discovered by a visible list row
+    /// back onto the item so later sorts can use them. Re-sorting is deferred
+    /// and coalesced so a folder of rows loading metadata does not reshuffle
+    /// on every cell.
+    func noteListMetadata(for id: MediaItem.ID, _ metadata: MediaMetadataService.Metadata) {
+        guard let index = mediaItems.firstIndex(where: { $0.id == id }) else { return }
+        var item = mediaItems[index]
+        var changed = false
+
+        func assign<Value: Equatable>(_ current: inout Value?, _ incoming: Value?) {
+            guard let incoming, current != incoming else { return }
+            current = incoming
+            changed = true
+        }
+
+        assign(&item.duration, metadata.duration)
+        assign(&item.width, metadata.width)
+        assign(&item.height, metadata.height)
+        assign(&item.bitRate, metadata.bitRate)
+        assign(&item.sampleRate, metadata.sampleRate)
+        assign(&item.channelCount, metadata.channelCount)
+
+        guard changed else { return }
+        mediaItems[index] = item
+        if sortKey.usesDeferredMetadata {
+            scheduleDeferredSortRefresh()
+        }
+    }
+
+    private func scheduleDeferredSortRefresh() {
+        sortRefreshTask?.cancel()
+        sortRefreshTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(80))
+            guard !Task.isCancelled else { return }
+            rebuildVisibleItems()
+        }
+    }
+
     private static let thumbnailSizeKey = "thumbnailSize"
     private static let libraryTabKey = "libraryTab"
     private static let sortKeyKey = "sortKey"
@@ -696,6 +772,7 @@ final class BrowserModel {
     private var activeMediaLoadID: UUID?
     private var clipboardMonitorTask: Task<Void, Never>?
     private var lastPasteboardChangeCount: Int?
+    private var sortRefreshTask: Task<Void, Never>?
 
     /// Derived indexes are rebuilt only when the visible ordering changes. They
     /// are deliberately ignored by Observation: UI dependencies belong to the
@@ -1939,13 +2016,30 @@ final class BrowserModel {
             return nil
         case .name:
             return lhs.name.localizedStandardCompare(rhs.name)
+        case .kind:
+            return lhs.kindDescription.localizedStandardCompare(rhs.kindDescription)
+        case .added:
+            return compareOptional(lhs.addedAt, rhs.addedAt)
         case .modified:
             return compareOptional(lhs.modifiedAt, rhs.modifiedAt)
+        case .duration:
+            return compareOptional(lhs.duration, rhs.duration)
+        case .dimensions:
+            return compareOptional(pixelArea(lhs), pixelArea(rhs))
+        case .bitRate:
+            return compareOptional(lhs.bitRate, rhs.bitRate)
+        case .sampleRate:
+            return compareOptional(lhs.sampleRate, rhs.sampleRate)
+        case .channels:
+            return compareOptional(lhs.channelCount, rhs.channelCount)
         case .size:
             return compareOptional(lhs.fileSize, rhs.fileSize)
-        case .kind:
-            return compareOptional(Optional(kindRank(lhs.type)), Optional(kindRank(rhs.type)))
         }
+    }
+
+    private func pixelArea(_ item: MediaItem) -> Int? {
+        guard let width = item.width, let height = item.height, width > 0, height > 0 else { return nil }
+        return width * height
     }
 
     private func compareOptional<T: Comparable>(_ lhs: T?, _ rhs: T?) -> ComparisonResult? {
@@ -1960,14 +2054,6 @@ final class BrowserModel {
             if a < b { return .orderedAscending }
             if a > b { return .orderedDescending }
             return .orderedSame
-        }
-    }
-
-    private func kindRank(_ type: MediaType) -> Int {
-        switch type {
-        case .image: 0
-        case .video: 1
-        case .audio: 2
         }
     }
 

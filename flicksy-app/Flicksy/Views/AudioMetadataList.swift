@@ -4,7 +4,6 @@
 //
 
 import SwiftUI
-import UniformTypeIdentifiers
 
 /// Finder-style audio list with stable, scannable metadata columns. Its parent
 /// owns both scroll axes so the lazy stack remains directly inside one viewport.
@@ -16,53 +15,44 @@ struct AudioMetadataList: View {
     @Environment(BrowserModel.self) private var model
 
     var body: some View {
-        LazyVStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 0) {
             header
-
             Divider()
 
-            ForEach(items) { item in
-                AudioMetadataRow(
-                    item: item,
-                    selectionState: model.selectionState(for: item.id)
-                )
+            LazyVStack(spacing: 0) {
+                ForEach(items) { item in
+                    AudioMetadataRow(
+                        item: item,
+                        selectionState: model.selectionState(for: item.id)
+                    )
                     .id(item.id)
                     .reportSelectionFrame(
                         for: item,
                         coordinateSpace: selectionCoordinateSpace,
                         onChange: onSelectionFrameChange
                     )
+                }
             }
         }
         .frame(minWidth: AudioListColumns.totalWidth, alignment: .leading)
     }
 
     private var header: some View {
-        HStack(spacing: AudioListColumns.spacing) {
-            Color.clear.frame(width: AudioListColumns.play)
-            columnHeader("Name", width: AudioListColumns.name, alignment: .leading)
-            columnHeader("Kind", width: AudioListColumns.kind, alignment: .leading)
-            columnHeader("Date Added", width: AudioListColumns.dateAdded)
-            columnHeader("Duration", width: AudioListColumns.duration)
-            columnHeader("Bit Rate", width: AudioListColumns.bitRate)
-            columnHeader("Sample Rate", width: AudioListColumns.sampleRate)
-            columnHeader("Channels", width: AudioListColumns.channels)
-            columnHeader("Size", width: AudioListColumns.size)
-        }
-        .padding(.horizontal, AudioListColumns.horizontalPadding)
-        .padding(.vertical, 7)
-    }
-
-    private func columnHeader(
-        _ title: String,
-        width: CGFloat,
-        alignment: Alignment = .trailing
-    ) -> some View {
-        Text(title)
-            .font(.caption.weight(.medium))
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-            .frame(width: width, alignment: alignment)
+        SortableListHeader(
+            gutter: AudioListColumns.play,
+            spacing: AudioListColumns.spacing,
+            horizontalPadding: AudioListColumns.horizontalPadding,
+            columns: [
+                SortableListColumn(title: "Name", sortKey: .name, width: AudioListColumns.name, alignment: .leading),
+                SortableListColumn(title: "Kind", sortKey: .kind, width: AudioListColumns.kind, alignment: .leading),
+                SortableListColumn(title: "Date Added", sortKey: .added, width: AudioListColumns.dateAdded),
+                SortableListColumn(title: "Duration", sortKey: .duration, width: AudioListColumns.duration),
+                SortableListColumn(title: "Bit Rate", sortKey: .bitRate, width: AudioListColumns.bitRate),
+                SortableListColumn(title: "Sample Rate", sortKey: .sampleRate, width: AudioListColumns.sampleRate),
+                SortableListColumn(title: "Channels", sortKey: .channels, width: AudioListColumns.channels),
+                SortableListColumn(title: "Size", sortKey: .size, width: AudioListColumns.size),
+            ]
+        )
     }
 }
 
@@ -107,7 +97,7 @@ private struct AudioMetadataRow: View {
             }
             .frame(width: AudioListColumns.name, alignment: .leading)
 
-            value(kindDescription, width: AudioListColumns.kind, alignment: .leading)
+            value(item.kindDescription, width: AudioListColumns.kind, alignment: .leading)
             value(dateAddedDescription, width: AudioListColumns.dateAdded)
             value(MediaFormatting.clock(metadata?.duration), width: AudioListColumns.duration)
             value(MediaFormatting.bitRate(metadata?.bitRate), width: AudioListColumns.bitRate)
@@ -134,7 +124,9 @@ private struct AudioMetadataRow: View {
             return urls.count == 1
         }
         .task(id: item.contentVersion) {
-            metadata = await MediaMetadataService.shared.metadata(for: item.url)
+            let loaded = await MediaMetadataService.shared.metadata(for: item.url)
+            metadata = loaded
+            model.noteListMetadata(for: item.id, loaded)
         }
     }
 
@@ -148,13 +140,6 @@ private struct AudioMetadataRow: View {
         }
         .buttonStyle(.plain)
         .help(isPlaying ? "Pause" : "Play")
-    }
-
-    private var kindDescription: String? {
-        let fileExtension = item.url.pathExtension
-        guard !fileExtension.isEmpty else { return nil }
-        return UTType(filenameExtension: fileExtension)?.localizedDescription
-            ?? fileExtension.uppercased()
     }
 
     private var dateAddedDescription: String? {

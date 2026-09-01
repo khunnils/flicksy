@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import UniformTypeIdentifiers
 
 /// A single media file discovered on disk.
 ///
@@ -41,6 +42,9 @@ struct MediaItem: Identifiable, Hashable, Sendable {
     var duration: TimeInterval?
     var width: Int?
     var height: Int?
+    var bitRate: Int?
+    var sampleRate: Double?
+    var channelCount: Int?
     var fileSize: Int64?
     var modifiedAt: Date?
     var addedAt: Date?
@@ -55,6 +59,9 @@ struct MediaItem: Identifiable, Hashable, Sendable {
         duration: TimeInterval? = nil,
         width: Int? = nil,
         height: Int? = nil,
+        bitRate: Int? = nil,
+        sampleRate: Double? = nil,
+        channelCount: Int? = nil,
         fileSize: Int64? = nil,
         modifiedAt: Date? = nil,
         addedAt: Date? = nil
@@ -68,8 +75,26 @@ struct MediaItem: Identifiable, Hashable, Sendable {
         self.duration = duration
         self.width = width
         self.height = height
+        self.bitRate = bitRate
+        self.sampleRate = sampleRate
+        self.channelCount = channelCount
         self.fileSize = fileSize
         self.modifiedAt = modifiedAt
         self.addedAt = addedAt
+    }
+
+    /// Matches the Kind column in the All and Audio lists: the system’s
+    /// localized type name, or the extension when that is all we have.
+    nonisolated var kindDescription: String {
+        let fileExtension = url.pathExtension
+        guard !fileExtension.isEmpty else {
+            switch type {
+            case .image: return "Image"
+            case .video: return "Video"
+            case .audio: return "Audio"
+            }
+        }
+        return UTType(filenameExtension: fileExtension)?.localizedDescription
+            ?? fileExtension.uppercased()
     }
 }

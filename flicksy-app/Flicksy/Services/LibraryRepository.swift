@@ -424,6 +424,9 @@ actor LibraryRepository {
                 duration: item.duration,
                 width: item.width,
                 height: item.height,
+                bitRate: item.bitRate,
+                sampleRate: item.sampleRate,
+                channelCount: item.channelCount,
                 fileSize: item.fileSize,
                 modifiedAt: item.modifiedAt,
                 addedAt: item.addedAt

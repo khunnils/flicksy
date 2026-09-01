@@ -4,7 +4,6 @@
 //
 
 import SwiftUI
-import UniformTypeIdentifiers
 
 /// Finder-style list for scanning every supported media type together. Columns
 /// are intentionally limited to metadata that is meaningful across media types.
@@ -16,51 +15,43 @@ struct AllMetadataList: View {
     @Environment(BrowserModel.self) private var model
 
     var body: some View {
-        LazyVStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 0) {
             header
             Divider()
 
-            ForEach(items) { item in
-                AllMetadataRow(
-                    item: item,
-                    selectionState: model.selectionState(for: item.id)
-                )
+            LazyVStack(spacing: 0) {
+                ForEach(items) { item in
+                    AllMetadataRow(
+                        item: item,
+                        selectionState: model.selectionState(for: item.id)
+                    )
                     .id(item.id)
                     .reportSelectionFrame(
                         for: item,
                         coordinateSpace: selectionCoordinateSpace,
                         onChange: onSelectionFrameChange
                     )
+                }
             }
         }
         .frame(minWidth: AllListColumns.totalWidth, alignment: .leading)
     }
 
     private var header: some View {
-        HStack(spacing: AllListColumns.spacing) {
-            Color.clear.frame(width: AllListColumns.action)
-            columnHeader("Name", width: AllListColumns.name, alignment: .leading)
-            columnHeader("Kind", width: AllListColumns.kind, alignment: .leading)
-            columnHeader("Date Added", width: AllListColumns.dateAdded)
-            columnHeader("Date Modified", width: AllListColumns.dateModified)
-            columnHeader("Duration", width: AllListColumns.duration)
-            columnHeader("Dimensions", width: AllListColumns.dimensions)
-            columnHeader("Size", width: AllListColumns.size)
-        }
-        .padding(.horizontal, AllListColumns.horizontalPadding)
-        .padding(.vertical, 7)
-    }
-
-    private func columnHeader(
-        _ title: String,
-        width: CGFloat,
-        alignment: Alignment = .trailing
-    ) -> some View {
-        Text(title)
-            .font(.caption.weight(.medium))
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-            .frame(width: width, alignment: alignment)
+        SortableListHeader(
+            gutter: AllListColumns.action,
+            spacing: AllListColumns.spacing,
+            horizontalPadding: AllListColumns.horizontalPadding,
+            columns: [
+                SortableListColumn(title: "Name", sortKey: .name, width: AllListColumns.name, alignment: .leading),
+                SortableListColumn(title: "Kind", sortKey: .kind, width: AllListColumns.kind, alignment: .leading),
+                SortableListColumn(title: "Date Added", sortKey: .added, width: AllListColumns.dateAdded),
+                SortableListColumn(title: "Date Modified", sortKey: .modified, width: AllListColumns.dateModified),
+                SortableListColumn(title: "Duration", sortKey: .duration, width: AllListColumns.duration),
+                SortableListColumn(title: "Dimensions", sortKey: .dimensions, width: AllListColumns.dimensions),
+                SortableListColumn(title: "Size", sortKey: .size, width: AllListColumns.size),
+            ]
+        )
     }
 }
 
@@ -108,7 +99,7 @@ private struct AllMetadataRow: View {
             }
             .frame(width: AllListColumns.name, alignment: .leading)
 
-            value(kindDescription, width: AllListColumns.kind, alignment: .leading)
+            value(item.kindDescription, width: AllListColumns.kind, alignment: .leading)
             value(dateAddedDescription, width: AllListColumns.dateAdded)
             value(dateModifiedDescription, width: AllListColumns.dateModified)
             value(durationDescription, width: AllListColumns.duration)
@@ -135,7 +126,9 @@ private struct AllMetadataRow: View {
         }
         .task(id: item.contentVersion) {
             guard item.type != .image else { return }
-            metadata = await MediaMetadataService.shared.metadata(for: item.url)
+            let loaded = await MediaMetadataService.shared.metadata(for: item.url)
+            metadata = loaded
+            model.noteListMetadata(for: item.id, loaded)
         }
         .onChange(of: isActiveAudio) { _, nowActive in
             if nowActive {
@@ -182,13 +175,6 @@ private struct AllMetadataRow: View {
                 .foregroundStyle(.tertiary)
                 .accessibilityHidden(true)
         }
-    }
-
-    private var kindDescription: String? {
-        let fileExtension = item.url.pathExtension
-        guard !fileExtension.isEmpty else { return nil }
-        return UTType(filenameExtension: fileExtension)?.localizedDescription
-            ?? fileExtension.uppercased()
     }
 
     private var dateAddedDescription: String? {
