@@ -3,10 +3,10 @@
 //  Flicksy
 //
 
+import AppKit
 import SwiftUI
 
-/// One listed shortcut in the Command-/ helper. Keys are rendered as Linear-style
-/// glyph strings (⌘, ⌥, ←) rather than bordered keycaps.
+/// One listed shortcut in the Command-/ helper.
 struct KeyboardShortcutEntry: Identifiable, Hashable {
     let id: String
     let title: String
@@ -93,12 +93,11 @@ enum KeyboardShortcutsCatalog {
 struct KeyboardShortcutsView: View {
     @Environment(BrowserModel.self) private var model
 
-    private let cardShape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+    private let panelShape = RoundedRectangle(cornerRadius: 13, style: .continuous)
 
     var body: some View {
-        ZStack {
-            Color.black.opacity(0.18)
-                .ignoresSafeArea()
+        ZStack(alignment: .trailing) {
+            Color.black.opacity(0.25)
                 .contentShape(Rectangle())
                 .onTapGesture(perform: dismiss)
 
@@ -106,24 +105,25 @@ struct KeyboardShortcutsView: View {
                 header
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
+                    LazyVStack(alignment: .leading, spacing: 26) {
                         ForEach(KeyboardShortcutsCatalog.sections) { section in
                             sectionView(section)
                         }
                     }
-                    .padding(.horizontal, 18)
-                    .padding(.top, 14)
-                    .padding(.bottom, 20)
+                    .padding(.horizontal, 22)
+                    .padding(.top, 12)
+                    .padding(.bottom, 28)
                 }
             }
-            .frame(width: 380)
-            .frame(maxHeight: 520)
-            .background(.background, in: cardShape)
-            .clipShape(cardShape)
+            .frame(width: 404)
+            .frame(maxHeight: .infinity)
+            .background(Color(nsColor: .windowBackgroundColor), in: panelShape)
+            .clipShape(panelShape)
             .overlay {
-                cardShape.strokeBorder(.primary.opacity(0.08))
+                panelShape.strokeBorder(.primary.opacity(0.09), lineWidth: 1)
             }
-            .shadow(color: .black.opacity(0.18), radius: 24, y: 10)
+            .shadow(color: .black.opacity(0.2), radius: 24, x: -4, y: 8)
+            .padding(12)
             // Escape dismisses via the standard cancel action — no focus ring.
             .background {
                 Button("Close", action: dismiss)
@@ -133,54 +133,179 @@ struct KeyboardShortcutsView: View {
                     .accessibilityHidden(true)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var header: some View {
         HStack(spacing: 12) {
             Text("Keyboard Shortcuts")
-                .font(.system(.body, design: .default).weight(.semibold))
+                .font(.system(size: 17, weight: .semibold))
             Spacer()
             Button(action: dismiss) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.secondary)
-                    .frame(width: 20, height: 20)
-                    .background(Color.primary.opacity(0.06), in: Circle())
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .help("Close")
             .accessibilityLabel("Close")
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 14)
+        .padding(.leading, 22)
+        .padding(.trailing, 16)
+        .padding(.top, 17)
+        .padding(.bottom, 13)
     }
 
     private func sectionView(_ section: KeyboardShortcutSection) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(section.title)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .padding(.bottom, 4)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.primary)
+                .padding(.bottom, 5)
 
             ForEach(section.entries) { entry in
-                HStack(spacing: 16) {
+                HStack(spacing: 14) {
                     Text(entry.title)
                         .font(.system(size: 13))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                     Spacer(minLength: 8)
-                    Text(entry.keys)
-                        .font(.system(size: 13))
-                        .foregroundStyle(.tertiary)
-                        .multilineTextAlignment(.trailing)
+                    ShortcutKeycaps(keys: entry.keys)
                 }
-                .padding(.vertical, 5)
+                .frame(minHeight: 30)
             }
         }
     }
 
     private func dismiss() {
         model.isShortcutsHelpPresented = false
+    }
+}
+
+private struct ShortcutKeycaps: View {
+    let keys: String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(Array(tokens.enumerated()), id: \.offset) { _, token in
+                Text(token)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .padding(.horizontal, token.count > 1 ? 6 : 4)
+                    .frame(minWidth: 22, minHeight: 22)
+                    .background(Color.primary.opacity(0.025), in: RoundedRectangle(cornerRadius: 4))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 4)
+                            .strokeBorder(.primary.opacity(0.11), lineWidth: 1)
+                    }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(keys)
+    }
+
+    private var tokens: [String] {
+        let standaloneGlyphs = Set("⌘⌥⇧⌃←→↑↓⌫")
+        var result: [String] = []
+
+        for component in keys.split(whereSeparator: \Character.isWhitespace) {
+            var word = ""
+            for character in component {
+                if standaloneGlyphs.contains(character) {
+                    if !word.isEmpty {
+                        result.append(word)
+                        word = ""
+                    }
+                    result.append(String(character))
+                } else {
+                    word.append(character)
+                }
+            }
+            if !word.isEmpty { result.append(word) }
+        }
+        return result
+    }
+}
+
+/// Attaches the shortcuts overlay to the window frame rather than the SwiftUI
+/// content view. The frame includes the unified titlebar and toolbar, allowing
+/// one scrim to dim the complete app chrome just like the Linear reference.
+struct KeyboardShortcutsWindowPresenter: NSViewRepresentable {
+    let model: BrowserModel
+    let isPresented: Bool
+
+    func makeNSView(context: Context) -> KeyboardShortcutsOverlayAnchor {
+        KeyboardShortcutsOverlayAnchor(model: model, isPresented: isPresented)
+    }
+
+    func updateNSView(_ nsView: KeyboardShortcutsOverlayAnchor, context: Context) {
+        nsView.update(model: model, isPresented: isPresented)
+    }
+
+    static func dismantleNSView(_ nsView: KeyboardShortcutsOverlayAnchor, coordinator: ()) {
+        nsView.removeOverlay()
+    }
+}
+
+final class KeyboardShortcutsOverlayAnchor: NSView {
+    private var model: BrowserModel
+    private var isPresented: Bool
+    private weak var attachedFrameView: NSView?
+    private var hostingView: NSHostingView<AnyView>?
+
+    init(model: BrowserModel, isPresented: Bool) {
+        self.model = model
+        self.isPresented = isPresented
+        super.init(frame: .zero)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { nil }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        synchronizeOverlay()
+    }
+
+    func update(model: BrowserModel, isPresented: Bool) {
+        self.model = model
+        self.isPresented = isPresented
+        synchronizeOverlay()
+    }
+
+    func removeOverlay() {
+        hostingView?.removeFromSuperview()
+        hostingView = nil
+        attachedFrameView = nil
+    }
+
+    private func synchronizeOverlay() {
+        guard isPresented,
+              let frameView = window?.contentView?.superview
+        else {
+            removeOverlay()
+            return
+        }
+
+        if attachedFrameView !== frameView {
+            removeOverlay()
+        }
+
+        let rootView = AnyView(KeyboardShortcutsView().environment(model))
+        if let hostingView {
+            hostingView.rootView = rootView
+            hostingView.frame = frameView.bounds
+        } else {
+            let hostingView = NSHostingView(rootView: rootView)
+            hostingView.frame = frameView.bounds
+            hostingView.autoresizingMask = [.width, .height]
+            frameView.addSubview(hostingView, positioned: .above, relativeTo: nil)
+            self.hostingView = hostingView
+            attachedFrameView = frameView
+        }
     }
 }
 
