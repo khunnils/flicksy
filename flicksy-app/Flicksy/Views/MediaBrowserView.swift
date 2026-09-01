@@ -176,43 +176,52 @@ struct MediaBrowserView: View {
         axes: Axis.Set = .vertical
     ) -> some View {
         ScrollViewReader { proxy in
-            ScrollView(axes) {
-                content
-                    .padding(16)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width in
-                        browserWidth = width
+            GeometryReader { geo in
+                ScrollView(axes) {
+                    content
+                        .padding(16)
+                        // Keep short folder listings pinned to the top. A bi-axis
+                        // ScrollView can otherwise vertically center content that
+                        // is shorter than the viewport.
+                        .frame(
+                            maxWidth: .infinity,
+                            minHeight: geo.size.height,
+                            alignment: .topLeading
+                        )
+                        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width in
+                            browserWidth = width
+                        }
+                }
+                .coordinateSpace(name: Self.selectionCoordinateSpace)
+                .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
+                    browserViewportSize = size
+                }
+                .simultaneousGesture(marqueeSelectionGesture)
+                .overlay {
+                    if let marqueeRect {
+                        Rectangle()
+                            .fill(Color.accentColor.opacity(0.14))
+                            .stroke(Color.accentColor.opacity(0.82), lineWidth: 1)
+                            .frame(width: marqueeRect.width, height: marqueeRect.height)
+                            .position(x: marqueeRect.midX, y: marqueeRect.midY)
+                            .allowsHitTesting(false)
                     }
-            }
-            .coordinateSpace(name: Self.selectionCoordinateSpace)
-            .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
-                browserViewportSize = size
-            }
-            .simultaneousGesture(marqueeSelectionGesture)
-            .overlay {
-                if let marqueeRect {
-                    Rectangle()
-                        .fill(Color.accentColor.opacity(0.14))
-                        .stroke(Color.accentColor.opacity(0.82), lineWidth: 1)
-                        .frame(width: marqueeRect.width, height: marqueeRect.height)
-                        .position(x: marqueeRect.midX, y: marqueeRect.midY)
-                        .allowsHitTesting(false)
                 }
-            }
-            .clipped()
-            .onChange(of: model.focusedItemID) {
-                let id = model.focusedItemID
-                guard shouldScrollFocusIntoView, let id else { return }
-                shouldScrollFocusIntoView = false
-                if let frame = selectionFrames[id]?.frame,
-                   browserViewportSize.height > 0,
-                   frame.minY >= 0,
-                   frame.maxY <= browserViewportSize.height {
-                    return
+                .clipped()
+                .onChange(of: model.focusedItemID) {
+                    let id = model.focusedItemID
+                    guard shouldScrollFocusIntoView, let id else { return }
+                    shouldScrollFocusIntoView = false
+                    if let frame = selectionFrames[id]?.frame,
+                       browserViewportSize.height > 0,
+                       frame.minY >= 0,
+                       frame.maxY <= browserViewportSize.height {
+                        return
+                    }
+                    // With no anchor SwiftUI moves only when needed and by the
+                    // shortest distance. Selection itself remains instantaneous.
+                    proxy.scrollTo(id)
                 }
-                // With no anchor SwiftUI moves only when needed and by the
-                // shortest distance. Selection itself remains instantaneous.
-                proxy.scrollTo(id)
             }
         }
     }

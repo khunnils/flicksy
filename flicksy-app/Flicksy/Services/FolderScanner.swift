@@ -72,7 +72,7 @@ enum FolderScanner {
             try Task.checkCancellation()
             let values = try? url.resourceValues(forKeys: treeResourceKeySet)
 
-            if values?.isDirectory == true || policy.excludesDirectoryName(url.lastPathComponent) {
+            if values?.isDirectory == true || policy.excludes(url) {
                 guard policy.shouldDescend(into: url, values: values) else { continue }
                 let result = try scanDirectory(url, policy: policy)
                 if result.containsMedia {

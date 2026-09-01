@@ -52,6 +52,16 @@ final class FolderScanPolicyTests: XCTestCase {
         XCTAssertTrue(policy.directoryEnumerationOptions.isEmpty)
     }
 
+    func testPathExclusionRejectsASpecificDirectory() {
+        let skip = URL(fileURLWithPath: "/tmp/project/Renders", isDirectory: true)
+        var policy = FolderScanPolicy.default
+        policy.excludedDirectoryPaths = [FolderScanPolicy.normalizedPath(skip)]
+
+        XCTAssertTrue(policy.excludes(skip))
+        XCTAssertFalse(policy.shouldDescend(into: skip, values: nil))
+        XCTAssertTrue(policy.shouldDescend(into: URL(fileURLWithPath: "/tmp/project/Photos"), values: nil))
+    }
+
     func testWalkerNeverListsAnExcludedDirectory() throws {
         let root = FileManager.default.temporaryDirectory
             .appending(path: "FlicksyPolicy-\(UUID().uuidString)", directoryHint: .isDirectory)
@@ -70,6 +80,34 @@ final class FolderScanPolicyTests: XCTestCase {
 
         var visited: [String] = []
         try FolderScanWalker.forEachRegularFile(in: root, keys: [.isRegularFileKey]) { url, _ in
+            visited.append(url.lastPathComponent)
+        }
+        XCTAssertEqual(visited, ["shot.png"])
+    }
+
+    func testWalkerNeverListsAUserHiddenPath() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "FlicksyHidden-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let keep = root.appending(path: "Photos/shot.png")
+        let skip = root.appending(path: "Renders/out.png")
+        for url in [keep, skip] {
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try Data(repeating: 0xAB, count: 4).write(to: url)
+        }
+
+        var policy = FolderScanPolicy.default
+        policy.excludedDirectoryPaths = [
+            FolderScanPolicy.normalizedPath(root.appending(path: "Renders", directoryHint: .isDirectory))
+        ]
+
+        var visited: [String] = []
+        try FolderScanWalker.forEachRegularFile(in: root, keys: [.isRegularFileKey], policy: policy) { url, _ in
             visited.append(url.lastPathComponent)
         }
         XCTAssertEqual(visited, ["shot.png"])

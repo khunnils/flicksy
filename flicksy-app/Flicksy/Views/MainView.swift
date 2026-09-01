@@ -26,7 +26,7 @@ struct MainView: View {
     var body: some View {
         NavigationSplitView {
             FolderSidebar()
-                .navigationSplitViewColumnWidth(min: 200, ideal: 240)
+                .navigationSplitViewColumnWidth(min: 220, ideal: 260)
         } detail: {
             MediaBrowserView()
                 .navigationTitle(selectedSourceTitle)

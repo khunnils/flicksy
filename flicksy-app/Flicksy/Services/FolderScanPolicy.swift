@@ -41,12 +41,21 @@ nonisolated struct FolderScanPolicy: Sendable, Equatable, Codable {
     /// This is the list a settings UI would let the user edit.
     var excludedDirectoryNames: Set<String>
 
+    /// Specific directory paths the user hid from the folder browser. Matched
+    /// after path standardization so the same folder is recognized across scans.
+    var excludedDirectoryPaths: Set<String>
+
     static let `default` = FolderScanPolicy(
         skipHiddenDirectories: true,
         skipDirectorySymbolicLinks: true,
         skipPackages: true,
-        excludedDirectoryNames: builtInExcludedDirectoryNames
+        excludedDirectoryNames: builtInExcludedDirectoryNames,
+        excludedDirectoryPaths: []
     )
+
+    static func normalizedPath(_ url: URL) -> String {
+        url.standardizedFileURL.path
+    }
 
     /// Resource keys required to decide whether to descend, prefetched during
     /// listing so the check does not open the child directory.
@@ -194,6 +203,15 @@ nonisolated struct FolderScanPolicy: Sendable, Equatable, Codable {
         }
     }
 
+    func excludesDirectoryPath(_ url: URL) -> Bool {
+        excludedDirectoryPaths.contains(Self.normalizedPath(url))
+    }
+
+    /// Name or path exclusion, decided without opening the directory.
+    func excludes(_ url: URL) -> Bool {
+        excludesDirectoryName(url.lastPathComponent) || excludesDirectoryPath(url)
+    }
+
     /// Immediate children of `directory`, using the policy's listing options.
     /// Callers must still consult `shouldDescend` before recursing; this helper
     /// never opens an excluded child because it only lists `directory` itself.
@@ -215,7 +233,7 @@ nonisolated struct FolderScanPolicy: Sendable, Equatable, Codable {
     /// directory itself is never opened here; callers must skip descent when
     /// this returns `false`.
     func shouldDescend(into url: URL, values: URLResourceValues?) -> Bool {
-        if excludesDirectoryName(url.lastPathComponent) {
+        if excludes(url) {
             return false
         }
 
@@ -273,7 +291,7 @@ nonisolated enum FolderScanWalker {
             try Task.checkCancellation()
             let values = try? url.resourceValues(forKeys: keys)
 
-            if values?.isDirectory == true || policy.excludesDirectoryName(url.lastPathComponent) {
+            if values?.isDirectory == true || policy.excludes(url) {
                 if policy.shouldDescend(into: url, values: values) {
                     try walk(directory: url, keys: keys, policy: policy, visit: visit)
                 }

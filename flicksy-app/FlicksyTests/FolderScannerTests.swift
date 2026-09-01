@@ -78,4 +78,17 @@ final class FolderScannerTests: XCTestCase {
         let tree = try await FolderScanner.buildTree(for: root, policy: policy)
         XCTAssertEqual(Set(tree.children.map(\.name)), ["Photos", "node_modules"])
     }
+
+    func testTreeSkipsUserHiddenDirectory() async throws {
+        try write("Photos/shot.png")
+        try write("Renders/out.png")
+
+        var policy = FolderScanPolicy.default
+        policy.excludedDirectoryPaths = [
+            FolderScanPolicy.normalizedPath(root.appending(path: "Renders", directoryHint: .isDirectory))
+        ]
+
+        let tree = try await FolderScanner.buildTree(for: root, policy: policy)
+        XCTAssertEqual(Set(tree.children.map(\.name)), ["Photos"])
+    }
 }

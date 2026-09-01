@@ -657,6 +657,7 @@ final class BrowserModel {
     private let rootStore = RootFolderStore()
     private let libraryRepository = LibraryRepository()
     private let standardFolderStore = StandardFolderStore()
+    private let scanExclusionStore = FolderScanExclusionStore()
     private let clipboardStore = ClipboardHistoryStore()
     private var scanTask: Task<Void, Never>?
     private var mediaTask: Task<Void, Never>?
@@ -737,12 +738,35 @@ final class BrowserModel {
 
     func removeRootFolder(id: MediaFolder.ID) {
         let url = URL(fileURLWithPath: id)
+        scanExclusionStore.restoreHidden(under: url)
         rootStore.removeFolder(url)
         if selectedSource == .folder(id) {
             selectedSource = nil
             setMediaItems([])
         }
         restartFilesystemMonitoring()
+        rescanRoots()
+    }
+
+    /// Hide a subdirectory from the sidebar and skip it on future scans.
+    /// Root folders use `removeRootFolder` instead.
+    func hideSubfolder(_ folder: MediaFolder) {
+        guard !folder.isRoot else { return }
+        scanExclusionStore.exclude(folder.url)
+        rootTrees = rootTrees.compactMap { removingFolder($0, id: folder.id) }
+        if case .folder(let selection) = selectedSource, isFolder(selection, under: folder.id) {
+            selectedSource = nil
+            setMediaItems([])
+        }
+        rescanRoots()
+    }
+
+    func hasHiddenSubfolders(under folder: MediaFolder) -> Bool {
+        scanExclusionStore.hiddenCount(under: folder.url) > 0
+    }
+
+    func restoreHiddenSubfolders(under folder: MediaFolder) {
+        guard scanExclusionStore.restoreHidden(under: folder.url) > 0 else { return }
         rescanRoots()
     }
 
@@ -1259,6 +1283,10 @@ final class BrowserModel {
         NSWorkspace.shared.activateFileViewerSelecting(urls)
     }
 
+    func revealInFinder(_ folder: MediaFolder) {
+        NSWorkspace.shared.activateFileViewerSelecting([folder.url])
+    }
+
     func copyPath(clicked item: MediaItem? = nil) {
         let urls = itemsForAction(clicked: item).map(\.url)
         guard !urls.isEmpty else { return }
@@ -1469,8 +1497,9 @@ final class BrowserModel {
             }
             var trees: [MediaFolder] = []
             do {
+                let policy = scanExclusionStore.policy
                 for url in urls {
-                    let tree = try await FolderScanner.buildTree(for: url)
+                    let tree = try await FolderScanner.buildTree(for: url, policy: policy)
                     trees.append(tree)
                 }
             } catch is CancellationError {
@@ -1500,7 +1529,7 @@ final class BrowserModel {
         isIndexingLibrary = true
         defer { isIndexingLibrary = false }
         do {
-            try await libraryRepository.reconcile(roots: roots)
+            try await libraryRepository.reconcile(roots: roots, policy: scanExclusionStore.policy)
             await refreshOrganization(reloadSelection: isLibrarySourceSelected)
         } catch is CancellationError {
             return
@@ -2284,5 +2313,16 @@ final class BrowserModel {
             if folderExists(withID: id, in: folder.children) { return true }
         }
         return false
+    }
+
+    private func isFolder(_ id: MediaFolder.ID, under ancestor: MediaFolder.ID) -> Bool {
+        id == ancestor || id.hasPrefix(ancestor.hasSuffix("/") ? ancestor : ancestor + "/")
+    }
+
+    private func removingFolder(_ folder: MediaFolder, id: MediaFolder.ID) -> MediaFolder? {
+        if folder.id == id { return nil }
+        var remaining = folder
+        remaining.children = folder.children.compactMap { removingFolder($0, id: id) }
+        return remaining
     }
 }
