@@ -173,15 +173,7 @@ struct MediaItemInteractionsModifier: ViewModifier {
     }
 
     private var openWithApplications: [OpenWithApplication] {
-        NSWorkspace.shared.urlsForApplications(toOpen: item.url)
-            .map { url in
-                OpenWithApplication(
-                    url: url,
-                    name: FileManager.default.displayName(atPath: url.path),
-                    icon: NSWorkspace.shared.icon(forFile: url.path)
-                )
-            }
-            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        OpenWithApplicationsCache.shared.applications(for: item.url)
     }
 
     private var dragGesture: some Gesture {
@@ -231,6 +223,39 @@ private struct OpenWithApplication: Identifiable {
     let url: URL
     let name: String
     let icon: NSImage
+}
+
+/// Launch Services application discovery and icon loading are synchronous and
+/// surprisingly expensive. SwiftUI may reevaluate context-menu builders during
+/// unrelated view updates (including selection), so resolving this inline made
+/// each arrow key repeat the same filesystem work for every visible item.
+/// Application handlers are extension-based, making this small session cache a
+/// natural fit while keeping the actual context-menu contents unchanged.
+@MainActor
+private final class OpenWithApplicationsCache {
+    static let shared = OpenWithApplicationsCache()
+
+    private var applicationsByExtension: [String: [OpenWithApplication]] = [:]
+
+    func applications(for fileURL: URL) -> [OpenWithApplication] {
+        let fileExtension = fileURL.pathExtension.lowercased()
+        let key = fileExtension.isEmpty ? "<none>" : fileExtension
+        if let cached = applicationsByExtension[key] {
+            return cached
+        }
+
+        let applications = NSWorkspace.shared.urlsForApplications(toOpen: fileURL)
+            .map { applicationURL in
+                OpenWithApplication(
+                    url: applicationURL,
+                    name: FileManager.default.displayName(atPath: applicationURL.path),
+                    icon: NSWorkspace.shared.icon(forFile: applicationURL.path)
+                )
+            }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        applicationsByExtension[key] = applications
+        return applications
+    }
 }
 
 extension View {
