@@ -27,3 +27,5 @@ pnpm-debug.log*
 # playwright
 playwright-report/
 .playwright-cli/
+
+tmp/

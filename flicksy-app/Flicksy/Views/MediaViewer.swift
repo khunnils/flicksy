@@ -307,20 +307,23 @@ private struct ComparisonThumbnailStrip: View {
     @Environment(BrowserModel.self) private var model
 
     var body: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 8) {
-                ForEach(model.comparisonImages) { item in
-                    ComparisonThumbnail(
-                        item: item,
-                        slotIndex: model.compareSlotItemIDs.firstIndex(of: item.id)
-                    )
-                    .draggable(item.id)
+        GeometryReader { geometry in
+            ScrollView(.horizontal) {
+                HStack(spacing: 8) {
+                    ForEach(model.comparisonImages) { item in
+                        ComparisonThumbnail(
+                            item: item,
+                            isActive: model.compareSlotItemIDs.contains(item.id)
+                        )
+                        .draggable(item.id)
+                    }
                 }
+                .padding(6)
+                .frame(minWidth: geometry.size.width)
             }
-            .padding(6)
+            .scrollIndicators(.hidden)
         }
-        .scrollIndicators(.hidden)
-        .fixedSize(horizontal: false, vertical: true)
+        .frame(height: 66)
         .background(.black.opacity(0.055), in: RoundedRectangle(cornerRadius: 12))
         .overlay {
             RoundedRectangle(cornerRadius: 12)
@@ -332,36 +335,22 @@ private struct ComparisonThumbnailStrip: View {
 
 private struct ComparisonThumbnail: View {
     let item: MediaItem
-    let slotIndex: Int?
+    let isActive: Bool
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            ComparisonLoadedImage(item: item, targetPixels: 192)
-                .frame(width: 76, height: 54)
-                .background(Color.black.opacity(0.04))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 6)
-                        .strokeBorder(
-                            slotIndex == nil ? Color.primary.opacity(0.10) : Color.accentColor,
-                            lineWidth: slotIndex == nil ? 1 : 2
-                        )
-                }
-
-            if let slotIndex {
-                Text("\(slotIndex + 1)")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .frame(width: 18, height: 18)
-                    .background(Color.accentColor, in: Circle())
-                    .offset(x: 5, y: -5)
+        ComparisonLoadedImage(item: item, targetPixels: 192)
+            .frame(width: 76, height: 54)
+            .background(Color.black.opacity(0.04))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .overlay {
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(
+                        Color.primary.opacity(isActive ? 0.32 : 0.10),
+                        lineWidth: 1
+                    )
             }
-        }
         .help(item.name)
-        .accessibilityLabel(
-            slotIndex.map { "\(item.name), comparison cell \($0 + 1)" }
-                ?? "\(item.name), not assigned"
-        )
+        .accessibilityLabel("\(item.name), \(isActive ? "active in comparison" : "not active")")
     }
 }
 
