@@ -3,6 +3,9 @@ dist/
 # generated types
 .astro/
 
+# local Cloudflare tooling
+.wrangler/
+
 # dependencies
 node_modules/
 package-lock.json

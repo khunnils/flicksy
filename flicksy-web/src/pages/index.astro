@@ -8,6 +8,21 @@ const features = [
   { icon: '↗', title: 'Drag into your editor', text: 'Take a clip straight into Final Cut, Premiere, CapCut, or anywhere else that accepts a file.' },
 ];
 
+const featureInventory = [
+  { icon: '◫', title: 'Browse every media type', text: 'See images, video, and audio together in one fast, visual library.' },
+  { icon: '⌗', title: 'Work from real folders', text: 'Browse folders and external drives in place. Nothing is imported, copied, or uploaded.' },
+  { icon: '▶', title: 'Scrub video instantly', text: 'Move across a thumbnail to skim a clip before opening a player.' },
+  { icon: '≋', title: 'See and trim audio', text: 'Preview waveforms, loop a range, edit tags, and trim a selection in place.' },
+  { icon: '◰', title: 'Compare images', text: 'Place up to four images together and change the layout until the best option is obvious.' },
+  { icon: '⤢', title: 'Preview and adjust', text: 'Open a focused preview, then crop, rotate, or flip an image without changing apps.' },
+  { icon: '★', title: 'Favorites, tags, collections', text: 'Build useful working sets across folders without moving or duplicating originals.' },
+  { icon: '⌕', title: 'Search and sort', text: 'Find media by name, filter by type, sort by metadata, and resize the thumbnail grid.' },
+  { icon: '⎘', title: 'Clipboard history', text: 'Automatically keep recent copied images ready to browse, reuse, and paste.' },
+  { icon: '↗', title: 'Drag into any editor', text: 'Drop media straight into Final Cut, Premiere, CapCut, or any app that accepts files.' },
+  { icon: 'ⓘ', title: 'Metadata at a glance', text: 'Inspect dimensions, duration, dates, file size, bit rate, sample rate, and channels.' },
+  { icon: '⌘', title: 'Native file actions', text: 'Rename, duplicate, copy, reveal, open with, paste, move, and trash using familiar shortcuts.' },
+];
+
 const faqs = [
   { q: 'Does Flicksy import or copy my files?', a: 'No. Flicksy reads the folders already on your Mac and connected drives. Your files and folder structure stay untouched.' },
   { q: 'Is it a photo library or cloud backup?', a: 'Neither. Flicksy is a fast, visual window onto local media. Nothing is uploaded and there is no library to maintain.' },
@@ -16,7 +31,7 @@ const faqs = [
 ];
 ---
 
-<Layout title="Flicksy — Your media, instantly in view" description="A fast, native media browser for macOS. Browse, skim, organize, and drag every clip, image, and sound into your editor.">
+<Layout title="Flicksy — A modern media browser for Mac" description="A modern media browser designed for content creators. Browse, compare, organize, and work with images, video, and audio on your Mac.">
   <div class="site-shell" id="top">
     <nav class="nav wrap" aria-label="Main navigation">
       <a class="brand" href="#top" aria-label="Flicksy home">
@@ -28,9 +43,9 @@ const faqs = [
 
     <header class="hero wrap">
       <div class="hero-copy">
-        <p class="pill"><span class="apple-mark">●</span> Native media browser for Mac</p>
-        <h1>Your media.<br /><span>Instantly in view.</span></h1>
-        <p class="hero-lead">Browse every clip, image, and sound in one beautifully fast Mac app. Skim, sort, and drag the right moment straight into your editor.</p>
+        <p class="pill"><span class="apple-mark">●</span> A media browser for content creators</p>
+        <h1><strong>Meet Flicksy</strong><span>A modern media browser for Mac</span></h1>
+        <p class="hero-lead">Designed for content creators, Flicksy brings every clip, image, and sound into one beautifully fast Mac app. Skim, compare, organize, and drag the right moment straight into your editor.</p>
         <div class="hero-actions">
           <a class="button button-dark" href="#pricing">Start free trial <span>↘</span></a>
           <a class="text-link" href="#how">See how it works <span>↓</span></a>
@@ -57,7 +72,7 @@ const faqs = [
       </div>
     </section>
 
-    <section class="horizon" id="features">
+    <section class="horizon">
       <div class="horizon-orb horizon-orb-a"></div><div class="horizon-orb horizon-orb-b"></div>
       <div class="wrap horizon-content">
         <div class="section-intro light"><p class="eyebrow">Made for momentum</p><h2>Keep your hands moving.<br />Keep your ideas intact.</h2><p>Every part of Flicksy is tuned to shorten the distance between “I know I have it” and “there it is.”</p></div>
@@ -65,6 +80,10 @@ const faqs = [
         <div class="preview-card">
           <div class="preview-copy"><p class="eyebrow">Built-in adjustments</p><h3>Stay in the flow, even for the little fixes.</h3><p>Preview, crop, rotate, and flip an image without leaving your media browser.</p></div>
           <div class="app-window preview-window"><img src="/app-preview-crop.jpeg" alt="Flicksy image preview with native macOS crop controls" width="1784" height="1154" /></div>
+        </div>
+        <div class="preview-card comparison-card">
+          <div class="preview-copy"><p class="eyebrow">Made to compare</p><h3>Choose the best shot, without the window shuffle.</h3><p>Finder can select images. Preview can open them. Flicksy lets you actually compare them—up to four at once, in flexible layouts, with every candidate close by in the filmstrip.</p></div>
+          <div class="app-window comparison-window"><img src="/app-compare.jpeg" alt="Flicksy comparing four images side by side in a native macOS window" width="3562" height="2608" /></div>
         </div>
       </div>
     </section>
@@ -75,6 +94,20 @@ const faqs = [
         <article class="soft-card tags-card"><div class="mini-ui tag-cloud"><span><i class="purple"></i> Dinos <em>21</em></span><span><i class="red"></i> Thumbnails <em>8</em></span><span><i class="blue"></i> Approved <em>14</em></span></div><div><h3>Tags that travel</h3><p>Label media across folders, then see every matching item together.</p></div></article>
         <article class="soft-card collections-card"><div class="mini-ui collection-list"><span><b>▦</b> Episode 12 <em>34</em></span><span><b>▦</b> Spring launch <em>18</em></span><span><b>▦</b> Best openers <em>9</em></span></div><div><h3>Collections without copies</h3><p>Build working sets across projects while every original stays put.</p></div></article>
         <article class="soft-card favorites-card"><div class="mini-ui favorite-ui"><span>★</span><small>Your best takes,<br />always one click away.</small></div><div><h3>Favorites at hand</h3><p>Save the shots worth returning to with a single keystroke.</p></div></article>
+      </div>
+    </section>
+
+    <section class="section feature-inventory" id="features">
+      <div class="wrap">
+        <div class="section-intro inventory-intro"><p class="eyebrow">The full toolkit</p><h2>Everything you expect.<br />Plus what Finder is missing.</h2><p>Flicksy combines everyday file browsing with the media-first tools content creators reach for all day.</p></div>
+        <div class="inventory-grid">
+          {featureInventory.map((feature) => (
+            <article class="inventory-item">
+              <span class="inventory-icon" aria-hidden="true">{feature.icon}</span>
+              <div><h3>{feature.title}</h3><p>{feature.text}</p></div>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
 
@@ -113,8 +146,9 @@ const faqs = [
   .hero-copy { position: relative; z-index: 2; max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
   .pill { display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 7px 13px; background: rgba(255,255,255,.58); border: 1px solid rgba(255,255,255,.85); box-shadow: inset 0 0 0 1px rgba(100,110,130,.06), 0 8px 28px rgba(82,92,120,.08); border-radius: 999px; color: #626a79; font-size: 12px; backdrop-filter: blur(18px); }
   .apple-mark { color: #20242b; font-size: 8px; }
-  .hero h1 { margin: 25px 0 23px; font-size: clamp(58px, 8.8vw, 110px); line-height: .88; letter-spacing: -.065em; font-weight: 650; }
-  .hero h1 span { font-weight: 420; color: #626a76; }
+  .hero h1 { margin: 25px 0 23px; display: flex; flex-direction: column; gap: 12px; line-height: .92; letter-spacing: -.065em; }
+  .hero h1 strong { font-size: clamp(66px, 9.3vw, 116px); font-weight: 650; }
+  .hero h1 span { max-width: 840px; color: #626a76; font-size: clamp(34px, 5vw, 62px); font-weight: 420; letter-spacing: -.055em; }
   .hero-lead { max-width: 625px; margin: 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); line-height: 1.55; }
   .hero-actions { display: flex; align-items: center; gap: 25px; margin-top: 30px; }
   .text-link { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; text-underline-offset: 4px; text-decoration-color: #c5c9d0; }
@@ -174,6 +208,10 @@ const faqs = [
   .preview-copy > p:not(.eyebrow) { color: #a6b2bd; }
   .preview-window { align-self: end; }
   .preview-window img { clip-path: inset(3.1% 3.1% 6.2% 3.1% round 19px); filter: drop-shadow(0 38px 32px rgba(0,0,0,.35)) drop-shadow(0 8px 12px rgba(0,0,0,.2)); }
+  .comparison-card { grid-template-columns: 1.55fr .68fr; padding-bottom: 125px; }
+  .comparison-card .preview-copy { order: 2; }
+  .comparison-card .comparison-window { order: 1; }
+  .comparison-window img { height: auto; object-fit: contain; clip-path: none; filter: drop-shadow(0 38px 32px rgba(0,0,0,.35)) drop-shadow(0 8px 12px rgba(0,0,0,.2)); }
   .organize { padding-top: 130px; }
   .organize-grid { margin-top: 58px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
   .soft-card { display: flex; flex-direction: column; min-height: 440px; padding: 16px; border: 1px solid rgba(132,143,158,.17); background: rgba(255,255,255,.7); border-radius: 25px; box-shadow: 0 20px 50px rgba(46,57,75,.06); }
@@ -188,6 +226,13 @@ const faqs = [
   .favorite-ui { display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 38%, #fff 0, #eef2f6 55%, #e9edf2 100%); text-align: center; }
   .favorite-ui span { font-size: 58px; color: #1f2329; filter: drop-shadow(0 8px 15px rgba(30,36,46,.15)); }
   .favorite-ui small { margin-top: 17px; color: #8a929e; line-height: 1.55; }
+  .feature-inventory { background: #eef1f5; }
+  .inventory-intro { max-width: 770px; }
+  .inventory-grid { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 60px; border-top: 1px solid #d5dae1; border-left: 1px solid #d5dae1; border-radius: 22px; overflow: hidden; }
+  .inventory-item { display: flex; gap: 17px; min-height: 178px; padding: 27px 25px; border-right: 1px solid #d5dae1; border-bottom: 1px solid #d5dae1; background: rgba(255,255,255,.5); }
+  .inventory-icon { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid #d3d8df; border-radius: 11px; background: #fff; color: #596271; font-size: 16px; box-shadow: 0 4px 12px rgba(36,44,56,.05); }
+  .inventory-item h3 { margin: 3px 0 8px; font-size: 15px; }
+  .inventory-item p { margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.58; }
   .pricing { background: linear-gradient(135deg, #eef3ff 0%, #f5eff7 48%, #eaf5f2 100%); }
   .pricing-grid { display: grid; grid-template-columns: 1fr 440px; align-items: center; gap: 90px; }
   .pricing-copy h2 { margin: 15px 0 22px; font-size: clamp(44px, 5vw, 68px); }
@@ -213,19 +258,23 @@ const faqs = [
   @media (max-width: 950px) {
     .iridescent-stage { min-height: auto; margin-left: -20px; margin-right: -20px; padding: 50px 30px 90px; }
     .showcase-grid { grid-template-columns: 1fr; gap: 55px; } .showcase-copy { max-width: 650px; }
-    .feature-grid { grid-template-columns: 1fr 1fr; } .preview-card { grid-template-columns: 1fr; } .preview-copy { max-width: 560px; }
+    .feature-grid { grid-template-columns: 1fr 1fr; } .preview-card, .comparison-card { grid-template-columns: 1fr; } .preview-copy { max-width: 560px; }
+    .comparison-card .preview-copy, .comparison-card .comparison-window { order: initial; }
     .organize-grid { grid-template-columns: 1fr 1fr; } .favorites-card { grid-column: span 2; }
+    .inventory-grid { grid-template-columns: repeat(2, 1fr); }
     .pricing-grid { gap: 45px; } .faq { grid-template-columns: 1fr; gap: 45px; }
   }
   @media (max-width: 700px) {
     .nav { height: 66px; } .nav-links { display: none; } .nav .button { margin-left: auto; }
-    .hero { padding-top: 55px; } .hero h1 { font-size: clamp(53px, 16vw, 76px); } .hero-actions { flex-direction: column; gap: 17px; }
+    .hero { padding-top: 55px; } .hero h1 strong { font-size: clamp(56px, 17vw, 78px); } .hero h1 span { font-size: clamp(31px, 10vw, 46px); } .hero-actions { flex-direction: column; gap: 17px; }
     .iridescent-stage { margin-top: 52px; padding: 34px 10px 72px; } .app-window img { clip-path: inset(2.6% 3% 5.4% 3% round 12px); }
     .section, .organize { padding-top: 88px; padding-bottom: 88px; }
     .showcase { margin-top: -45px; padding-top: 118px; padding-bottom: 88px; }
     .horizon { padding-top: 88px; } .feature-grid { grid-template-columns: 1fr; } .glass-card { min-height: 220px; } .glass-card h3 { margin-top: 38px; }
     .preview-card { margin-top: 78px; gap: 38px; }
     .organize-grid { grid-template-columns: 1fr; } .favorites-card { grid-column: auto; } .soft-card { min-height: 380px; }
+    .inventory-grid { grid-template-columns: 1fr; margin-top: 42px; }
+    .inventory-item { min-height: auto; }
     .pricing-grid { grid-template-columns: 1fr; } .faq-grid { grid-template-columns: 1fr; }
     .footer-inner { align-items: flex-start; flex-direction: column; } .footer-inner p { margin: 0; }
   }
