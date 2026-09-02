@@ -64,6 +64,7 @@ enum KeyboardShortcutsCatalog {
                 .init(id: "move-focus", title: "Move focus", keys: "← → ↑ ↓"),
                 .init(id: "extend-selection", title: "Extend selection", keys: "⇧← → ↑ ↓"),
                 .init(id: "preview", title: "Open preview", keys: "Space"),
+                .init(id: "compare", title: "Compare images", keys: "⇧Space"),
                 .init(id: "play-return", title: "Play / Pause", keys: "Return"),
                 .init(id: "delete", title: "Move to Trash", keys: "⌫"),
             ]
@@ -74,6 +75,7 @@ enum KeyboardShortcutsCatalog {
             entries: [
                 .init(id: "prev-next", title: "Previous / Next", keys: "← →"),
                 .init(id: "viewer-play", title: "Play / Pause", keys: "Space"),
+                .init(id: "viewer-compare", title: "Compare images", keys: "⇧Space"),
                 .init(id: "fullscreen", title: "Toggle full screen", keys: "F"),
                 .init(id: "close-viewer", title: "Close", keys: "Esc"),
             ]

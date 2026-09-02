@@ -394,6 +394,7 @@ struct CommandPaletteView: View {
                 id: "compare",
                 title: "Compare Images",
                 icon: "square.grid.2x2",
+                trailing: "⇧Space",
                 action: .compare,
                 keywords: ["compare", "layout", "side by side"]
             ))

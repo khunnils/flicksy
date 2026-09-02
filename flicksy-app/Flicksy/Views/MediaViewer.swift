@@ -168,8 +168,8 @@ struct MediaViewer: View {
     private var shortcuts: some View {
         ZStack {
             // Space plays/pauses video; on a still it closes, like Quick Look
-            // (spec section 16). While cropping, Space is ignored so it cannot
-            // dismiss the guide accidentally.
+            // (spec section 16). ⇧Space toggles image comparison. While
+            // cropping, both are ignored so they cannot dismiss the guide.
             Button("Space") {
                 if model.isCropping { return }
                 if model.isComparingImages {
@@ -183,6 +183,12 @@ struct MediaViewer: View {
                 }
             }
             .keyboardShortcut(.space, modifiers: [])
+
+            Button("Compare Images") {
+                if model.isCropping { return }
+                model.toggleImageComparison()
+            }
+            .keyboardShortcut(.space, modifiers: .shift)
 
             Button("Play/Pause") {
                 playback?.togglePlayPause()

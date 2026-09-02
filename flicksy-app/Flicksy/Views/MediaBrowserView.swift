@@ -407,8 +407,8 @@ struct MediaBrowserView: View {
     }
 
     private func handleKey(_ press: KeyPress) -> KeyPress.Result {
-        // While the viewer is open its own shortcuts (arrows, Space, Enter, Esc)
-        // take over, so the grid stays out of the way.
+        // While the viewer is open its own shortcuts (arrows, Space, ⇧Space,
+        // Enter, Esc) take over, so the grid stays out of the way.
         guard model.viewerItemID == nil, !searchFieldFocused else { return .ignored }
 
         let extend = press.modifiers.contains(.shift)
@@ -437,7 +437,11 @@ struct MediaBrowserView: View {
         case .downArrow:
             moveFocus(.down, extending: extend)
         case .space:
-            if shouldSpaceTogglePlayback {
+            if extend {
+                if model.canCompareSelectedImages {
+                    model.toggleImageComparison()
+                }
+            } else if shouldSpaceTogglePlayback {
                 model.togglePlaybackOfFocusedItem()
             } else {
                 model.openPreview()

@@ -55,7 +55,7 @@ struct ImageViewerToolbar: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(model.isComparingImages ? "Return to single preview" : "Compare selected images")
+        .help(model.isComparingImages ? "Return to single preview (⇧Space)" : "Compare selected images (⇧Space)")
         .accessibilityLabel(model.isComparingImages ? "Exit Compare" : "Compare Images")
     }
 
