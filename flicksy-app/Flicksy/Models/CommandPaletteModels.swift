@@ -71,7 +71,7 @@ struct CommandPaletteSelectionCapabilities: Equatable, Sendable {
         isCollectionSelected: Bool
     ) {
         itemCount = items.count
-        canOpenSelection = items.count == 1
+        canOpenSelection = !items.isEmpty
         canGetInfo = items.count == 1
         canEditMetaTags = !items.isEmpty && items.allSatisfy {
             AudioTagService.canWrite(url: $0.url)

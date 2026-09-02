@@ -375,14 +375,14 @@ struct CommandPaletteView: View {
             isClipboardSelected: model.isClipboardSelected,
             isCollectionSelected: model.isCollectionSelected
         )
-        let single = items.count == 1 ? items[0] : nil
         var rows: [CommandPaletteRow] = []
 
-        if capabilities.canOpenSelection, let single {
+        if capabilities.canOpenSelection {
+            let playsAudio = items.allSatisfy { $0.type == .audio }
             rows.append(command(
                 id: "open-selection",
-                title: single.type == .audio ? "Play Audio" : "Open Preview",
-                icon: single.type == .audio ? "play.fill" : "eye",
+                title: playsAudio ? "Play Audio" : "Open Preview",
+                icon: playsAudio ? "play.fill" : "eye",
                 action: .openSelection,
                 keywords: ["open", "preview", "play"]
             ))

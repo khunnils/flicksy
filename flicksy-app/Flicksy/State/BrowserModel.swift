@@ -1252,10 +1252,21 @@ final class BrowserModel {
     }
 
     func openCommandPaletteSelection() {
-        guard commandPaletteSelectionItems.count == 1,
-              let item = commandPaletteSelectionItems.first
-        else { return }
-        openFromContextMenu(item)
+        let items = commandPaletteSelectionItems
+        guard let first = items.first else { return }
+
+        if items.count == 1 {
+            openFromContextMenu(first)
+        } else if items.contains(where: { $0.type != .audio }) {
+            // Preserve the complete selection so the viewer playlist can step
+            // through just the selected visual items.
+            openPreview()
+        } else {
+            let target = focusedItem.flatMap { focused in
+                items.contains(where: { $0.id == focused.id }) ? focused : nil
+            } ?? first
+            playingAudioID = target.id
+        }
     }
 
     func presentRenameForCommandPaletteSelection() {
@@ -2637,12 +2648,14 @@ final class BrowserModel {
 
     // MARK: - Preview / viewer playlist
 
-    /// The set of items the viewer's Left/Right navigation walks. When two or more
-    /// visual items are selected, browsing is confined to that subset; otherwise it
-    /// spans every image and video in the folder.
+    /// The set of items the viewer's Left/Right navigation walks. For a multi-item
+    /// selection, browsing is confined to its visual items; otherwise it spans
+    /// every image and video in the folder.
     var viewerPlaylist: [MediaItem] {
         let selectedVisual = visualItems.filter { selectedItemIDs.contains($0.id) }
-        return selectedVisual.count >= 2 ? selectedVisual : visualItems
+        return selectedItemIDs.count > 1 && !selectedVisual.isEmpty
+            ? selectedVisual
+            : visualItems
     }
 
     /// Open the preview for the current selection. Uses the focused item when it is

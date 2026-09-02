@@ -96,7 +96,7 @@ final class CommandPaletteSearchIndexTests: XCTestCase {
             isClipboardSelected: false,
             isCollectionSelected: false
         )
-        XCTAssertFalse(multiple.canOpenSelection)
+        XCTAssertTrue(multiple.canOpenSelection)
         XCTAssertFalse(multiple.canGetInfo)
         XCTAssertFalse(multiple.canRename)
         XCTAssertTrue(multiple.canEditMetaTags)
@@ -121,6 +121,13 @@ final class CommandPaletteSearchIndexTests: XCTestCase {
         )
         XCTAssertFalse(clipboard.canDuplicate)
         XCTAssertFalse(clipboard.canRename)
+
+        let empty = CommandPaletteSelectionCapabilities(
+            items: [],
+            isClipboardSelected: false,
+            isCollectionSelected: false
+        )
+        XCTAssertFalse(empty.canOpenSelection)
     }
 
     func testPendingFileResolutionUsesLibraryIDThenStandardizedURLFallback() {
