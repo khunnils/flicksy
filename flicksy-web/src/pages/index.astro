@@ -63,46 +63,46 @@ const faqs = [
   <main>
     <section class="showcase section wrap" id="how">
       <div class="showcase-grid">
-        <div class="showcase-copy">
+        <div class="showcase-copy" data-reveal>
           <p class="eyebrow">Feels at home on Mac</p><h2>A media browser that gets out of your way.</h2>
           <p>No imported library. No alien interface. Flicksy feels familiar from the first click—with a native sidebar, familiar controls, Quick Look speed, and the polish you expect on macOS.</p>
           <ul class="check-list"><li><span>✓</span> Built in Swift for Apple Silicon</li><li><span>✓</span> Reads folders and external drives in place</li><li><span>✓</span> Stays fluid across thousands of assets</li></ul>
         </div>
-        <div class="window-wrap"><div class="app-window detail-window"><img src="/app-browser-history.jpeg" alt="Flicksy browser window showing images and video from a project folder" width="1896" height="1316" /></div></div>
+        <div class="window-wrap" data-reveal data-reveal-delay="1"><div class="app-window detail-window"><img src="/app-browser-history.jpeg" alt="Flicksy browser window showing images and video from a project folder" width="1896" height="1316" /></div></div>
       </div>
     </section>
 
     <section class="horizon">
       <div class="horizon-orb horizon-orb-a"></div><div class="horizon-orb horizon-orb-b"></div>
       <div class="wrap horizon-content">
-        <div class="section-intro light"><p class="eyebrow">Made for momentum</p><h2>Keep your hands moving.<br />Keep your ideas intact.</h2><p>Every part of Flicksy is tuned to shorten the distance between “I know I have it” and “there it is.”</p></div>
-        <div class="feature-grid">{features.map((feature) => <article class="glass-card"><span class="feature-icon">{feature.icon}</span><h3>{feature.title}</h3><p>{feature.text}</p></article>)}</div>
+        <div class="section-intro light" data-reveal><p class="eyebrow">Made for momentum</p><h2>Keep your hands moving.<br />Keep your ideas intact.</h2><p>Every part of Flicksy is tuned to shorten the distance between “I know I have it” and “there it is.”</p></div>
+        <div class="feature-grid">{features.map((feature, index) => <article class="glass-card" data-reveal data-reveal-delay={String(index % 4)}><span class="feature-icon">{feature.icon}</span><h3>{feature.title}</h3><p>{feature.text}</p></article>)}</div>
         <div class="preview-card">
-          <div class="preview-copy"><p class="eyebrow">Built-in adjustments</p><h3>Stay in the flow, even for the little fixes.</h3><p>Preview, crop, rotate, and flip an image without leaving your media browser.</p></div>
-          <div class="app-window preview-window"><img src="/app-preview-crop.jpeg" alt="Flicksy image preview with native macOS crop controls" width="1784" height="1154" /></div>
+          <div class="preview-copy" data-reveal><p class="eyebrow">Built-in adjustments</p><h3>Stay in the flow, even for the little fixes.</h3><p>Preview, crop, rotate, and flip an image without leaving your media browser.</p></div>
+          <div class="app-window preview-window" data-reveal data-reveal-delay="1"><img src="/app-preview-crop.jpeg" alt="Flicksy image preview with native macOS crop controls" width="1784" height="1154" /></div>
         </div>
         <div class="preview-card comparison-card">
-          <div class="preview-copy"><p class="eyebrow">Made to compare</p><h3>Choose the best shot, without the window shuffle.</h3><p>Finder can select images. Preview can open them. Flicksy lets you compare them in sensible layouts..</p></div>
-          <div class="app-window comparison-window"><img src="/app-compare.jpeg" alt="Flicksy comparing four images side by side in a native macOS window" width="3562" height="2608" /></div>
+          <div class="preview-copy" data-reveal data-reveal-delay="1"><p class="eyebrow">Made to compare</p><h3>Choose the best shot, without the window shuffle.</h3><p>Finder can select images. Preview can open them. Flicksy lets you compare them in sensible layouts..</p></div>
+          <div class="app-window comparison-window" data-reveal><img src="/app-compare.jpeg" alt="Flicksy comparing four images side by side in a native macOS window" width="3562" height="2608" /></div>
         </div>
       </div>
     </section>
 
     <section class="section organize wrap">
-      <div class="section-intro center"><p class="eyebrow">A layer, not a lock-in</p><h2>Organize the way you think.<br />Keep files where they belong.</h2></div>
+      <div class="section-intro center" data-reveal><p class="eyebrow">A layer, not a lock-in</p><h2>Organize the way you think.<br />Keep files where they belong.</h2></div>
       <div class="organize-grid">
-        <article class="soft-card tags-card"><div class="mini-ui tag-cloud"><span><i class="purple"></i> Dinos <em>21</em></span><span><i class="red"></i> Thumbnails <em>8</em></span><span><i class="blue"></i> Approved <em>14</em></span></div><div><h3>Tags that travel</h3><p>Label media across folders, then see every matching item together.</p></div></article>
-        <article class="soft-card collections-card"><div class="mini-ui collection-list"><span><b>▦</b> Episode 12 <em>34</em></span><span><b>▦</b> Spring launch <em>18</em></span><span><b>▦</b> Best openers <em>9</em></span></div><div><h3>Collections without copies</h3><p>Build working sets across projects while every original stays put.</p></div></article>
-        <article class="soft-card favorites-card"><div class="mini-ui favorite-ui"><span>★</span><small>Your best takes,<br />always one click away.</small></div><div><h3>Favorites at hand</h3><p>Save the shots worth returning to with a single keystroke.</p></div></article>
+        <article class="soft-card tags-card" data-reveal><div class="mini-ui tag-cloud"><span><i class="purple"></i> Dinos <em>21</em></span><span><i class="red"></i> Thumbnails <em>8</em></span><span><i class="blue"></i> Approved <em>14</em></span></div><div><h3>Tags that travel</h3><p>Label media across folders, then see every matching item together.</p></div></article>
+        <article class="soft-card collections-card" data-reveal data-reveal-delay="1"><div class="mini-ui collection-list"><span><b>▦</b> Episode 12 <em>34</em></span><span><b>▦</b> Spring launch <em>18</em></span><span><b>▦</b> Best openers <em>9</em></span></div><div><h3>Collections without copies</h3><p>Build working sets across projects while every original stays put.</p></div></article>
+        <article class="soft-card favorites-card" data-reveal data-reveal-delay="2"><div class="mini-ui favorite-ui"><span>★</span><small>Your best takes,<br />always one click away.</small></div><div><h3>Favorites at hand</h3><p>Save the shots worth returning to with a single keystroke.</p></div></article>
       </div>
     </section>
 
     <section class="section feature-inventory" id="features">
       <div class="wrap">
-        <div class="section-intro inventory-intro"><p class="eyebrow">The full toolkit</p><h2>Everything you expect.<br />Plus what Finder is missing.</h2><p>Flicksy combines everyday file browsing with the media-first tools content creators reach for all day.</p></div>
+        <div class="section-intro inventory-intro" data-reveal><p class="eyebrow">The full toolkit</p><h2>Everything you expect.<br />Plus what Finder is missing.</h2><p>Flicksy combines everyday file browsing with the media-first tools content creators reach for all day.</p></div>
         <div class="inventory-grid">
-          {featureInventory.map((feature) => (
-            <article class="inventory-item">
+          {featureInventory.map((feature, index) => (
+            <article class="inventory-item" data-reveal data-reveal-delay={String(index % 3)}>
               <span class="inventory-icon" aria-hidden="true">{feature.icon}</span>
               <div><h3>{feature.title}</h3><p>{feature.text}</p></div>
             </article>
@@ -113,8 +113,8 @@ const faqs = [
 
     <section class="section pricing" id="pricing">
       <div class="wrap pricing-grid">
-        <div class="pricing-copy"><p class="eyebrow">Simple by design</p><h2>One tiny price.<br />One less subscription.</h2><p>Try the whole app free. Pay once only if Flicksy earns a place in your Dock.</p><div class="compatibility"><span>●</span> macOS 15+ · Apple Silicon</div></div>
-        <div class="price-card">
+        <div class="pricing-copy" data-reveal><p class="eyebrow">Simple by design</p><h2>One tiny price.<br />One less subscription.</h2><p>Try the whole app free. Pay once only if Flicksy earns a place in your Dock.</p><div class="compatibility"><span>●</span> macOS 15+ · Apple Silicon</div></div>
+        <div class="price-card" data-reveal data-reveal-delay="1">
           <div class="price-top"><img src="/flicksy-app-icon.png" alt="Flicksy app icon" width="72" height="72" /><span>Lifetime license</span></div>
           <div class="price-line"><strong>$9</strong><span>USD<br />one-time</span></div>
           <ul><li>Full-featured free trial</li><li>Video, images, and audio</li><li>Tags, collections, and favorites</li><li>No account, upload, or lock-in</li></ul>
@@ -124,8 +124,8 @@ const faqs = [
     </section>
 
     <section class="section faq wrap">
-      <div class="section-intro"><p class="eyebrow">Good to know</p><h2>Straight answers.</h2></div>
-      <div class="faq-grid">{faqs.map((item) => <article><h3>{item.q}</h3><p>{item.a}</p></article>)}</div>
+      <div class="section-intro" data-reveal><p class="eyebrow">Good to know</p><h2>Straight answers.</h2></div>
+      <div class="faq-grid">{faqs.map((item, index) => <article data-reveal data-reveal-delay={String(index % 2)}><h3>{item.q}</h3><p>{item.a}</p></article>)}</div>
     </section>
   </main>
 
@@ -144,6 +144,12 @@ const faqs = [
   .button-small { padding: 9px 16px !important; font-size: 13px !important; }
   .hero { position: relative; padding-top: 76px; text-align: center; }
   .hero-copy { position: relative; z-index: 2; max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
+  .hero-copy > * { animation: hero-enter .8s cubic-bezier(.22,1,.36,1) both; }
+  .hero-copy > :nth-child(1) { animation-delay: .08s; }
+  .hero-copy > :nth-child(2) { animation-delay: .15s; }
+  .hero-copy > :nth-child(3) { animation-delay: .23s; }
+  .hero-copy > :nth-child(4) { animation-delay: .31s; }
+  .hero-copy > :nth-child(5) { animation-delay: .39s; }
   .pill { display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 7px 13px; background: rgba(255,255,255,.58); border: 1px solid rgba(255,255,255,.85); box-shadow: inset 0 0 0 1px rgba(100,110,130,.06), 0 8px 28px rgba(82,92,120,.08); border-radius: 999px; color: #626a79; font-size: 12px; backdrop-filter: blur(18px); }
   .apple-mark { color: #20242b; font-size: 8px; }
   .hero h1 { margin: 25px 0 23px; display: flex; flex-direction: column; gap: 12px; line-height: .92; letter-spacing: -.065em; }
@@ -170,16 +176,16 @@ const faqs = [
     pointer-events: none;
   }
   .aurora { position: absolute; z-index: -2; border-radius: 50%; filter: blur(32px); mix-blend-mode: multiply; opacity: .56; }
-  .aurora-blue { width: 600px; height: 420px; left: -80px; top: 105px; background: #73a4ff; }
-  .aurora-pink { width: 560px; height: 400px; right: -40px; top: 120px; background: #ef8bce; }
-  .aurora-mint { width: 590px; height: 310px; left: 34%; bottom: 20px; background: #72dac8; }
+  .aurora-blue { width: 600px; height: 420px; left: -80px; top: 105px; background: #73a4ff; animation: aurora-blue 16s ease-in-out infinite alternate; }
+  .aurora-pink { width: 560px; height: 400px; right: -40px; top: 120px; background: #ef8bce; animation: aurora-pink 19s ease-in-out infinite alternate; }
+  .aurora-mint { width: 590px; height: 310px; left: 34%; bottom: 20px; background: #72dac8; animation: aurora-mint 17s ease-in-out infinite alternate; }
   .app-window { position: relative; overflow: visible; border: 0; background: transparent; box-shadow: none; }
   .app-window img {
     width: 100%; height: 100%; object-fit: cover;
     clip-path: inset(2.6% 3% 5.4% 3% round 22px);
     filter: drop-shadow(0 36px 34px rgba(34, 43, 61, .24)) drop-shadow(0 8px 12px rgba(34, 43, 61, .14));
   }
-  .hero-window { transform: perspective(1600px) rotateX(2deg); }
+  .hero-window { transform: perspective(1600px) rotateX(2deg); animation: window-enter 1s .32s cubic-bezier(.22,1,.36,1) both; }
   .center { margin-left: auto; margin-right: auto; text-align: center; }
   .showcase { position: relative; z-index: 2; margin-top: -72px; padding-top: 180px; padding-bottom: 140px; }
   .showcase-grid { display: grid; grid-template-columns: .78fr 1.45fr; align-items: center; gap: 70px; }
@@ -200,7 +206,8 @@ const faqs = [
   .horizon-content { position: relative; }
   .light { max-width: 690px; } .light .eyebrow, .light p { color: #9eaeba; } .light h2 { margin: 16px 0 22px; }
   .feature-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 55px; }
-  .glass-card { min-height: 270px; padding: 25px; border: 1px solid rgba(255,255,255,.11); border-radius: 22px; background: rgba(255,255,255,.055); box-shadow: inset 0 1px 0 rgba(255,255,255,.06); backdrop-filter: blur(20px); }
+  .glass-card { min-height: 270px; padding: 25px; border: 1px solid rgba(255,255,255,.11); border-radius: 22px; background: rgba(255,255,255,.055); box-shadow: inset 0 1px 0 rgba(255,255,255,.06); backdrop-filter: blur(20px); transition: transform .35s cubic-bezier(.22,1,.36,1), border-color .35s ease, background .35s ease, box-shadow .35s ease; }
+  .glass-card:hover { transform: translateY(-4px); border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.075); box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 18px 45px rgba(5,11,18,.12); }
   .feature-icon { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; background: rgba(255,255,255,.08); color: #dbe9f3; font-size: 18px; }
   .glass-card h3 { margin: 58px 0 10px; font-size: 17px; } .glass-card p { margin: 0; color: #9eacb8; font-size: 13px; line-height: 1.6; }
   .preview-card { display: grid; grid-template-columns: .68fr 1.55fr; align-items: center; gap: 58px; margin-top: 110px; }
@@ -214,7 +221,8 @@ const faqs = [
   .comparison-window img { height: auto; object-fit: contain; clip-path: none; filter: drop-shadow(0 38px 32px rgba(0,0,0,.35)) drop-shadow(0 8px 12px rgba(0,0,0,.2)); }
   .organize { padding-top: 130px; }
   .organize-grid { margin-top: 58px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
-  .soft-card { display: flex; flex-direction: column; min-height: 440px; padding: 16px; border: 1px solid rgba(132,143,158,.17); background: rgba(255,255,255,.7); border-radius: 25px; box-shadow: 0 20px 50px rgba(46,57,75,.06); }
+  .soft-card { display: flex; flex-direction: column; min-height: 440px; padding: 16px; border: 1px solid rgba(132,143,158,.17); background: rgba(255,255,255,.7); border-radius: 25px; box-shadow: 0 20px 50px rgba(46,57,75,.06); transition: transform .35s cubic-bezier(.22,1,.36,1), box-shadow .35s ease, border-color .35s ease; }
+  .soft-card:hover { transform: translateY(-4px); border-color: rgba(132,143,158,.26); box-shadow: 0 26px 65px rgba(46,57,75,.1); }
   .soft-card > div:last-child { padding: 20px 10px 10px; } .soft-card h3 { margin: 0 0 7px; font-size: 18px; } .soft-card p { margin: 0; color: var(--muted); font-size: 13px; }
   .mini-ui { flex: 1; border-radius: 17px; background: #eef1f5; }
   .tag-cloud, .collection-list { display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: 28px; }
@@ -248,6 +256,8 @@ const faqs = [
   .price-card ul { list-style: none; margin: 0 0 25px; padding: 0; }
   .price-card li { position: relative; padding: 9px 0 9px 23px; border-top: 1px solid rgba(130,140,153,.16); font-size: 13px; }
   .price-card li::before { content: '✓'; position: absolute; left: 1px; color: #557868; }
+  .price-card { transition: transform .35s cubic-bezier(.22,1,.36,1), box-shadow .35s ease; }
+  .price-card:hover { transform: translateY(-4px); box-shadow: 0 42px 90px rgba(50,61,82,.17), inset 0 0 0 1px rgba(125,137,153,.06); }
   .faq { display: grid; grid-template-columns: .65fr 1.35fr; gap: 80px; } .faq .section-intro { margin: 0; }
   .faq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 25px; }
   .faq-grid article { padding: 23px 0 25px; border-top: 1px solid var(--line); }
@@ -255,6 +265,19 @@ const faqs = [
   .footer { padding: 32px 0 42px; border-top: 1px solid var(--line); }
   .footer-inner { display: flex; align-items: center; gap: 24px; color: var(--muted); font-size: 11px; }
   .footer-inner .brand { color: var(--ink); font-size: 14px; } .footer-inner p { margin: 0 auto; }
+  :global(.motion-ready) [data-reveal] { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .8s cubic-bezier(.22,1,.36,1); transition-delay: calc(var(--reveal-delay, 0) * 70ms); }
+  :global(.motion-ready) [data-reveal][data-reveal-delay="1"] { --reveal-delay: 1; }
+  :global(.motion-ready) [data-reveal][data-reveal-delay="2"] { --reveal-delay: 2; }
+  :global(.motion-ready) [data-reveal][data-reveal-delay="3"] { --reveal-delay: 3; }
+  :global(.motion-ready) [data-reveal].is-visible { opacity: 1; transform: translateY(0); }
+  :global(.motion-ready) .glass-card[data-reveal].is-visible:hover,
+  :global(.motion-ready) .soft-card[data-reveal].is-visible:hover,
+  :global(.motion-ready) .price-card[data-reveal].is-visible:hover { transform: translateY(-4px); }
+  @keyframes hero-enter { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes window-enter { from { opacity: 0; transform: perspective(1600px) translateY(28px) rotateX(5deg) scale(.985); } to { opacity: 1; transform: perspective(1600px) translateY(0) rotateX(2deg) scale(1); } }
+  @keyframes aurora-blue { to { transform: translate3d(34px, -16px, 0) scale(1.06); } }
+  @keyframes aurora-pink { to { transform: translate3d(-38px, 20px, 0) scale(1.04); } }
+  @keyframes aurora-mint { to { transform: translate3d(18px, -24px, 0) scale(1.08); } }
   @media (max-width: 950px) {
     .iridescent-stage { min-height: auto; margin-left: -20px; margin-right: -20px; padding: 50px 30px 90px; }
     .showcase-grid { grid-template-columns: 1fr; gap: 55px; } .showcase-copy { max-width: 650px; }
@@ -279,3 +302,22 @@ const faqs = [
     .footer-inner { align-items: flex-start; flex-direction: column; } .footer-inner p { margin: 0; }
   }
 </style>
+
+<script>
+  const revealItems = document.querySelectorAll<HTMLElement>('[data-reveal]');
+  const revealAll = () => revealItems.forEach((item) => item.classList.add('is-visible'));
+
+  if ('IntersectionObserver' in window) {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add('is-visible');
+        observer.unobserve(entry.target);
+      });
+    }, { rootMargin: '0px 0px -10% 0px', threshold: 0.12 });
+
+    revealItems.forEach((item) => observer.observe(item));
+  } else {
+    revealAll();
+  }
+</script>
