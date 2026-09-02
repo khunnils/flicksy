@@ -10,7 +10,7 @@ import SwiftUI
 struct KeyboardShortcutEntry: Identifiable, Hashable {
     let id: String
     let title: String
-    /// Right-aligned shortcut text, e.g. `"⌘G"` or `"⇧← → ↑ ↓"`.
+    /// Right-aligned shortcut text, e.g. `"⌘J"` or `"⇧← → ↑ ↓"`.
     let keys: String
 }
 
@@ -27,7 +27,7 @@ enum KeyboardShortcutsCatalog {
             title: "General",
             entries: [
                 .init(id: "command-palette", title: "Command palette", keys: "⌘K"),
-                .init(id: "quick-goto", title: "Quick Goto", keys: "⌘G"),
+                .init(id: "jump-to", title: "Jump to", keys: "⌘J"),
                 .init(id: "find-media", title: "Find Media", keys: "⌘F"),
                 .init(id: "organize", title: "Organize", keys: "⌘T"),
                 .init(id: "get-info", title: "Get Info", keys: "⌘I"),

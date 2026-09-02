@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// A navigable sidebar destination shared by Quick Goto and the command palette.
+/// A navigable sidebar destination shared by Jump to and the command palette.
 struct BrowserDestination: Identifiable, Hashable, Sendable {
     enum Kind: String, Sendable {
         case library = "Library"

@@ -126,6 +126,17 @@ struct MediaBrowserView: View {
             // key handling takes over from the sidebar.
             if id != nil { browserFocused = true }
         }
+        .onChange(of: model.isCommandPalettePresented) { _, presented in
+            guard !presented else { return }
+            // The palette is an AppKit overlay. After it closes, the sidebar
+            // list becomes first responder unless we put focus back here —
+            // otherwise Space / arrows stop driving the selected images.
+            Task { @MainActor in
+                await Task.yield()
+                guard model.viewerItemID == nil else { return }
+                browserFocused = true
+            }
+        }
     }
 
     private var content: some View {

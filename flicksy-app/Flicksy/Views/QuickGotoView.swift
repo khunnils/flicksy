@@ -35,7 +35,7 @@ struct QuickGotoView: View {
                 HStack(spacing: 10) {
                     Image(systemName: "arrow.right.circle")
                         .foregroundStyle(.secondary)
-                    TextField("Go to a library or folder", text: $query)
+                    TextField("Jump to a library or folder", text: $query)
                         .textFieldStyle(.plain)
                         .font(.title3)
                         .focused($queryFocused)

@@ -251,7 +251,7 @@ final class BrowserModel {
     /// not consume text-editing shortcuts while the user is typing.
     var isSearchFieldFocused = false
 
-    /// Drives the window-level destination picker opened by Command-G.
+    /// Drives the window-level Jump to picker opened by Command-J.
     var isQuickGotoPresented = false
 
     /// Keeps native pasteboard shortcuts available while the destination query

@@ -45,10 +45,10 @@ struct FlicksyApp: App {
                     }
                     .keyboardShortcut("k", modifiers: .command)
 
-                    Button("Quick Goto…") {
+                    Button("Jump to…") {
                         model.presentQuickGoto()
                     }
-                    .keyboardShortcut("g", modifiers: .command)
+                    .keyboardShortcut("j", modifiers: .command)
                     .disabled(model.viewerItemID != nil)
 
                     Divider()
@@ -139,7 +139,7 @@ struct FlicksyApp: App {
 
             if model.isTextFieldFocused {
                 // Preserve the system pasteboard commands while editing the
-                // search or Quick Goto field so text shortcuts stay native.
+                // search or Jump to field so text shortcuts stay native.
                 CommandGroup(after: .pasteboard) {
                     findMediaCommand
                 }

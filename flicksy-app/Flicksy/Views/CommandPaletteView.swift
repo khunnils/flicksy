@@ -8,6 +8,7 @@ import SwiftUI
 
 private enum CommandPaletteAction: Hashable {
     case addRootFolder
+    case jumpTo
     case manageTags
     case manageCollections
     case paste
@@ -446,6 +447,7 @@ struct CommandPaletteView: View {
 
     private var generalCommands: [CommandPaletteRow] {
         var rows = [
+            command(id: "jump-to", title: "Jump to…", icon: "arrow.right.circle", trailing: "⌘J", action: .jumpTo, keywords: ["go to", "folder", "collection", "library"]),
             command(id: "add-root", title: "Add Root Folder…", icon: "folder.badge.plus", action: .addRootFolder, keywords: ["add folder", "library"]),
             command(id: "new-tag", title: "New Tag…", icon: "tag", action: .newTag(false), keywords: ["create tag", "add tag"]),
             command(id: "new-collection", title: "New Collection…", icon: "rectangle.stack.badge.plus", action: .newCollection(false), keywords: ["create collection", "add collection"]),
@@ -642,6 +644,7 @@ struct CommandPaletteView: View {
         case .selectionCollections: page = .selectionCollections
         case .openWith: page = .openWith
         case .compare: dismissThen { model.startImageComparison() }
+        case .jumpTo: dismissThen { model.presentQuickGoto() }
         case .addRootFolder: dismissThen { model.addRootFolder() }
         case .paste: dismissThen { model.pasteFiles() }
         case .clearClipboard: dismissThen { model.confirmsClearingClipboard = true }
@@ -746,9 +749,16 @@ final class CommandPaletteOverlayAnchor: NSView {
     }
 
     func removeOverlay() {
+        let window = hostingView?.window
+        let restoreBrowserFocus = !isPresented
         hostingView?.removeFromSuperview()
         hostingView = nil
         attachedFrameView = nil
+        // Keep the sidebar outline from inheriting first responder when the
+        // palette's text field disappears, so the media browser can reclaim it.
+        if restoreBrowserFocus {
+            window?.makeFirstResponder(window?.contentView)
+        }
     }
 
     private func synchronizeOverlay() {

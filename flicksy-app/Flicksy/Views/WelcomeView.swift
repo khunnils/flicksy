@@ -14,7 +14,7 @@ struct WelcomeView: View {
 
     @State private var page = 0
 
-    private let pageCount = 3
+    private let pageCount = 4
 
     var body: some View {
         VStack(spacing: 0) {
@@ -49,9 +49,16 @@ struct WelcomeView: View {
         case 1:
             WelcomePage(
                 title: "Find the right moment fast",
-                description: "Skim video from its thumbnail, see audio as a waveform, and press Space to preview without breaking your flow."
+                description: "Press ⌘J to Jump to any folder or collection, or ⌘K and type a filename to open one specific clip from anywhere."
             ) {
-                FastPreviewIllustration()
+                FastFindIllustration()
+            }
+        case 2:
+            WelcomePage(
+                title: "Preview and compare at a glance",
+                description: "Press Space to view your selection. Select multiple images and press ⇧Space to compare them in a sensible layout automatically."
+            ) {
+                PreviewComparisonIllustration()
             }
         default:
             WelcomePage(
@@ -167,72 +174,162 @@ private struct BrowseInPlaceIllustration: View {
     }
 }
 
-private struct FastPreviewIllustration: View {
-    private let waveHeights: [CGFloat] = [12, 24, 38, 20, 45, 30, 52, 25, 42, 18, 34, 22, 46, 28, 16]
-
+private struct FastFindIllustration: View {
     var body: some View {
         ZStack {
             WelcomeGlow(colors: [.cyan, .blue])
 
-            VStack(spacing: 14) {
-                HStack(spacing: 12) {
-                    previewTile(systemImage: "mountain.2.fill", playhead: 0.32)
-                    previewTile(systemImage: "building.2.fill", playhead: 0.68)
-                }
-
-                HStack(spacing: 3) {
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .padding(.trailing, 8)
-                    ForEach(Array(waveHeights.enumerated()), id: \.offset) { _, height in
-                        Capsule()
-                            .fill(Color.accentColor.opacity(0.7))
-                            .frame(width: 3, height: height)
+            HStack(spacing: 14) {
+                VStack(alignment: .leading, spacing: 9) {
+                    HStack {
+                        Image(systemName: "arrow.right.circle.fill")
+                            .foregroundStyle(Color.accentColor)
+                        Text("Jump to")
+                            .font(.system(size: 13, weight: .semibold))
+                        Spacer()
+                        WelcomeKeycap("⌘J")
                     }
-                    Text("Space")
-                        .font(.caption2.monospaced())
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .background(.background, in: RoundedRectangle(cornerRadius: 5))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 5)
-                                .strokeBorder(.primary.opacity(0.12))
+
+                    Divider()
+                    destinationRow("Favorites", icon: "star.fill")
+                    destinationRow("Downloads", icon: "arrow.down.circle")
+                    destinationRow("Launch assets", icon: "folder.fill")
+                }
+                .padding(14)
+                .frame(width: 242, height: 160)
+                .welcomePanel()
+
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(.secondary)
+                        Text("hero-shot.mov")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        WelcomeKeycap("⌘K")
+                    }
+                    .padding(.horizontal, 10)
+                    .frame(height: 35)
+                    .background(.background, in: RoundedRectangle(cornerRadius: 7))
+                    .overlay { RoundedRectangle(cornerRadius: 7).strokeBorder(.primary.opacity(0.10)) }
+
+                    HStack(spacing: 10) {
+                        Image(systemName: "film.fill")
+                            .foregroundStyle(Color.accentColor)
+                            .frame(width: 30, height: 30)
+                            .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 6))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("hero-shot.mov")
+                                .font(.system(size: 12, weight: .medium))
+                            Text("Launch assets")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
                         }
-                        .padding(.leading, 10)
+                        Spacer()
+                    }
+                    .padding(9)
+                    .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+
+                    Text("Find and open a single clip")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
-                .frame(width: 310, height: 55)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 13))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 13)
-                        .strokeBorder(.primary.opacity(0.08))
-                }
+                .padding(14)
+                .frame(width: 242, height: 160)
+                .welcomePanel()
             }
         }
     }
 
-    private func previewTile(systemImage: String, playhead: CGFloat) -> some View {
-        ZStack(alignment: .leading) {
-            RoundedRectangle(cornerRadius: 14)
-                .fill(.regularMaterial)
-            Image(systemName: systemImage)
-                .font(.system(size: 34, weight: .light))
-                .foregroundStyle(Color.accentColor.opacity(0.62))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            Rectangle()
-                .fill(Color.white.opacity(0.9))
-                .frame(width: 2)
-                .padding(.vertical, 10)
-                .offset(x: 140 * playhead)
+    private func destinationRow(_ title: String, icon: String) -> some View {
+        HStack(spacing: 9) {
+            Image(systemName: icon)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .frame(width: 16)
+            Text(title)
+                .font(.system(size: 12))
+            Spacer()
         }
-        .frame(width: 140, height: 92)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay {
-            RoundedRectangle(cornerRadius: 14)
-                .strokeBorder(.primary.opacity(0.08))
+    }
+}
+
+private struct PreviewComparisonIllustration: View {
+    var body: some View {
+        ZStack {
+            WelcomeGlow(colors: [.indigo, .purple])
+
+            VStack(spacing: 15) {
+                HStack(spacing: 8) {
+                    comparisonTile("mountain.2.fill", color: .indigo)
+                    comparisonTile("building.2.fill", color: .purple)
+                }
+                .padding(8)
+                .frame(width: 340, height: 126)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(.primary.opacity(0.08)) }
+                .shadow(color: .black.opacity(0.08), radius: 12, y: 6)
+
+                HStack(spacing: 12) {
+                    shortcutLabel(keys: ["Space"], title: "Preview")
+
+                    Rectangle()
+                        .fill(.separator)
+                        .frame(width: 1, height: 24)
+
+                    shortcutLabel(keys: ["⇧", "Space"], title: "Compare")
+                }
+                .padding(.horizontal, 14)
+                .frame(height: 45)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 11))
+                .overlay { RoundedRectangle(cornerRadius: 11).strokeBorder(.primary.opacity(0.08)) }
+            }
         }
-        .shadow(color: .black.opacity(0.07), radius: 10, y: 5)
+    }
+
+    private func comparisonTile(_ symbol: String, color: Color) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 35, weight: .light))
+            .foregroundStyle(color.opacity(0.68))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(color.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func shortcutLabel(keys: [String], title: String) -> some View {
+        HStack(spacing: 5) {
+            ForEach(keys, id: \.self) { WelcomeKeycap($0) }
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.leading, 2)
+        }
+    }
+}
+
+private struct WelcomeKeycap: View {
+    let text: String
+
+    init(_ text: String) {
+        self.text = text
+    }
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 10, weight: .medium, design: .rounded))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 6)
+            .frame(minWidth: 23, minHeight: 22)
+            .background(.background, in: RoundedRectangle(cornerRadius: 4))
+            .overlay { RoundedRectangle(cornerRadius: 4).strokeBorder(.primary.opacity(0.12)) }
+    }
+}
+
+private extension View {
+    func welcomePanel() -> some View {
+        background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+            .overlay { RoundedRectangle(cornerRadius: 14).strokeBorder(.primary.opacity(0.08)) }
+            .shadow(color: .black.opacity(0.07), radius: 10, y: 5)
     }
 }
 
