@@ -21,6 +21,17 @@ struct FlicksyApp: App {
             GetInfoCommands(model: model)
 
             CommandGroup(after: .help) {
+                Button("Welcome to Flicksy…") {
+                    model.presentWelcome()
+                }
+                .disabled(
+                    model.isWelcomePresented
+                        || model.editAudioTagsRequest != nil
+                        || model.organizationEditorRequest != nil
+                )
+
+                Divider()
+
                 Button("Keyboard Shortcuts…") {
                     model.presentShortcutsHelp()
                 }

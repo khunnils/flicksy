@@ -271,6 +271,9 @@ final class BrowserModel {
     /// Drives the window-level keyboard shortcuts helper opened by Command-/.
     var isShortcutsHelpPresented = false
 
+    /// Drives the first-run welcome sheet and the Help-menu replay of it.
+    var isWelcomePresented = false
+
     var isTextFieldFocused: Bool {
         isSearchFieldFocused
             || isQuickGotoFieldFocused
@@ -317,6 +320,22 @@ final class BrowserModel {
         isQuickGotoFieldFocused = false
         dismissCommandPalette()
         isShortcutsHelpPresented = true
+    }
+
+    func presentWelcome() {
+        isSearchPresented = false
+        isSearchFieldFocused = false
+        isQuickGotoPresented = false
+        isQuickGotoFieldFocused = false
+        isShortcutsHelpPresented = false
+        isOrganizePresented = false
+        dismissCommandPalette()
+        isWelcomePresented = true
+    }
+
+    func completeWelcome() {
+        onboardingStore.markCompleted()
+        isWelcomePresented = false
     }
 
     func go(to source: BrowserSource) {
@@ -825,6 +844,7 @@ final class BrowserModel {
     private let standardFolderStore = StandardFolderStore()
     private let scanExclusionStore = FolderScanExclusionStore()
     private let clipboardStore = ClipboardHistoryStore()
+    private let onboardingStore: OnboardingStore
     private var scanTask: Task<Void, Never>?
     private var mediaTask: Task<Void, Never>?
     private var fileSystemMonitor: FileSystemMonitor?
@@ -850,7 +870,14 @@ final class BrowserModel {
 
     // MARK: - Lifecycle
 
-    init() {
+    convenience init() {
+        self.init(onboardingStore: OnboardingStore())
+    }
+
+    init(onboardingStore: OnboardingStore) {
+        self.onboardingStore = onboardingStore
+        isWelcomePresented = onboardingStore.shouldPresent
+
         PersistentMediaCache.scheduleMaintenance()
 
         let storedSize = UserDefaults.standard.object(forKey: Self.thumbnailSizeKey) as? Double
@@ -887,11 +914,13 @@ final class BrowserModel {
 
     // MARK: - Root folder management
 
-    func addRootFolder() {
-        guard rootStore.addFolder() != nil else { return }
+    @discardableResult
+    func addRootFolder() -> URL? {
+        guard let url = rootStore.addFolder() else { return nil }
         loadError = nil
         restartFilesystemMonitoring()
         rescanRoots()
+        return url
     }
 
     /// Add one or more folders dropped from Finder, refreshing the library once

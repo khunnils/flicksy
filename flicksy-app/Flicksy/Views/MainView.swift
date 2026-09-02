@@ -132,6 +132,14 @@ struct MainView: View {
         } message: {
             Text("Enter a new name for \(model.renameItemRequest?.name ?? "this file").")
         }
+        .sheet(isPresented: Binding(
+            get: { model.isWelcomePresented },
+            set: { model.isWelcomePresented = $0 }
+        )) {
+            WelcomeView()
+                .environment(model)
+                .interactiveDismissDisabled()
+        }
         .sheet(item: Binding(
             get: { model.editAudioTagsRequest },
             set: { model.editAudioTagsRequest = $0 }

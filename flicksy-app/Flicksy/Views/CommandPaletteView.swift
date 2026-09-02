@@ -74,6 +74,12 @@ private struct CommandPaletteSection: Identifiable {
     let rows: [CommandPaletteRow]
 }
 
+private enum CommandPaletteSelectionSource {
+    case automatic
+    case keyboard
+    case pointer
+}
+
 struct CommandPaletteView: View {
     @Environment(BrowserModel.self) private var model
     @Environment(\.openWindow) private var openWindow
@@ -81,6 +87,8 @@ struct CommandPaletteView: View {
     @State private var query = ""
     @State private var page: CommandPalettePage = .root
     @State private var selectedID: String?
+    @State private var selectionSource: CommandPaletteSelectionSource = .automatic
+    @State private var pointerLocationAtKeyboardSelection: NSPoint?
 
     private let panelShape = RoundedRectangle(cornerRadius: 14, style: .continuous)
 
@@ -210,9 +218,11 @@ struct CommandPaletteView: View {
                 .padding(.bottom, 18)
             }
             .onChange(of: selectedID) { _, id in
-                guard let id else { return }
+                guard let id, selectionSource != .pointer else { return }
                 withAnimation(.easeOut(duration: 0.08)) {
-                    proxy.scrollTo(id, anchor: .center)
+                    // With no anchor SwiftUI moves only enough to reveal a row,
+                    // instead of recentering the list on every arrow press.
+                    proxy.scrollTo(id)
                 }
             }
         }
@@ -275,7 +285,21 @@ struct CommandPaletteView: View {
         .buttonStyle(.plain)
         .focusable(false)
         .focusEffectDisabled()
-        .onHover { if $0 { selectedID = row.id } }
+        .onContinuousHover { phase in
+            guard case .active = phase else { return }
+
+            let pointerLocation = NSEvent.mouseLocation
+            if selectionSource == .keyboard,
+               pointerLocation == pointerLocationAtKeyboardSelection {
+                // Scrolling can put a new row under a stationary pointer. Do not
+                // let that synthetic hover steal the keyboard selection.
+                return
+            }
+
+            pointerLocationAtKeyboardSelection = nil
+            selectionSource = .pointer
+            selectedID = row.id
+        }
     }
 
     private var sections: [CommandPaletteSection] {
@@ -557,7 +581,11 @@ struct CommandPaletteView: View {
     private var flattenedRows: [CommandPaletteRow] { sections.flatMap(\.rows) }
 
     private func selectFirstRow() {
-        DispatchQueue.main.async { selectedID = flattenedRows.first?.id }
+        DispatchQueue.main.async {
+            selectionSource = .automatic
+            pointerLocationAtKeyboardSelection = nil
+            selectedID = flattenedRows.first?.id
+        }
     }
 
     private func focusQueryField() {
@@ -571,6 +599,8 @@ struct CommandPaletteView: View {
         let rows = flattenedRows
         guard !rows.isEmpty else { return }
         let current = selectedID.flatMap { id in rows.firstIndex { $0.id == id } } ?? 0
+        selectionSource = .keyboard
+        pointerLocationAtKeyboardSelection = NSEvent.mouseLocation
         selectedID = rows[min(max(current + offset, 0), rows.count - 1)].id
     }
 
