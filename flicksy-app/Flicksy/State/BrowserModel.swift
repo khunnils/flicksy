@@ -686,15 +686,16 @@ final class BrowserModel {
         }
     }
 
-    func presentImageResize() {
-        let items = commandPaletteSelectionItems
+    func presentImageResize(clicked item: MediaItem? = nil) {
+        let items = actionItemsPreview(clicked: item)
         guard !isCropping, !isApplyingCrop,
               items.count == 1,
-              let item = items.first,
-              item.type == .image
+              let target = items.first,
+              target.type == .image
         else { return }
+        if let item { _ = itemsForAction(clicked: item) }
         dismissCommandPalette()
-        imageResizeRequest = ImageResizeRequest(item: item)
+        imageResizeRequest = ImageResizeRequest(item: target)
     }
 
     func resizeImage(_ item: MediaItem, to pixelSize: CGSize) async throws {

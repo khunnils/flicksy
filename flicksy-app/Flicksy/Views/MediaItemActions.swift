@@ -81,6 +81,15 @@ struct MediaItemInteractionsModifier: ViewModifier {
             Label("Get Info", systemImage: "info.circle")
         }
 
+        let actionItems = model.actionItemsPreview(clicked: item)
+        if actionItems.count == 1, actionItems.first?.type == .image {
+            Button {
+                model.presentImageResize(clicked: item)
+            } label: {
+                Label("Resize Image…", systemImage: "aspectratio")
+            }
+        }
+
         if AudioTagService.canWrite(url: item.url) {
             Button {
                 model.presentAudioTagsEditor(clicked: item)

@@ -27,7 +27,7 @@ const faqs = [
   { q: 'Does Flicksy import or copy my files?', a: 'No. Flicksy reads the folders already on your Mac and connected drives. Your files and folder structure stay untouched.' },
   { q: 'Is it a photo library or cloud backup?', a: 'Neither. Flicksy is a fast, visual window onto local media. Nothing is uploaded and there is no library to maintain.' },
   { q: 'Which Macs are supported?', a: 'Flicksy is a native Apple Silicon app for macOS 15 and newer.' },
-  { q: 'What is included in the trial?', a: 'Everything. Try the complete app, then pay $9 once if it earns a place in your workflow.' },
+  { q: 'What is included in the trial?', a: 'Everything. Try the complete app, then pay $19 once for a lifetime license with two years of updates included.' },
 ];
 ---
 
@@ -47,10 +47,10 @@ const faqs = [
         <h1><strong>Meet Flicksy</strong><span>A modern media browser for Mac</span></h1>
         <p class="hero-lead">Designed for content creators, Flicksy brings every clip, image, and sound into one beautifully fast Mac app. Skim, compare, organize, and drag the right moment straight into your editor.</p>
         <div class="hero-actions">
-          <a class="button button-dark" href="#pricing">Start free trial <span>↘</span></a>
+          <a class="button button-dark" href="#pricing">Download <span>↘</span></a>
           <a class="text-link" href="#how">See how it works <span>↓</span></a>
         </div>
-        <p class="fine-print">Full app included · $9 once · No account</p>
+        <p class="fine-print">Full app included · $19 once · 2 years of updates</p>
       </div>
 
       <div class="iridescent-stage" aria-label="Flicksy app screenshot">
@@ -75,10 +75,10 @@ const faqs = [
     <section class="horizon">
       <div class="horizon-orb horizon-orb-a"></div><div class="horizon-orb horizon-orb-b"></div>
       <div class="wrap horizon-content">
-        <div class="section-intro light" data-reveal><p class="eyebrow">Made for momentum</p><h2>Keep your hands moving.<br />Keep your ideas intact.</h2><p>Every part of Flicksy is tuned to shorten the distance between “I know I have it” and “there it is.”</p></div>
+        <div class="section-intro light" data-reveal><p class="eyebrow">Made for momentum</p><h2>Keep your hands moving.<br />Keep your ideas intact.</h2><p>Every part of Flicksy is tuned to shorten the distance between “I know I have it” and “there it is.” Quick Jump gets you to any folder or collection fast, while the ⌘K command palette keeps every action within reach.</p></div>
         <div class="feature-grid">{features.map((feature, index) => <article class="glass-card" data-reveal data-reveal-delay={String(index % 4)}><span class="feature-icon">{feature.icon}</span><h3>{feature.title}</h3><p>{feature.text}</p></article>)}</div>
         <div class="preview-card">
-          <div class="preview-copy" data-reveal><p class="eyebrow">Built-in adjustments</p><h3>Stay in the flow, even for the little fixes.</h3><p>Preview, crop, rotate, and flip an image without leaving your media browser.</p></div>
+          <div class="preview-copy" data-reveal><p class="eyebrow">Built-in adjustments</p><h3>Stay in the flow, even for the little fixes.</h3><p>Preview, rotate, and flip an image, or crop with standardized guides for common print formats—all without leaving your media browser.</p></div>
           <div class="app-window preview-window" data-reveal data-reveal-delay="1"><img src="/app-preview-crop.jpeg" alt="Flicksy image preview with native macOS crop controls" width="1784" height="1154" /></div>
         </div>
         <div class="preview-card comparison-card">
@@ -116,9 +116,9 @@ const faqs = [
         <div class="pricing-copy" data-reveal><p class="eyebrow">Simple by design</p><h2>One tiny price.<br />One less subscription.</h2><p>Try the whole app free. Pay once only if Flicksy earns a place in your Dock.</p><div class="compatibility"><span>●</span> macOS 15+ · Apple Silicon</div></div>
         <div class="price-card" data-reveal data-reveal-delay="1">
           <div class="price-top"><img src="/flicksy-app-icon.png" alt="Flicksy app icon" width="72" height="72" /><span>Lifetime license</span></div>
-          <div class="price-line"><strong>$9</strong><span>USD<br />one-time</span></div>
-          <ul><li>Full-featured free trial</li><li>Video, images, and audio</li><li>Tags, collections, and favorites</li><li>No account, upload, or lock-in</li></ul>
-          <a class="button button-dark button-wide" href="#">Download the free trial <span>↓</span></a>
+          <div class="price-line"><strong>$19</strong><span>USD<br />one-time</span></div>
+          <ul><li>Lifetime license</li><li>Two years of updates included</li><li>Video, images, and audio</li><li>Tags, collections, and favorites</li><li>No account, upload, or lock-in</li></ul>
+          <a class="button button-dark button-wide" href="#">Download <span>↓</span></a>
         </div>
       </div>
     </section>
@@ -218,7 +218,7 @@ const faqs = [
   .comparison-card { grid-template-columns: 1.55fr .68fr; padding-bottom: 125px; }
   .comparison-card .preview-copy { order: 2; }
   .comparison-card .comparison-window { order: 1; }
-  .comparison-window img { height: auto; object-fit: contain; clip-path: none; filter: drop-shadow(0 38px 32px rgba(0,0,0,.35)) drop-shadow(0 8px 12px rgba(0,0,0,.2)); }
+  .comparison-window img { height: auto; object-fit: contain; clip-path: inset(3.1% 3.1% 6.2% 3.1% round 19px); filter: drop-shadow(0 38px 32px rgba(0,0,0,.35)) drop-shadow(0 8px 12px rgba(0,0,0,.2)); }
   .organize { padding-top: 130px; }
   .organize-grid { margin-top: 58px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
   .soft-card { display: flex; flex-direction: column; min-height: 440px; padding: 16px; border: 1px solid rgba(132,143,158,.17); background: rgba(255,255,255,.7); border-radius: 25px; box-shadow: 0 20px 50px rgba(46,57,75,.06); transition: transform .35s cubic-bezier(.22,1,.36,1), box-shadow .35s ease, border-color .35s ease; }
