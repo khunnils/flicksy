@@ -463,6 +463,14 @@ final class BrowserModel {
     /// The item shown in the focused full-screen viewer, if any (spec section 16).
     private(set) var viewerItemID: MediaItem.ID?
 
+    /// Session-only image comparison state. `compareItemIDs` keeps every
+    /// participating thumbnail while `compareSlotItemIDs` is the visible subset.
+    private(set) var isComparingImages = false
+    private(set) var compareLayout: MediaCompareLayout = .twoByOne
+    private(set) var compareItemIDs: [MediaItem.ID] = []
+    private(set) var compareSlotItemIDs: [MediaItem.ID] = []
+    private var compareReturnItemID: MediaItem.ID?
+
     /// Items the user has selected in the browser. Selection is independent of
     /// playback and viewer state: clicking selects (Finder-style) rather than
     /// opening, so the user can act on one or many items at once.
@@ -471,6 +479,9 @@ final class BrowserModel {
             selectionSnapshot = selectedItemIDs
             for id in oldValue.symmetricDifference(selectedItemIDs) {
                 selectionStateByID[id]?.isSelected = selectedItemIDs.contains(id)
+            }
+            if isComparingImages {
+                reconcileImageComparison()
             }
         }
     }
@@ -857,6 +868,7 @@ final class BrowserModel {
     private var lastPasteboardChangeCount: Int?
     private var sortRefreshTask: Task<Void, Never>?
     private var commandPaletteIndexTask: Task<Void, Never>?
+    private var comparePreparationTask: Task<Void, Never>?
     private var pendingCommandPaletteOpen: CommandPaletteFileLocation?
 
     /// Derived indexes are rebuilt only when the visible ordering changes. They
@@ -2401,6 +2413,9 @@ final class BrowserModel {
         if let selectionAnchorID, !visibleIDs.contains(selectionAnchorID) {
             self.selectionAnchorID = focusedItemID
         }
+        if isComparingImages {
+            reconcileImageComparison()
+        }
     }
 
     /// If the restored tab is empty for this folder but the other is not, show
@@ -2648,6 +2663,211 @@ final class BrowserModel {
 
     // MARK: - Preview / viewer playlist
 
+    /// Selected stills eligible for comparison, preserving browser sort order.
+    var selectedImagesForComparison: [MediaItem] {
+        selectedItemsInOrder.filter { $0.type == .image }
+    }
+
+    var canCompareSelectedImages: Bool {
+        selectedImagesForComparison.count >= 2
+    }
+
+    /// Every image represented by the comparison thumbnail strip.
+    var comparisonImages: [MediaItem] {
+        compareItemIDs.compactMap { orderedItemByID[$0] }
+    }
+
+    /// Preview-only check used while constructing a context menu. An unselected
+    /// click remains a one-item action, matching the rest of the menu.
+    func canCompareImages(clicked item: MediaItem?) -> Bool {
+        comparisonCandidates(clicked: item).count >= 2
+    }
+
+    /// Enter image comparison using either a requested layout or the automatic
+    /// orientation heuristic. Missing dimensions are read off the main thread
+    /// before automatic comparison becomes active.
+    func startImageComparison(
+        layout requestedLayout: MediaCompareLayout? = nil,
+        clicked item: MediaItem? = nil
+    ) {
+        let candidates = comparisonCandidates(clicked: item)
+        guard candidates.count >= 2 else { return }
+        if let requestedLayout, !requestedLayout.isAvailable(for: candidates.count) { return }
+
+        comparePreparationTask?.cancel()
+
+        let preferredID = [viewerItemID, focusedItemID]
+            .compactMap { $0 }
+            .first { id in candidates.contains(where: { $0.id == id }) }
+            ?? candidates[0].id
+        let returnID = viewerItemID ?? preferredID
+
+        if viewerItemID == nil {
+            openViewer(candidates.first(where: { $0.id == preferredID }) ?? candidates[0])
+        } else {
+            resetCropSession()
+            resetViewerImageZoom()
+        }
+
+        compareReturnItemID = returnID
+
+        if let requestedLayout {
+            activateImageComparison(
+                items: candidates,
+                preferredItemID: preferredID,
+                layout: requestedLayout
+            )
+            return
+        }
+
+        let candidateIDs = candidates.map(\.id)
+        comparePreparationTask = Task {
+            let resolved = await Task.detached(priority: .userInitiated) {
+                candidates.map { item -> MediaItem in
+                    guard item.width == nil || item.height == nil,
+                          let size = ThumbnailService.pixelSize(for: item.url)
+                    else { return item }
+                    var updated = item
+                    updated.width = Int(size.width.rounded())
+                    updated.height = Int(size.height.rounded())
+                    return updated
+                }
+            }.value
+
+            guard !Task.isCancelled,
+                  candidateIDs.allSatisfy({ selectedItemIDs.contains($0) && orderedItemByID[$0] != nil })
+            else { return }
+
+            let layout = MediaCompareLayout.automatic(
+                for: resolved,
+                focusedItemID: preferredID
+            )
+            activateImageComparison(
+                items: candidates,
+                preferredItemID: preferredID,
+                layout: layout
+            )
+        }
+    }
+
+    func toggleImageComparison() {
+        if isComparingImages {
+            endImageComparison()
+        } else {
+            startImageComparison()
+        }
+    }
+
+    func setImageComparisonLayout(_ layout: MediaCompareLayout) {
+        guard isComparingImages,
+              layout.isAvailable(for: compareItemIDs.count),
+              layout != compareLayout
+        else { return }
+
+        compareLayout = layout
+        compareSlotItemIDs = MediaComparisonAssignment.resized(
+            assignments: compareSlotItemIDs,
+            allItemIDs: compareItemIDs,
+            capacity: layout.capacity
+        )
+    }
+
+    /// Assign a thumbnail to a cell. Existing assignments swap; an image from
+    /// the overflow strip replaces the target and leaves the displaced image free.
+    func assignComparisonImage(_ itemID: MediaItem.ID, toSlot index: Int) {
+        guard isComparingImages,
+              compareItemIDs.contains(itemID),
+              compareSlotItemIDs.indices.contains(index)
+        else { return }
+
+        compareSlotItemIDs = MediaComparisonAssignment.assigning(
+            itemID: itemID,
+            toSlot: index,
+            assignments: compareSlotItemIDs,
+            allItemIDs: compareItemIDs
+        )
+    }
+
+    func endImageComparison() {
+        let returnID = compareReturnItemID
+        clearImageComparisonState()
+        if let returnID, visualItems.contains(where: { $0.id == returnID }) {
+            viewerItemID = returnID
+            focusedItemID = returnID
+        }
+        resetViewerImageZoom()
+    }
+
+    private func comparisonCandidates(clicked item: MediaItem?) -> [MediaItem] {
+        let items: [MediaItem]
+        if let item {
+            items = actionItemsPreview(clicked: item)
+        } else {
+            items = selectedItemsInOrder
+        }
+        return items.filter { $0.type == .image }
+    }
+
+    private func activateImageComparison(
+        items: [MediaItem],
+        preferredItemID: MediaItem.ID,
+        layout: MediaCompareLayout
+    ) {
+        guard items.count >= 2, layout.isAvailable(for: items.count) else { return }
+        let itemIDs = items.map(\.id)
+        compareItemIDs = itemIDs
+        compareLayout = layout
+        compareSlotItemIDs = MediaComparisonAssignment.initial(
+            itemIDs: itemIDs,
+            preferredItemID: preferredItemID,
+            capacity: layout.capacity
+        )
+        isComparingImages = true
+        resetCropSession()
+        resetViewerImageZoom()
+    }
+
+    private func clearImageComparisonState() {
+        comparePreparationTask?.cancel()
+        comparePreparationTask = nil
+        isComparingImages = false
+        compareItemIDs = []
+        compareSlotItemIDs = []
+        compareReturnItemID = nil
+    }
+
+    private func reconcileImageComparison() {
+        guard isComparingImages else { return }
+        let currentIDs = selectedItemsInOrder
+            .filter { $0.type == .image }
+            .map(\.id)
+        guard currentIDs.count >= 2 else {
+            endImageComparison()
+            return
+        }
+
+        compareItemIDs = currentIDs
+        if !compareLayout.isAvailable(for: currentIDs.count) {
+            let items = currentIDs.compactMap { orderedItemByID[$0] }
+            compareLayout = MediaCompareLayout.automatic(
+                for: items,
+                focusedItemID: focusedItemID
+            )
+        }
+
+        compareSlotItemIDs = MediaComparisonAssignment.resized(
+            assignments: compareSlotItemIDs,
+            allItemIDs: currentIDs,
+            capacity: compareLayout.capacity
+        )
+
+        if let compareReturnItemID,
+           !visualItems.contains(where: { $0.id == compareReturnItemID }) {
+            self.compareReturnItemID = currentIDs.first
+            viewerItemID = currentIDs.first
+        }
+    }
+
     /// The set of items the viewer's Left/Right navigation walks. For a multi-item
     /// selection, browsing is confined to its visual items; otherwise it spans
     /// every image and video in the folder.
@@ -2801,6 +3021,7 @@ final class BrowserModel {
     func openViewer(_ item: MediaItem) {
         // The viewer creates its own player; releasing the inline ones keeps the
         // "one player at a time" invariant and stops audio playing underneath it.
+        clearImageComparisonState()
         playingVideoID = nil
         playingAudioID = nil
         resetCropSession()
@@ -2811,18 +3032,19 @@ final class BrowserModel {
 
     func closeViewer() {
         guard !isApplyingCrop else { return }
+        clearImageComparisonState()
         resetCropSession()
         viewerItemID = nil
         resetViewerImageZoom()
     }
 
     func showPreviousInViewer() {
-        guard !isCropping else { return }
+        guard !isCropping, !isComparingImages else { return }
         stepViewer(by: -1)
     }
 
     func showNextInViewer() {
-        guard !isCropping else { return }
+        guard !isCropping, !isComparingImages else { return }
         stepViewer(by: 1)
     }
 

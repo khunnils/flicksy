@@ -174,6 +174,15 @@ actor ThumbnailService {
         return result
     }
 
+    /// Read an image's oriented pixel dimensions without decoding its pixels.
+    /// Comparison uses this to choose its initial layout for off-screen items.
+    nonisolated static func pixelSize(for url: URL) -> CGSize? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        let (width, height) = originalPixelSize(of: source)
+        guard let width, let height, width > 0, height > 0 else { return nil }
+        return CGSize(width: width, height: height)
+    }
+
     // MARK: - Generation
 
     /// Synchronous ImageIO thumbnail generation, run off the actor via a detached

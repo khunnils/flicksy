@@ -14,6 +14,7 @@ private enum CommandPaletteAction: Hashable {
     case clearClipboard
     case shortcuts
     case openSelection
+    case compare
     case openWith
     case openWithApplication(OpenWithApplication)
     case getInfo
@@ -388,6 +389,16 @@ struct CommandPaletteView: View {
             ))
         }
 
+        if capabilities.canCompareImages {
+            rows.append(command(
+                id: "compare",
+                title: "Compare Images",
+                icon: "square.grid.2x2",
+                action: .compare,
+                keywords: ["compare", "layout", "side by side"]
+            ))
+        }
+
         let applications = OpenWithApplicationsCache.shared.applications(for: items)
         if !applications.isEmpty {
             rows.append(command(id: "open-with", title: "Open With…", icon: "macwindow.on.rectangle", action: .openWith))
@@ -629,6 +640,7 @@ struct CommandPaletteView: View {
         case .selectionTags: page = .selectionTags
         case .selectionCollections: page = .selectionCollections
         case .openWith: page = .openWith
+        case .compare: dismissThen { model.startImageComparison() }
         case .addRootFolder: dismissThen { model.addRootFolder() }
         case .paste: dismissThen { model.pasteFiles() }
         case .clearClipboard: dismissThen { model.confirmsClearingClipboard = true }

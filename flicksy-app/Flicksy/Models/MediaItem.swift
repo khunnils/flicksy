@@ -16,7 +16,7 @@ struct MediaItem: Identifiable, Hashable, Sendable {
     /// Identity is the file's path so that selection and playback state stay
     /// stable across rescans (which rebuild the item list from scratch), matching
     /// how `MediaFolder` keys on its path.
-    var id: String { libraryID?.uuidString ?? url.path }
+    nonisolated var id: String { libraryID?.uuidString ?? url.path }
 
     /// Stable app-owned identity for media inside an added root. Transient
     /// Desktop, Downloads, and Clipboard items deliberately remain path keyed.

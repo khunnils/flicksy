@@ -43,6 +43,14 @@ struct MediaItemInteractionsModifier: ViewModifier {
             } label: {
                 Label("Open", systemImage: "arrow.up.right.square")
             }
+
+            if model.canCompareImages(clicked: item) {
+                Button {
+                    model.startImageComparison(clicked: item)
+                } label: {
+                    Label("Compare", systemImage: "square.grid.2x2")
+                }
+            }
         }
 
         Menu {

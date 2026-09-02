@@ -23,6 +23,31 @@ struct MediaViewer: View {
     @State private var playback: VideoPlayback?
 
     var body: some View {
+        Group {
+            if model.isComparingImages {
+                viewerContent
+            } else {
+                viewerContent
+                    .mediaItemInteractions(item, model: model, draggable: false)
+            }
+        }
+        .preferredColorScheme(.light)
+        .task(id: item.contentVersion) {
+            preparePlayback()
+        }
+        .onChange(of: model.isComparingImages) { _, comparing in
+            if comparing {
+                teardownPlayback()
+            } else {
+                preparePlayback()
+            }
+        }
+        .onDisappear {
+            teardownPlayback()
+        }
+    }
+
+    private var viewerContent: some View {
         ZStack {
             Color.white
                 .ignoresSafeArea()
@@ -30,39 +55,35 @@ struct MediaViewer: View {
             media
                 .padding(.horizontal, 24)
                 .padding(.top, 12)
-                .padding(.bottom, 72)
+                .padding(.bottom, model.isComparingImages ? 104 : 72)
 
             chrome
             shortcuts
-        }
-        .preferredColorScheme(.light)
-        .mediaItemInteractions(item, model: model, draggable: false)
-        .task(id: item.contentVersion) {
-            preparePlayback()
-        }
-        .onDisappear {
-            teardownPlayback()
         }
     }
 
     @ViewBuilder
     private var media: some View {
-        switch item.type {
-        case .image:
-            ViewerImage(item: item)
-        case .video:
-            if let playback {
-                VideoPlayerView(
-                    player: playback.player,
-                    controlsStyle: .floating,
-                    showsFullScreenToggleButton: true
-                )
-            } else {
-                Color.clear
+        if model.isComparingImages {
+            ImageComparisonGrid()
+        } else {
+            switch item.type {
+            case .image:
+                ViewerImage(item: item)
+            case .video:
+                if let playback {
+                    VideoPlayerView(
+                        player: playback.player,
+                        controlsStyle: .floating,
+                        showsFullScreenToggleButton: true
+                    )
+                } else {
+                    Color.clear
+                }
+            case .audio:
+                // Audio is never opened here; it lives in the list plus inspector.
+                EmptyView()
             }
-        case .audio:
-            // Audio is never opened here; it lives in the list plus inspector.
-            EmptyView()
         }
     }
 
@@ -91,7 +112,11 @@ struct MediaViewer: View {
             Spacer()
                 .allowsHitTesting(false)
 
-            if !model.isCropping {
+            if model.isComparingImages {
+                ComparisonThumbnailStrip()
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 14)
+            } else if !model.isCropping {
                 HStack(spacing: 12) {
                     navigationButton(
                         systemImage: "chevron.left",
@@ -147,6 +172,10 @@ struct MediaViewer: View {
             // dismiss the guide accidentally.
             Button("Space") {
                 if model.isCropping { return }
+                if model.isComparingImages {
+                    model.closeViewer()
+                    return
+                }
                 if playback != nil {
                     playback?.togglePlayPause()
                 } else {
@@ -159,7 +188,7 @@ struct MediaViewer: View {
                 playback?.togglePlayPause()
             }
             .keyboardShortcut(.return, modifiers: [])
-            .disabled(playback == nil || model.isCropping)
+            .disabled(playback == nil || model.isCropping || model.isComparingImages)
 
             Button("Toggle Full Screen") {
                 NSApplication.shared.keyWindow?.toggleFullScreen(nil)
@@ -169,6 +198,200 @@ struct MediaViewer: View {
         .opacity(0)
         .frame(width: 0, height: 0)
         .accessibilityHidden(true)
+    }
+}
+
+// MARK: - Image comparison
+
+private struct ImageComparisonGrid: View {
+    @Environment(BrowserModel.self) private var model
+
+    private let spacing: CGFloat = 10
+
+    var body: some View {
+        GeometryReader { geometry in
+            let layout = model.compareLayout
+            let width = max(
+                0,
+                (geometry.size.width - CGFloat(layout.columns - 1) * spacing)
+                    / CGFloat(layout.columns)
+            )
+            let height = max(
+                0,
+                (geometry.size.height - CGFloat(layout.rows - 1) * spacing)
+                    / CGFloat(layout.rows)
+            )
+            let images = Dictionary(uniqueKeysWithValues: model.comparisonImages.map { ($0.id, $0) })
+
+            VStack(spacing: spacing) {
+                ForEach(0..<layout.rows, id: \.self) { row in
+                    HStack(spacing: spacing) {
+                        ForEach(0..<layout.columns, id: \.self) { column in
+                            let index = row * layout.columns + column
+                            let item = model.compareSlotItemIDs.indices.contains(index)
+                                ? images[model.compareSlotItemIDs[index]]
+                                : nil
+                            ComparisonImageCell(item: item, slotIndex: index)
+                                .frame(width: width, height: height)
+                        }
+                    }
+                }
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height)
+        }
+    }
+}
+
+private struct ComparisonImageCell: View {
+    let item: MediaItem?
+    let slotIndex: Int
+
+    @Environment(BrowserModel.self) private var model
+    @State private var isDropTarget = false
+
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.black.opacity(0.035))
+
+            if let item {
+                ComparisonLoadedImage(item: item, targetPixels: 3072)
+                    .padding(8)
+
+                Text(item.name)
+                    .font(.caption)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .padding(10)
+                    .allowsHitTesting(false)
+            } else {
+                VStack(spacing: 7) {
+                    Image(systemName: "photo.badge.plus")
+                        .font(.title2)
+                    Text("Drop an image")
+                        .font(.caption)
+                }
+                .foregroundStyle(.secondary)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(
+                    isDropTarget ? Color.accentColor : Color.primary.opacity(0.10),
+                    lineWidth: isDropTarget ? 2 : 1
+                )
+        }
+        .dropDestination(for: String.self) { itemIDs, _ in
+            guard let itemID = itemIDs.first,
+                  model.compareItemIDs.contains(itemID)
+            else { return false }
+            model.assignComparisonImage(itemID, toSlot: slotIndex)
+            return true
+        } isTargeted: { isDropTarget = $0 }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(item.map { "Comparison image \($0.name)" } ?? "Empty comparison cell")
+    }
+}
+
+private struct ComparisonThumbnailStrip: View {
+    @Environment(BrowserModel.self) private var model
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 8) {
+                ForEach(model.comparisonImages) { item in
+                    ComparisonThumbnail(
+                        item: item,
+                        slotIndex: model.compareSlotItemIDs.firstIndex(of: item.id)
+                    )
+                    .draggable(item.id)
+                }
+            }
+            .padding(6)
+        }
+        .scrollIndicators(.hidden)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(.black.opacity(0.055), in: RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(.primary.opacity(0.08))
+        }
+        .frame(maxWidth: 720)
+    }
+}
+
+private struct ComparisonThumbnail: View {
+    let item: MediaItem
+    let slotIndex: Int?
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            ComparisonLoadedImage(item: item, targetPixels: 192)
+                .frame(width: 76, height: 54)
+                .background(Color.black.opacity(0.04))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 6)
+                        .strokeBorder(
+                            slotIndex == nil ? Color.primary.opacity(0.10) : Color.accentColor,
+                            lineWidth: slotIndex == nil ? 1 : 2
+                        )
+                }
+
+            if let slotIndex {
+                Text("\(slotIndex + 1)")
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .frame(width: 18, height: 18)
+                    .background(Color.accentColor, in: Circle())
+                    .offset(x: 5, y: -5)
+            }
+        }
+        .help(item.name)
+        .accessibilityLabel(
+            slotIndex.map { "\(item.name), comparison cell \($0 + 1)" }
+                ?? "\(item.name), not assigned"
+        )
+    }
+}
+
+private struct ComparisonLoadedImage: View {
+    let item: MediaItem
+    let targetPixels: CGFloat
+
+    @State private var image: NSImage?
+    @State private var didFail = false
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(nsImage: image)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+            } else if didFail {
+                PreviewUnavailable()
+            } else {
+                ProgressView()
+                    .controlSize(.small)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task(id: "\(item.contentVersion)|\(Int(targetPixels))") {
+            image = nil
+            didFail = false
+            let result = await ThumbnailService.shared.thumbnail(
+                for: item.url,
+                targetPixels: targetPixels
+            )
+            guard !Task.isCancelled else { return }
+            image = result?.image
+            didFail = result == nil
+        }
     }
 }
 

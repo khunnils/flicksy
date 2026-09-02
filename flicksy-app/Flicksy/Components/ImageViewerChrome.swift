@@ -12,7 +12,7 @@ struct ImageViewerToolbar: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            if model.isViewingImage {
+            if model.isViewingImage && !model.isComparingImages {
                 if model.isCropping {
                     cropEditingControls
                 } else {
@@ -21,6 +21,13 @@ struct ImageViewerToolbar: View {
                 rotateMenu
                 flipMenu
                 ImageViewerZoomControl()
+            }
+
+            if model.canCompareSelectedImages && !model.isCropping {
+                compareButton
+                if model.isComparingImages {
+                    compareLayoutControls
+                }
             }
 
             toolbarIconButton(
@@ -33,6 +40,50 @@ struct ImageViewerToolbar: View {
             closeButton
         }
         .padding(.horizontal, 8)
+    }
+
+    private var compareButton: some View {
+        Button(action: model.toggleImageComparison) {
+            Image(systemName: "square.grid.2x2")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(model.isComparingImages ? Color.accentColor : Color.primary)
+                .frame(width: 28, height: 22)
+                .background(
+                    model.isComparingImages ? Color.accentColor.opacity(0.12) : Color.clear,
+                    in: RoundedRectangle(cornerRadius: 5)
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(model.isComparingImages ? "Return to single preview" : "Compare selected images")
+        .accessibilityLabel(model.isComparingImages ? "Exit Compare" : "Compare Images")
+    }
+
+    private var compareLayoutControls: some View {
+        HStack(spacing: 2) {
+            ForEach(MediaCompareLayout.allCases) { layout in
+                Button {
+                    model.setImageComparisonLayout(layout)
+                } label: {
+                    CompareLayoutIcon(layout: layout)
+                        .foregroundStyle(
+                            model.compareLayout == layout ? Color.accentColor : Color.primary
+                        )
+                        .frame(width: 25, height: 22)
+                        .background(
+                            model.compareLayout == layout ? Color.accentColor.opacity(0.12) : Color.clear,
+                            in: RoundedRectangle(cornerRadius: 4)
+                        )
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!layout.isAvailable(for: model.comparisonImages.count))
+                .help("Compare \(layout.title)")
+                .accessibilityLabel("Compare layout \(layout.title)")
+            }
+        }
+        .padding(3)
+        .background(Color.primary.opacity(0.055), in: RoundedRectangle(cornerRadius: 7))
     }
 
     private var cropEditingControls: some View {
@@ -143,5 +194,25 @@ struct ImageViewerToolbar: View {
         .buttonStyle(.plain)
         .help(label)
         .accessibilityLabel(label)
+    }
+}
+
+/// Tiny layout glyph used because SF Symbols does not provide every 1x3/3x1
+/// permutation. The geometry mirrors the columns x rows naming exactly.
+private struct CompareLayoutIcon: View {
+    let layout: MediaCompareLayout
+
+    var body: some View {
+        VStack(spacing: 1.5) {
+            ForEach(0..<layout.rows, id: \.self) { _ in
+                HStack(spacing: 1.5) {
+                    ForEach(0..<layout.columns, id: \.self) { _ in
+                        RoundedRectangle(cornerRadius: 0.8)
+                            .strokeBorder(lineWidth: 1.1)
+                    }
+                }
+            }
+        }
+        .frame(width: 16, height: 14)
     }
 }

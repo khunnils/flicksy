@@ -80,6 +80,7 @@ final class CommandPaletteSearchIndexTests: XCTestCase {
             isCollectionSelected: true
         )
         XCTAssertTrue(single.canOpenSelection)
+        XCTAssertFalse(single.canCompareImages)
         XCTAssertTrue(single.canGetInfo)
         XCTAssertTrue(single.canOrganize)
         XCTAssertTrue(single.canRename)
@@ -97,6 +98,7 @@ final class CommandPaletteSearchIndexTests: XCTestCase {
             isCollectionSelected: false
         )
         XCTAssertTrue(multiple.canOpenSelection)
+        XCTAssertFalse(multiple.canCompareImages)
         XCTAssertFalse(multiple.canGetInfo)
         XCTAssertFalse(multiple.canRename)
         XCTAssertTrue(multiple.canEditMetaTags)
@@ -128,6 +130,29 @@ final class CommandPaletteSearchIndexTests: XCTestCase {
             isCollectionSelected: false
         )
         XCTAssertFalse(empty.canOpenSelection)
+        XCTAssertFalse(empty.canCompareImages)
+
+        let imagePair = CommandPaletteSelectionCapabilities(
+            items: [image, MediaItem(
+                url: URL(fileURLWithPath: "/Downloads/alternate.png"),
+                type: .image,
+                name: "alternate.png"
+            )],
+            isClipboardSelected: false,
+            isCollectionSelected: false
+        )
+        XCTAssertTrue(imagePair.canCompareImages)
+
+        let mixedComparable = CommandPaletteSelectionCapabilities(
+            items: [image, audio, MediaItem(
+                url: URL(fileURLWithPath: "/Downloads/second.png"),
+                type: .image,
+                name: "second.png"
+            )],
+            isClipboardSelected: false,
+            isCollectionSelected: false
+        )
+        XCTAssertTrue(mixedComparable.canCompareImages)
     }
 
     func testPendingFileResolutionUsesLibraryIDThenStandardizedURLFallback() {
