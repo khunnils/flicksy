@@ -16,7 +16,10 @@ struct ImageViewerToolbar: View {
                 if model.isCropping {
                     cropEditingControls
                 } else {
+                    toolbarIconButton("aspectratio", label: "Resize Image…", action: model.presentImageResize)
+                        .disabled(model.isApplyingCrop)
                     toolbarIconButton("crop", label: "Crop", action: model.beginCrop)
+                        .disabled(model.isApplyingCrop)
                 }
                 rotateMenu
                 flipMenu

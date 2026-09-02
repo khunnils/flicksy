@@ -148,6 +148,13 @@ struct MainView: View {
                 .environment(model)
         }
         .sheet(item: Binding(
+            get: { model.imageResizeRequest },
+            set: { model.imageResizeRequest = $0 }
+        )) { request in
+            ImageResizeView(item: request.item)
+                .environment(model)
+        }
+        .sheet(item: Binding(
             get: { model.organizationEditorRequest },
             set: { model.organizationEditorRequest = $0 }
         )) { request in

@@ -19,6 +19,7 @@ private enum CommandPaletteAction: Hashable {
     case openWith
     case openWithApplication(OpenWithApplication)
     case getInfo
+    case resizeImage
     case editMetaTags
     case toggleFavorite
     case selectionTags
@@ -408,6 +409,15 @@ struct CommandPaletteView: View {
         if capabilities.canGetInfo {
             rows.append(command(id: "get-info", title: "Get Info", icon: "info.circle", trailing: "⌘I", action: .getInfo))
         }
+        if capabilities.canResizeImage {
+            rows.append(command(
+                id: "resize-image",
+                title: "Resize Image…",
+                icon: "aspectratio",
+                action: .resizeImage,
+                keywords: ["dimensions", "scale", "pixels"]
+            ))
+        }
         if capabilities.canEditMetaTags {
             rows.append(command(id: "edit-meta", title: "Edit Meta Tags…", icon: "music.note.list", action: .editMetaTags))
         }
@@ -655,6 +665,7 @@ struct CommandPaletteView: View {
             dismiss()
             model.registerInfoItem(item)
             openWindow(id: MediaInfoView.windowID, value: item.id)
+        case .resizeImage: model.presentImageResize()
         case .editMetaTags: dismissThen { model.presentAudioTagsEditor() }
         case .toggleFavorite: dismissThen { model.toggleFavorite() }
         case .setTag(let tag, let enabled): dismissThen { model.setTag(tag, enabled: enabled) }

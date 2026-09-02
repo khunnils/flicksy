@@ -82,6 +82,7 @@ final class CommandPaletteSearchIndexTests: XCTestCase {
         XCTAssertTrue(single.canOpenSelection)
         XCTAssertFalse(single.canCompareImages)
         XCTAssertTrue(single.canGetInfo)
+        XCTAssertTrue(single.canResizeImage)
         XCTAssertTrue(single.canOrganize)
         XCTAssertTrue(single.canRename)
         XCTAssertTrue(single.canRemoveFromCollection)
@@ -100,6 +101,7 @@ final class CommandPaletteSearchIndexTests: XCTestCase {
         XCTAssertTrue(multiple.canOpenSelection)
         XCTAssertFalse(multiple.canCompareImages)
         XCTAssertFalse(multiple.canGetInfo)
+        XCTAssertFalse(multiple.canResizeImage)
         XCTAssertFalse(multiple.canRename)
         XCTAssertTrue(multiple.canEditMetaTags)
         XCTAssertTrue(multiple.canOrganize)
@@ -131,6 +133,7 @@ final class CommandPaletteSearchIndexTests: XCTestCase {
         )
         XCTAssertFalse(empty.canOpenSelection)
         XCTAssertFalse(empty.canCompareImages)
+        XCTAssertFalse(empty.canResizeImage)
 
         let imagePair = CommandPaletteSelectionCapabilities(
             items: [image, MediaItem(

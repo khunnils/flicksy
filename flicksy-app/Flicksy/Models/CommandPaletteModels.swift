@@ -60,6 +60,7 @@ struct CommandPaletteSelectionCapabilities: Equatable, Sendable {
     let canOpenSelection: Bool
     let canCompareImages: Bool
     let canGetInfo: Bool
+    let canResizeImage: Bool
     let canEditMetaTags: Bool
     let canOrganize: Bool
     let canDuplicate: Bool
@@ -77,6 +78,10 @@ struct CommandPaletteSelectionCapabilities: Equatable, Sendable {
             if case .image = item.type { count += 1 }
         } >= 2
         canGetInfo = items.count == 1
+        canResizeImage = items.count == 1 && items.allSatisfy {
+            if case .image = $0.type { return true }
+            return false
+        }
         canEditMetaTags = !items.isEmpty && items.allSatisfy {
             AudioTagService.canWrite(url: $0.url)
         }

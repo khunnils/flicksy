@@ -268,6 +268,9 @@ final class BrowserModel {
     /// field text instead of the selected files while the dialog is up.
     var editAudioTagsRequest: AudioTagsEditRequest?
 
+    /// The still image whose pixel dimensions are being edited in a modal sheet.
+    var imageResizeRequest: ImageResizeRequest?
+
     /// Drives the window-level keyboard shortcuts helper opened by Command-/.
     var isShortcutsHelpPresented = false
 
@@ -279,6 +282,7 @@ final class BrowserModel {
             || isQuickGotoFieldFocused
             || isCommandPaletteFieldFocused
             || editAudioTagsRequest != nil
+            || imageResizeRequest != nil
     }
 
     func presentQuickGoto() {
@@ -679,6 +683,30 @@ final class BrowserModel {
             } catch {
                 loadError = error.localizedDescription
             }
+        }
+    }
+
+    func presentImageResize() {
+        let items = commandPaletteSelectionItems
+        guard !isCropping, !isApplyingCrop,
+              items.count == 1,
+              let item = items.first,
+              item.type == .image
+        else { return }
+        dismissCommandPalette()
+        imageResizeRequest = ImageResizeRequest(item: item)
+    }
+
+    func resizeImage(_ item: MediaItem, to pixelSize: CGSize) async throws {
+        let url = item.url
+        let writtenSize = try await Task.detached(priority: .userInitiated) {
+            try ImageCropper.resize(url: url, pixelSize: pixelSize)
+        }.value
+        noteRewrittenFile(at: url, pixelSize: writtenSize)
+        if isLibrarySourceSelected {
+            await reconcileLibrary(roots: rootStore.urls)
+        } else {
+            refreshAfterFileMutation()
         }
     }
 
