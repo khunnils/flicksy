@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Flicksy updates</title>
+    <link>https://flicksy.app/updates/appcast.xml</link>
+    <description>Signed updates for the direct version of Flicksy.</description>
+  </channel>
+</rss>

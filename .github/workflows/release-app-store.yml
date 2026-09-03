@@ -1,0 +1,73 @@
+name: Upload App Store app
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Marketing version (for example 1.0)
+        required: true
+      build:
+        description: Integer build number
+        required: true
+
+jobs:
+  upload:
+    runs-on: macos-latest
+    env:
+      ARCHIVE_PATH: ${{ runner.temp }}/Flicksy-AppStore.xcarchive
+      EXPORT_PATH: ${{ runner.temp }}/app-store-export
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Import App Store distribution certificate
+        env:
+          CERTIFICATE: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          certificate_path="$RUNNER_TEMP/release.p12"
+          keychain_path="$RUNNER_TEMP/release.keychain-db"
+          printf '%s' "$CERTIFICATE" | base64 --decode > "$certificate_path"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security import "$certificate_path" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain_path"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security list-keychains -d user -s "$keychain_path" login.keychain-db
+
+      - name: Configure App Store Connect key
+        env:
+          PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/private_keys"
+          printf '%s' "$PRIVATE_KEY" > "$RUNNER_TEMP/private_keys/AuthKey_${{ vars.APP_STORE_CONNECT_KEY_ID }}.p8"
+
+      - name: Test and archive App Store build
+        working-directory: flicksy-app
+        run: |
+          set -o pipefail
+          auth=(
+            -authenticationKeyPath "$RUNNER_TEMP/private_keys/AuthKey_${{ vars.APP_STORE_CONNECT_KEY_ID }}.p8"
+            -authenticationKeyID '${{ vars.APP_STORE_CONNECT_KEY_ID }}'
+            -authenticationKeyIssuerID '${{ vars.APP_STORE_CONNECT_ISSUER_ID }}'
+          )
+          common=(
+            -project Flicksy.xcodeproj -scheme 'Flicksy - App Store'
+            MARKETING_VERSION='${{ inputs.version }}'
+            CURRENT_PROJECT_VERSION='${{ inputs.build }}'
+            DEVELOPMENT_TEAM='${{ vars.APPLE_TEAM_ID }}'
+          )
+          xcodebuild test "${common[@]}" -destination 'platform=macOS'
+          xcodebuild archive "${common[@]}" "${auth[@]}" -allowProvisioningUpdates -configuration Release -archivePath "$ARCHIVE_PATH"
+          Release/verify-channel.sh app-store "$ARCHIVE_PATH/Products/Applications/Flicksy App Store.app"
+
+      - name: Upload to App Store Connect
+        working-directory: flicksy-app
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath "$ARCHIVE_PATH" \
+            -exportPath "$EXPORT_PATH" \
+            -exportOptionsPlist Release/ExportOptions-AppStore.plist \
+            -authenticationKeyPath "$RUNNER_TEMP/private_keys/AuthKey_${{ vars.APP_STORE_CONNECT_KEY_ID }}.p8" \
+            -authenticationKeyID '${{ vars.APP_STORE_CONNECT_KEY_ID }}' \
+            -authenticationKeyIssuerID '${{ vars.APP_STORE_CONNECT_ISSUER_ID }}' \
+            -allowProvisioningUpdates

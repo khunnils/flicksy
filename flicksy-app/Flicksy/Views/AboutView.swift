@@ -10,6 +10,8 @@ import SwiftUI
 struct AboutView: View {
     static let windowID = "about-flicksy"
 
+    let access: AccessController
+
     private let version = Bundle.main.object(
         forInfoDictionaryKey: "CFBundleShortVersionString"
     ) as? String ?? "—"
@@ -45,6 +47,11 @@ struct AboutView: View {
                 .foregroundStyle(.tertiary)
                 .padding(.top, 14)
 
+            Text(access.state == .licensed ? "Lifetime license" : "Trial version")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.top, 5)
+
             Divider()
                 .padding(.vertical, 18)
 
@@ -69,5 +76,5 @@ struct AboutView: View {
 }
 
 #Preview {
-    AboutView()
+    AboutView(access: AccessController())
 }

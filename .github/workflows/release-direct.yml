@@ -1,0 +1,107 @@
+name: Release direct app
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Marketing version (for example 1.0)
+        required: true
+      build:
+        description: Integer build number
+        required: true
+      tag:
+        description: GitHub release tag (for example v1.0.0)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    env:
+      ARCHIVE_PATH: ${{ runner.temp }}/Flicksy.xcarchive
+      EXPORT_PATH: ${{ runner.temp }}/export
+      UPDATES_PATH: ${{ runner.temp }}/updates
+      DMG_PATH: ${{ runner.temp }}/updates/Flicksy-${{ inputs.version }}.dmg
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Import Developer ID certificate
+        env:
+          CERTIFICATE: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          certificate_path="$RUNNER_TEMP/release.p12"
+          keychain_path="$RUNNER_TEMP/release.keychain-db"
+          printf '%s' "$CERTIFICATE" | base64 --decode > "$certificate_path"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security import "$certificate_path" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain_path"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security list-keychains -d user -s "$keychain_path" login.keychain-db
+
+      - name: Test and archive direct build
+        working-directory: flicksy-app
+        run: |
+          set -o pipefail
+          common=(
+            -project Flicksy.xcodeproj -scheme Flicksy
+            MARKETING_VERSION='${{ inputs.version }}'
+            CURRENT_PROJECT_VERSION='${{ inputs.build }}'
+            DEVELOPMENT_TEAM='${{ vars.APPLE_TEAM_ID }}'
+            FLICKSY_CHECKOUT_URL='${{ vars.FLICKSY_CHECKOUT_URL }}'
+            LEMON_STORE_ID='${{ vars.LEMON_STORE_ID }}'
+            LEMON_PRODUCT_ID='${{ vars.LEMON_PRODUCT_ID }}'
+            LEMON_VARIANT_ID='${{ vars.LEMON_VARIANT_ID }}'
+            SPARKLE_FEED_URL='https://flicksy.app/updates/appcast.xml'
+            SPARKLE_PUBLIC_ED_KEY='${{ vars.SPARKLE_PUBLIC_ED_KEY }}'
+          )
+          xcodebuild test "${common[@]}" -destination 'platform=macOS'
+          xcodebuild archive "${common[@]}" -configuration Release -archivePath "$ARCHIVE_PATH"
+
+      - name: Export and verify direct app
+        working-directory: flicksy-app
+        run: |
+          xcodebuild -exportArchive -archivePath "$ARCHIVE_PATH" -exportPath "$EXPORT_PATH" -exportOptionsPlist Release/ExportOptions-DeveloperID.plist
+          Release/verify-channel.sh direct "$EXPORT_PATH/Flicksy.app"
+
+      - name: Create, notarize, and staple DMG
+        working-directory: flicksy-app
+        env:
+          NOTARY_APPLE_ID: ${{ secrets.APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
+          NOTARY_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+        run: |
+          mkdir -p "$UPDATES_PATH"
+          Release/create-dmg.sh "$EXPORT_PATH/Flicksy.app" "$DMG_PATH"
+          xcrun notarytool submit "$DMG_PATH" --apple-id "$NOTARY_APPLE_ID" --password "$NOTARY_PASSWORD" --team-id "$NOTARY_TEAM_ID" --wait
+          xcrun stapler staple "$DMG_PATH"
+          xcrun stapler validate "$DMG_PATH"
+          spctl --assess --type open --context context:primary-signature --verbose=2 "$DMG_PATH"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create '${{ inputs.tag }}' "$DMG_PATH" --title 'Flicksy ${{ inputs.version }}' --generate-notes
+          cp "$DMG_PATH" "$RUNNER_TEMP/Flicksy.dmg"
+          gh release upload '${{ inputs.tag }}' "$RUNNER_TEMP/Flicksy.dmg"
+
+      - name: Generate and publish signed appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          sparkle_bin="$(find ~/Library/Developer/Xcode/DerivedData -path '*/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_appcast' -print -quit)"
+          [[ -x "$sparkle_bin" ]]
+          private_key="$RUNNER_TEMP/sparkle-private-key"
+          printf '%s' "$SPARKLE_PRIVATE_KEY" > "$private_key"
+          "$sparkle_bin" --ed-key-file "$private_key" --download-url-prefix "https://github.com/${{ github.repository }}/releases/download/${{ inputs.tag }}/" "$UPDATES_PATH"
+          cp "$UPDATES_PATH/appcast.xml" flicksy-web/public/updates/appcast.xml
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add flicksy-web/public/updates/appcast.xml
+          git commit -m 'Publish Flicksy ${{ inputs.version }} appcast'
+          git push

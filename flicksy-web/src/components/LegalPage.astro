@@ -1,0 +1,32 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  updated: string;
+}
+
+const { title, description, updated } = Astro.props;
+---
+
+<Layout title={`${title} — Flicksy`} description={description}>
+  <nav class="legal-nav"><a href="/">← Flicksy</a></nav>
+  <main class="legal-page">
+    <p class="eyebrow">Flicksy</p>
+    <h1>{title}</h1>
+    <p class="updated">Updated {updated}</p>
+    <slot />
+  </main>
+</Layout>
+
+<style>
+  .legal-nav { width: min(720px, calc(100% - 40px)); margin: 28px auto 0; }
+  .legal-nav a { color: var(--muted); font-size: 13px; text-decoration: none; }
+  .legal-page { width: min(720px, calc(100% - 40px)); margin: 80px auto 120px; }
+  .legal-page h1 { margin: 12px 0 5px; font-size: clamp(42px, 8vw, 68px); line-height: 1; letter-spacing: -.055em; }
+  .updated { margin: 0 0 48px; color: var(--muted); font-size: 12px; }
+  .legal-page :global(h2) { margin: 34px 0 10px; font-size: 22px; letter-spacing: -.025em; }
+  .legal-page :global(p), .legal-page :global(li) { color: #555d68; }
+  .legal-page :global(a) { text-underline-offset: 3px; }
+</style>

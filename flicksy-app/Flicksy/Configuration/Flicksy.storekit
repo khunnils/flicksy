@@ -1,0 +1,58 @@
+{
+  "identifier" : "3B859748-45AD-4BB5-9559-C86A1DCC0D73",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "0",
+      "familyShareable" : false,
+      "internalID" : "trial14",
+      "localizations" : [
+        {
+          "description" : "Try the complete Flicksy app for 14 days. The trial does not renew or charge automatically.",
+          "displayName" : "14-day Trial",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "cloudedminds.Flicksy.trial14",
+      "referenceName" : "14-day Trial",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "19",
+      "familyShareable" : false,
+      "internalID" : "lifetime",
+      "localizations" : [
+        {
+          "description" : "Unlock Flicksy permanently, including all future Flicksy updates.",
+          "displayName" : "Flicksy Lifetime",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "cloudedminds.Flicksy.lifetime",
+      "referenceName" : "Flicksy Lifetime",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "flicksy",
+    "_developerTeamID" : "",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 0,
+    "_locale" : "en_US",
+    "_renewalBillingIssuesEnabled" : false,
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ],
+    "_timeRate" : 0
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

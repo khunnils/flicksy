@@ -4,6 +4,15 @@
 <dict>
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
+	<!-- Direct builds contact Lemon Squeezy and the signed Sparkle feed. -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<!-- Required by Sparkle's installer service when the host app is sandboxed. -->
+	<key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
+	<array>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER)-spks</string>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER)-spki</string>
+	</array>
 	<!-- Read-write so the user can move media to the Trash (Finder-style delete).
 	     Without this the sandbox denies FileManager.trashItem on selected folders. -->
 	<key>com.apple.security.files.user-selected.read-write</key>

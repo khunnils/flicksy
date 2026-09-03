@@ -1,6 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro';
 
+const directDownloadURL = import.meta.env.PUBLIC_FLICKSY_DIRECT_DOWNLOAD_URL ?? 'https://github.com/khunnils/flicksy/releases/latest/download/Flicksy.dmg';
+const directPurchaseURL = import.meta.env.PUBLIC_FLICKSY_CHECKOUT_URL ?? '#direct-purchase';
+const appStoreURL = import.meta.env.PUBLIC_FLICKSY_APP_STORE_URL ?? '#app-store';
+
 const features = [
   { icon: '⌁', title: 'Skim without opening', text: 'Move across any thumbnail to scrub through a clip. The right frame finds you before another player window can open.' },
   { icon: '⌇', title: 'See the sound', text: 'Audio appears as a waveform, ready to play from any point. Find the hit without auditioning a folder of filenames.' },
@@ -27,7 +31,10 @@ const faqs = [
   { q: 'Does Flicksy import or copy my files?', a: 'No. Flicksy reads the folders already on your Mac and connected drives. Your files and folder structure stay untouched.' },
   { q: 'Is it a photo library or cloud backup?', a: 'Neither. Flicksy is a fast, visual window onto local media. Nothing is uploaded and there is no library to maintain.' },
   { q: 'Which Macs are supported?', a: 'Flicksy is a native Apple Silicon app for macOS 15 and newer.' },
-  { q: 'What is included in the trial?', a: 'Everything. Try the complete app, then pay $19 once for a lifetime license with two years of updates included.' },
+  { q: 'What is included in the trial?', a: 'Everything. The 14-day trial begins only when you start it, does not auto-renew, and never creates a charge.' },
+  { q: 'Do I need a Flicksy account?', a: 'No. Direct customers receive a license key by email; Mac App Store customers use their Apple Account.' },
+  { q: 'Can I move a purchase between stores?', a: 'No. Direct and Mac App Store purchases are separate. Buy through the channel where you expect to restore Flicksy later.' },
+  { q: 'How many Macs can use a direct license?', a: 'A direct license activates up to three Macs. Deactivate an old Mac from Flicksy before moving that seat to another.' },
 ];
 ---
 
@@ -47,10 +54,10 @@ const faqs = [
         <h1><strong>Meet Flicksy</strong><span>A modern media browser for Mac</span></h1>
         <p class="hero-lead">Designed for content creators, Flicksy brings every clip, image, and sound into one beautifully fast Mac app. Skim, compare, organize, and drag the right moment straight into your editor.</p>
         <div class="hero-actions">
-          <a class="button button-dark" href="#pricing">Download <span>↘</span></a>
+          <a class="button button-dark" href={directDownloadURL}>Download direct trial <span>↘</span></a>
           <a class="text-link" href="#how">See how it works <span>↓</span></a>
         </div>
-        <p class="fine-print">Full app included · $19 once · 2 years of updates</p>
+        <p class="fine-print">Full app included · $19 once · lifetime app and updates</p>
       </div>
 
       <div class="iridescent-stage" aria-label="Flicksy app screenshot">
@@ -117,9 +124,22 @@ const faqs = [
         <div class="price-card" data-reveal data-reveal-delay="1">
           <div class="price-top"><img src="/flicksy-app-icon.png" alt="Flicksy app icon" width="72" height="72" /><span>Lifetime license</span></div>
           <div class="price-line"><strong>$19</strong><span>USD<br />one-time</span></div>
-          <ul><li>Lifetime license</li><li>Two years of updates included</li><li>Video, images, and audio</li><li>Tags, collections, and favorites</li><li>No account, upload, or lock-in</li></ul>
-          <a class="button button-dark button-wide" href="#">Download <span>↓</span></a>
+          <ul><li>Lifetime app access</li><li>All future Flicksy updates</li><li>Full-featured 14-day trial</li><li>Video, images, and audio</li><li>No Flicksy account or subscription</li></ul>
+          <div class="purchase-actions">
+            <a class="button button-dark button-wide" href={directPurchaseURL} id="direct-purchase">Buy direct — $19 <span>↗</span></a>
+            <a class="button button-light button-wide" href={directDownloadURL}>Download direct trial <span>↓</span></a>
+            <a class="button button-light button-wide" href={appStoreURL} id="app-store">View on the Mac App Store <span>↗</span></a>
+          </div>
+          <p class="channel-note">Direct keys arrive by email and cover three Macs. App Store purchases restore through your Apple Account. Purchases do not transfer between stores.</p>
         </div>
+      </div>
+    </section>
+
+    <section class="section purchase-details" id="pricing-details">
+      <div class="wrap detail-grid">
+        <article><p class="eyebrow">Your trial</p><h3>Fourteen days, on your terms.</h3><p>The clock begins when you click Start 14-Day Trial inside Flicksy—not when you download it. You get the complete app. There is no automatic renewal or charge.</p></article>
+        <article><p class="eyebrow">Direct</p><h3>A key, not an account.</h3><p>Checkout emails your license key. Activate up to three Macs, and recover the order through <a href="https://app.lemonsqueezy.com/my-orders">Lemon Squeezy My Orders</a>.</p></article>
+        <article><p class="eyebrow">Mac App Store</p><h3>Purchased with Apple.</h3><p>Start the trial, buy, and restore with your Apple Account. App Store pricing is localized and shown by Apple before purchase.</p></article>
       </div>
     </section>
 
@@ -129,7 +149,7 @@ const faqs = [
     </section>
   </main>
 
-  <footer class="footer"><div class="wrap footer-inner"><a class="brand" href="#top"><span class="brand-icon"><img src="/flicksy-mark-black.svg" alt="" width="23" height="23" /></span><span>Flicksy</span></a><p>Made for creators who would rather be making.</p><span>© 2026 Flicksy</span></div></footer>
+  <footer class="footer"><div class="wrap footer-inner"><a class="brand" href="#top"><span class="brand-icon"><img src="/flicksy-mark-black.svg" alt="" width="23" height="23" /></span><span>Flicksy</span></a><p>Made for creators who would rather be making.</p><nav aria-label="Legal"><a href="/privacy">Privacy</a><a href="/license">License</a><a href="/refunds">Refunds & recovery</a></nav><span>© 2026 Flicksy</span></div></footer>
 </Layout>
 
 <style>
@@ -258,6 +278,15 @@ const faqs = [
   .price-card li::before { content: '✓'; position: absolute; left: 1px; color: #557868; }
   .price-card { transition: transform .35s cubic-bezier(.22,1,.36,1), box-shadow .35s ease; }
   .price-card:hover { transform: translateY(-4px); box-shadow: 0 42px 90px rgba(50,61,82,.17), inset 0 0 0 1px rgba(125,137,153,.06); }
+  .purchase-actions { display: grid; gap: 9px; }
+  .button-light { background: rgba(255,255,255,.72); border-color: rgba(120,130,145,.28); color: var(--ink); }
+  .channel-note { margin: 16px 2px 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+  .purchase-details { padding-top: 0; }
+  .detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .detail-grid article { padding: 26px; border: 1px solid var(--line); border-radius: 20px; background: rgba(255,255,255,.58); }
+  .detail-grid h3 { margin: 12px 0 9px; font-size: 20px; }
+  .detail-grid article > p:last-child { margin: 0; color: var(--muted); font-size: 13px; }
+  .detail-grid a { text-underline-offset: 3px; }
   .faq { display: grid; grid-template-columns: .65fr 1.35fr; gap: 80px; } .faq .section-intro { margin: 0; }
   .faq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 25px; }
   .faq-grid article { padding: 23px 0 25px; border-top: 1px solid var(--line); }
@@ -265,6 +294,7 @@ const faqs = [
   .footer { padding: 32px 0 42px; border-top: 1px solid var(--line); }
   .footer-inner { display: flex; align-items: center; gap: 24px; color: var(--muted); font-size: 11px; }
   .footer-inner .brand { color: var(--ink); font-size: 14px; } .footer-inner p { margin: 0 auto; }
+  .footer-inner nav { display: flex; gap: 14px; }
   :global(.motion-ready) [data-reveal] { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .8s cubic-bezier(.22,1,.36,1); transition-delay: calc(var(--reveal-delay, 0) * 70ms); }
   :global(.motion-ready) [data-reveal][data-reveal-delay="1"] { --reveal-delay: 1; }
   :global(.motion-ready) [data-reveal][data-reveal-delay="2"] { --reveal-delay: 2; }
@@ -298,7 +328,7 @@ const faqs = [
     .organize-grid { grid-template-columns: 1fr; } .favorites-card { grid-column: auto; } .soft-card { min-height: 380px; }
     .inventory-grid { grid-template-columns: 1fr; margin-top: 42px; }
     .inventory-item { min-height: auto; }
-    .pricing-grid { grid-template-columns: 1fr; } .faq-grid { grid-template-columns: 1fr; }
+    .pricing-grid { grid-template-columns: 1fr; } .faq-grid, .detail-grid { grid-template-columns: 1fr; }
     .footer-inner { align-items: flex-start; flex-direction: column; } .footer-inner p { margin: 0; }
   }
 </style>

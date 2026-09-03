@@ -9,37 +9,40 @@ import SwiftUI
 
 @main
 struct FlicksyApp: App {
-    @State private var model = BrowserModel()
+    @State private var model: BrowserModel?
+    @State private var access = AccessController()
+    @State private var updater = UpdateController()
 
     var body: some Scene {
         WindowGroup {
-            MainView()
-                .environment(model)
+            FlicksyRootView(browserModel: $model)
+                .environment(access)
         }
         .commands {
-            AboutCommands()
-            GetInfoCommands(model: model)
+            AboutCommands(access: access, updater: updater)
+            if let model {
+                GetInfoCommands(model: model)
 
-            CommandGroup(after: .help) {
-                Button("Welcome to Flicksy…") {
-                    model.presentWelcome()
+                CommandGroup(after: .help) {
+                    Button("Welcome to Flicksy…") {
+                        model.presentWelcome()
+                    }
+                    .disabled(
+                        model.isWelcomePresented
+                            || model.editAudioTagsRequest != nil
+                            || model.organizationEditorRequest != nil
+                    )
+
+                    Divider()
+
+                    Button("Keyboard Shortcuts…") {
+                        model.presentShortcutsHelp()
+                    }
+                    .keyboardShortcut("/", modifiers: .command)
                 }
-                .disabled(
-                    model.isWelcomePresented
-                        || model.editAudioTagsRequest != nil
-                        || model.organizationEditorRequest != nil
-                )
 
-                Divider()
-
-                Button("Keyboard Shortcuts…") {
-                    model.presentShortcutsHelp()
-                }
-                .keyboardShortcut("/", modifiers: .command)
-            }
-
-            CommandGroup(after: .toolbar) {
-                Section {
+                CommandGroup(after: .toolbar) {
+                    Section {
                     Button("Command Palette…") {
                         model.toggleCommandPalette()
                     }
@@ -134,68 +137,76 @@ struct FlicksyApp: App {
                                 || model.thumbnailSize <= BrowserModel.minThumbnailSize
                                 || model.viewerItemID != nil)
                     )
+                    }
                 }
-            }
 
-            if model.isTextFieldFocused {
-                // Preserve the system pasteboard commands while editing the
-                // search or Jump to field so text shortcuts stay native.
-                CommandGroup(after: .pasteboard) {
-                    findMediaCommand
-                }
-            } else {
-                CommandGroup(replacing: .pasteboard) {
-                    findMediaCommand
-
-                    Divider()
-
-                    Button("Select All") {
-                        model.selectAll()
+                if model.isTextFieldFocused {
+                    // Preserve the system pasteboard commands while editing the
+                    // search or Jump to field so text shortcuts stay native.
+                    CommandGroup(after: .pasteboard) {
+                        findMediaCommand(model: model)
                     }
-                    .keyboardShortcut("a", modifiers: .command)
-                    .disabled(model.orderedItems.isEmpty || model.viewerItemID != nil)
+                } else {
+                    CommandGroup(replacing: .pasteboard) {
+                        findMediaCommand(model: model)
 
-                    Button("Copy") {
-                        model.copySelectedFiles()
-                    }
-                    .keyboardShortcut("c", modifiers: .command)
-                    .disabled(model.selectedItemIDs.isEmpty && model.viewerItemID == nil)
+                        Divider()
 
-                    Button("Paste") {
-                        model.pasteFiles()
-                    }
-                    .keyboardShortcut("v", modifiers: .command)
-                    .disabled(!model.canPasteFiles || model.viewerItemID != nil)
+                        Button("Select All") {
+                            model.selectAll()
+                        }
+                        .keyboardShortcut("a", modifiers: .command)
+                        .disabled(model.orderedItems.isEmpty || model.viewerItemID != nil)
 
-                    Button("Copy Path") {
-                        model.copyPath()
-                    }
-                    .keyboardShortcut("c", modifiers: [.command, .option])
-                    .disabled(model.selectedItemIDs.isEmpty && model.viewerItemID == nil)
+                        Button("Copy") {
+                            model.copySelectedFiles()
+                        }
+                        .keyboardShortcut("c", modifiers: .command)
+                        .disabled(model.selectedItemIDs.isEmpty && model.viewerItemID == nil)
 
-                    Button("Reveal in Finder") {
-                        model.revealInFinder()
-                    }
-                    .keyboardShortcut("r", modifiers: [.command, .option])
-                    .disabled(model.selectedItemIDs.isEmpty && model.viewerItemID == nil)
+                        Button("Paste") {
+                            model.pasteFiles()
+                        }
+                        .keyboardShortcut("v", modifiers: .command)
+                        .disabled(!model.canPasteFiles || model.viewerItemID != nil)
 
-                    Button("Move to Trash") {
-                        model.moveSelectedFilesToTrashExplicitly()
+                        Button("Copy Path") {
+                            model.copyPath()
+                        }
+                        .keyboardShortcut("c", modifiers: [.command, .option])
+                        .disabled(model.selectedItemIDs.isEmpty && model.viewerItemID == nil)
+
+                        Button("Reveal in Finder") {
+                            model.revealInFinder()
+                        }
+                        .keyboardShortcut("r", modifiers: [.command, .option])
+                        .disabled(model.selectedItemIDs.isEmpty && model.viewerItemID == nil)
+
+                        Button("Move to Trash") {
+                            model.moveSelectedFilesToTrashExplicitly()
+                        }
+                        .keyboardShortcut(.delete, modifiers: .command)
+                        .disabled(model.selectedItemIDs.isEmpty || model.viewerItemID != nil)
                     }
-                    .keyboardShortcut(.delete, modifiers: .command)
-                    .disabled(model.selectedItemIDs.isEmpty || model.viewerItemID != nil)
                 }
             }
         }
 
         Window("About Flicksy", id: AboutView.windowID) {
-            AboutView()
+            AboutView(access: access)
+        }
+        .defaultPosition(.center)
+        .windowResizability(.contentSize)
+
+        Window("Flicksy License", id: LicenseView.windowID) {
+            LicenseView()
+                .environment(access)
         }
         .defaultPosition(.center)
         .windowResizability(.contentSize)
 
         WindowGroup("Info", id: MediaInfoView.windowID, for: String.self) { $itemID in
-            if let itemID, let item = model.mediaItemForInfo(id: itemID) {
+            if let model, let itemID, let item = model.mediaItemForInfo(id: itemID) {
                 MediaInfoView(item: item)
                     .environment(model)
             } else {
@@ -207,7 +218,7 @@ struct FlicksyApp: App {
         .windowResizability(.contentSize)
     }
 
-    private var findMediaCommand: some View {
+    private func findMediaCommand(model: BrowserModel) -> some View {
         Button("Find Media") {
             model.isSearchPresented = true
         }
@@ -239,6 +250,8 @@ private struct GetInfoCommands: Commands {
 }
 
 private struct AboutCommands: Commands {
+    let access: AccessController
+    let updater: UpdateController
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
@@ -246,6 +259,32 @@ private struct AboutCommands: Commands {
             Button("About Flicksy") {
                 openWindow(id: AboutView.windowID)
             }
+        }
+
+        CommandGroup(after: .appInfo) {
+            Button("Flicksy License…") {
+                openWindow(id: LicenseView.windowID)
+            }
+
+            if access.state != .licensed {
+                Button("Buy Flicksy…") {
+                    Task { await access.purchase() }
+                }
+            }
+
+#if APP_STORE_DISTRIBUTION
+            Button("Restore Purchases") {
+                Task { await access.restore() }
+            }
+#endif
+
+#if DIRECT_DISTRIBUTION
+            Divider()
+            Button("Check for Updates…") {
+                updater.checkForUpdates()
+            }
+            .disabled(!updater.canCheckForUpdates)
+#endif
         }
     }
 }

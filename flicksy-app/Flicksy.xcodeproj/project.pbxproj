@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		BB0000000000000000000003 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = BB0000000000000000000005 /* Sparkle */; };
+		BB0000000000000000000051 /* Flicksy/Configuration/Flicksy.storekit in Resources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000050 /* Flicksy/Configuration/Flicksy.storekit */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		AA0000000000000000000007 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -14,16 +19,49 @@
 			remoteGlobalIDString = 29986C753037E7160009632B;
 			remoteInfo = Flicksy;
 		};
+		BB0000000000000000000024 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 29986C6E3037E7160009632B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BB0000000000000000000013;
+			remoteInfo = "Flicksy App Store";
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		29986C763037E7160009632B /* Flicksy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Flicksy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA0000000000000000000002 /* FlicksyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FlicksyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB0000000000000000000001 /* Flicksy App Store.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Flicksy App Store.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB0000000000000000000002 /* FlicksyAppStoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FlicksyAppStoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB0000000000000000000050 /* Flicksy/Configuration/Flicksy.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Flicksy/Configuration/Flicksy.storekit; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		BB0000000000000000000040 /* Exceptions for "Flicksy" folder in "Flicksy" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Configuration/Flicksy.storekit,
+				Info-Direct.plist,
+			);
+			target = 29986C753037E7160009632B /* Flicksy */;
+		};
+		BB0000000000000000000041 /* Exceptions for "Flicksy" folder in "Flicksy App Store" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Configuration/Flicksy.storekit,
+				Info-Direct.plist,
+			);
+			target = BB0000000000000000000013 /* Flicksy App Store */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		29986C783037E7160009632B /* Flicksy */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				BB0000000000000000000040 /* Exceptions for "Flicksy" folder in "Flicksy" target */,
+				BB0000000000000000000041 /* Exceptions for "Flicksy" folder in "Flicksy App Store" target */,
+			);
 			path = Flicksy;
 			sourceTree = "<group>";
 		};
@@ -39,10 +77,25 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BB0000000000000000000003 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		AA0000000000000000000005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB0000000000000000000011 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB0000000000000000000021 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -57,6 +110,7 @@
 			children = (
 				29986C783037E7160009632B /* Flicksy */,
 				AA0000000000000000000003 /* FlicksyTests */,
+				BB0000000000000000000050 /* Flicksy/Configuration/Flicksy.storekit */,
 				29986C773037E7160009632B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -65,7 +119,9 @@
 			isa = PBXGroup;
 			children = (
 				29986C763037E7160009632B /* Flicksy.app */,
+				BB0000000000000000000001 /* Flicksy App Store.app */,
 				AA0000000000000000000002 /* FlicksyTests.xctest */,
+				BB0000000000000000000002 /* FlicksyAppStoreTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -90,6 +146,7 @@
 			);
 			name = Flicksy;
 			packageProductDependencies = (
+				BB0000000000000000000005 /* Sparkle */,
 			);
 			productName = Flicksy;
 			productReference = 29986C763037E7160009632B /* Flicksy.app */;
@@ -118,6 +175,51 @@
 			productReference = AA0000000000000000000002 /* FlicksyTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		BB0000000000000000000013 /* Flicksy App Store */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BB0000000000000000000032 /* Build configuration list for PBXNativeTarget "Flicksy App Store" */;
+			buildPhases = (
+				BB0000000000000000000010 /* Sources */,
+				BB0000000000000000000011 /* Frameworks */,
+				BB0000000000000000000012 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				29986C783037E7160009632B /* Flicksy */,
+			);
+			name = "Flicksy App Store";
+			packageProductDependencies = (
+			);
+			productName = Flicksy;
+			productReference = BB0000000000000000000001 /* Flicksy App Store.app */;
+			productType = "com.apple.product-type.application";
+		};
+		BB0000000000000000000023 /* FlicksyAppStoreTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BB0000000000000000000033 /* Build configuration list for PBXNativeTarget "FlicksyAppStoreTests" */;
+			buildPhases = (
+				BB0000000000000000000020 /* Sources */,
+				BB0000000000000000000021 /* Frameworks */,
+				BB0000000000000000000022 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BB0000000000000000000025 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				AA0000000000000000000003 /* FlicksyTests */,
+			);
+			name = FlicksyAppStoreTests;
+			packageProductDependencies = (
+			);
+			productName = FlicksyAppStoreTests;
+			productReference = BB0000000000000000000002 /* FlicksyAppStoreTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -135,6 +237,13 @@
 						CreatedOnToolsVersion = 26.6;
 						TestTargetID = 29986C753037E7160009632B;
 					};
+					BB0000000000000000000013 = {
+						CreatedOnToolsVersion = 26.6;
+					};
+					BB0000000000000000000023 = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = BB0000000000000000000013;
+					};
 				};
 			};
 			buildConfigurationList = 29986C713037E7160009632B /* Build configuration list for PBXProject "Flicksy" */;
@@ -146,13 +255,18 @@
 			);
 			mainGroup = 29986C6D3037E7160009632B;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				BB0000000000000000000004 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 29986C773037E7160009632B /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				29986C753037E7160009632B /* Flicksy */,
+				BB0000000000000000000013 /* Flicksy App Store */,
 				AA0000000000000000000001 /* FlicksyTests */,
+				BB0000000000000000000023 /* FlicksyAppStoreTests */,
 			);
 		};
 /* End PBXProject section */
@@ -169,6 +283,21 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB0000000000000000000012 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB0000000000000000000022 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB0000000000000000000051 /* Flicksy/Configuration/Flicksy.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -189,6 +318,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BB0000000000000000000010 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB0000000000000000000020 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -196,6 +339,11 @@
 			isa = PBXTargetDependency;
 			target = 29986C753037E7160009632B /* Flicksy */;
 			targetProxy = AA0000000000000000000007 /* PBXContainerItemProxy */;
+		};
+		BB0000000000000000000025 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BB0000000000000000000013 /* Flicksy App Store */;
+			targetProxy = BB0000000000000000000024 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -328,11 +476,23 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Flicksy/Info-Direct.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Flicksy;
+				INFOPLIST_KEY_FlicksyCheckoutURL = "$(FLICKSY_CHECKOUT_URL)";
+				INFOPLIST_KEY_FlicksyLemonProductID = "$(LEMON_PRODUCT_ID)";
+				INFOPLIST_KEY_FlicksyLemonStoreID = "$(LEMON_STORE_ID)";
+				INFOPLIST_KEY_FlicksyLemonVariantID = "$(LEMON_VARIANT_ID)";
+				INFOPLIST_KEY_FlicksyPurchasePrice = $19;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Flicksy";
+				INFOPLIST_KEY_SUEnableInstallerLauncherService = YES;
+				INFOPLIST_KEY_SUFeedURL = "$(SPARKLE_FEED_URL)";
+				INFOPLIST_KEY_SUPublicEDKey = "$(SPARKLE_PUBLIC_ED_KEY)";
+				INFOPLIST_KEY_SURequireSignedFeed = YES;
+				INFOPLIST_KEY_SUSendProfileInfo = NO;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -342,6 +502,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DIRECT_DISTRIBUTION $(inherited)";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -360,11 +521,23 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Flicksy/Info-Direct.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Flicksy;
+				INFOPLIST_KEY_FlicksyCheckoutURL = "$(FLICKSY_CHECKOUT_URL)";
+				INFOPLIST_KEY_FlicksyLemonProductID = "$(LEMON_PRODUCT_ID)";
+				INFOPLIST_KEY_FlicksyLemonStoreID = "$(LEMON_STORE_ID)";
+				INFOPLIST_KEY_FlicksyLemonVariantID = "$(LEMON_VARIANT_ID)";
+				INFOPLIST_KEY_FlicksyPurchasePrice = $19;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Flicksy";
+				INFOPLIST_KEY_SUEnableInstallerLauncherService = YES;
+				INFOPLIST_KEY_SUFeedURL = "$(SPARKLE_FEED_URL)";
+				INFOPLIST_KEY_SUPublicEDKey = "$(SPARKLE_PUBLIC_ED_KEY)";
+				INFOPLIST_KEY_SURequireSignedFeed = YES;
+				INFOPLIST_KEY_SUSendProfileInfo = NO;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -374,6 +547,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DIRECT_DISTRIBUTION $(inherited)";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -391,6 +565,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				PRODUCT_BUNDLE_IDENTIFIER = cloudedminds.FlicksyTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DIRECT_DISTRIBUTION $(inherited)";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -409,12 +584,121 @@
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				PRODUCT_BUNDLE_IDENTIFIER = cloudedminds.FlicksyTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DIRECT_DISTRIBUTION $(inherited)";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Flicksy.app/Contents/MacOS/Flicksy";
+			};
+			name = Release;
+		};
+		BB0000000000000000000030 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Flicksy/FlicksyAppStore.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Flicksy;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Flicksy";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = cloudedminds.Flicksy;
+				PRODUCT_MODULE_NAME = Flicksy;
+				PRODUCT_NAME = "Flicksy App Store";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "APP_STORE_DISTRIBUTION $(inherited)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		BB0000000000000000000031 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Flicksy/FlicksyAppStore.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Flicksy;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Flicksy";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = cloudedminds.Flicksy;
+				PRODUCT_MODULE_NAME = Flicksy;
+				PRODUCT_NAME = "Flicksy App Store";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "APP_STORE_DISTRIBUTION $(inherited)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		BB0000000000000000000034 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = cloudedminds.FlicksyAppStoreTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "APP_STORE_DISTRIBUTION $(inherited)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Flicksy App Store.app/Contents/MacOS/Flicksy App Store";
+			};
+			name = Debug;
+		};
+		BB0000000000000000000035 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = cloudedminds.FlicksyAppStoreTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "APP_STORE_DISTRIBUTION $(inherited)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Flicksy App Store.app/Contents/MacOS/Flicksy App Store";
 			};
 			name = Release;
 		};
@@ -448,7 +732,44 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		BB0000000000000000000032 /* Build configuration list for PBXNativeTarget "Flicksy App Store" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB0000000000000000000030 /* Debug */,
+				BB0000000000000000000031 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BB0000000000000000000033 /* Build configuration list for PBXNativeTarget "FlicksyAppStoreTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB0000000000000000000034 /* Debug */,
+				BB0000000000000000000035 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		BB0000000000000000000004 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = exactVersion;
+				version = 2.9.6;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		BB0000000000000000000005 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB0000000000000000000004 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 29986C6E3037E7160009632B /* Project object */;
 }
