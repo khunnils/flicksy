@@ -71,7 +71,7 @@ jobs:
       - name: Create, notarize, and staple DMG
         working-directory: flicksy-app
         env:
-          NOTARY_APPLE_ID: ${{ secrets.APPLE_ID }}
+          NOTARY_APPLE_ID: ${{ vars.APPLE_ID }}
           NOTARY_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
           NOTARY_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
         run: |

@@ -22,14 +22,14 @@ Both release schemes must receive the same `MARKETING_VERSION` and
 
 ## Direct workflow configuration
 
-Repository variables: `APPLE_TEAM_ID`, `FLICKSY_CHECKOUT_URL`,
+Repository variables: `APPLE_TEAM_ID`, `APPLE_ID`, `FLICKSY_CHECKOUT_URL`,
 `FLICKSY_LICENSE_API_URL`, `SPARKLE_PUBLIC_ED_KEY`.
 
-`FLICKSY_LICENSE_API_URL` should be `https://flicksy.app/api/licenses`.
+`FLICKSY_LICENSE_API_URL` should be `https://flicksy.app/api/licenses`
+(or your current Worker hostname while previewing).
 
 Repository secrets: `BUILD_CERTIFICATE_BASE64`, `P12_PASSWORD`,
-`KEYCHAIN_PASSWORD`, `APPLE_ID`, `APP_SPECIFIC_PASSWORD`,
-`SPARKLE_PRIVATE_KEY`.
+`KEYCHAIN_PASSWORD`, `APP_SPECIFIC_PASSWORD`, `SPARKLE_PRIVATE_KEY`.
 
 The direct workflow archives with Developer ID, exports the app, builds a DMG
 with an Applications shortcut, notarizes and staples it, verifies Gatekeeper,
