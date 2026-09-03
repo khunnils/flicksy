@@ -483,9 +483,7 @@
 				INFOPLIST_FILE = Flicksy/Info-Direct.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Flicksy;
 				INFOPLIST_KEY_FlicksyCheckoutURL = "$(FLICKSY_CHECKOUT_URL)";
-				INFOPLIST_KEY_FlicksyLemonProductID = "$(LEMON_PRODUCT_ID)";
-				INFOPLIST_KEY_FlicksyLemonStoreID = "$(LEMON_STORE_ID)";
-				INFOPLIST_KEY_FlicksyLemonVariantID = "$(LEMON_VARIANT_ID)";
+				INFOPLIST_KEY_FlicksyLicenseAPIURL = "$(FLICKSY_LICENSE_API_URL)";
 				INFOPLIST_KEY_FlicksyPurchasePrice = $19;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Flicksy";
 				INFOPLIST_KEY_SUEnableInstallerLauncherService = YES;
@@ -528,9 +526,7 @@
 				INFOPLIST_FILE = Flicksy/Info-Direct.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Flicksy;
 				INFOPLIST_KEY_FlicksyCheckoutURL = "$(FLICKSY_CHECKOUT_URL)";
-				INFOPLIST_KEY_FlicksyLemonProductID = "$(LEMON_PRODUCT_ID)";
-				INFOPLIST_KEY_FlicksyLemonStoreID = "$(LEMON_STORE_ID)";
-				INFOPLIST_KEY_FlicksyLemonVariantID = "$(LEMON_VARIANT_ID)";
+				INFOPLIST_KEY_FlicksyLicenseAPIURL = "$(FLICKSY_LICENSE_API_URL)";
 				INFOPLIST_KEY_FlicksyPurchasePrice = $19;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Flicksy";
 				INFOPLIST_KEY_SUEnableInstallerLauncherService = YES;

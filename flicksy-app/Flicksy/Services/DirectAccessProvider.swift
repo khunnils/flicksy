@@ -9,34 +9,23 @@ import Foundation
 
 struct DirectAccessConfiguration: Equatable {
     let checkoutURL: URL?
-    let lemonStoreID: Int
-    let lemonProductID: Int
-    let lemonVariantID: Int
+    let licenseAPIURL: URL?
     let purchasePrice: String
 
-    static func fromBundle(_ bundle: Bundle = .main) -> DirectAccessConfiguration {
-        func integer(_ key: String) -> Int {
-            if let value = bundle.object(forInfoDictionaryKey: key) as? NSNumber {
-                return value.intValue
-            }
-            if let value = bundle.object(forInfoDictionaryKey: key) as? String {
-                return Int(value) ?? 0
-            }
-            return 0
-        }
+    static let defaultLicenseAPIURL = URL(string: "https://flicksy.app/api/licenses")!
 
+    static func fromBundle(_ bundle: Bundle = .main) -> DirectAccessConfiguration {
         let checkout = bundle.object(forInfoDictionaryKey: "FlicksyCheckoutURL") as? String
+        let licenseAPI = bundle.object(forInfoDictionaryKey: "FlicksyLicenseAPIURL") as? String
         return DirectAccessConfiguration(
             checkoutURL: checkout.flatMap(URL.init(string:)),
-            lemonStoreID: integer("FlicksyLemonStoreID"),
-            lemonProductID: integer("FlicksyLemonProductID"),
-            lemonVariantID: integer("FlicksyLemonVariantID"),
+            licenseAPIURL: licenseAPI.flatMap(URL.init(string:)) ?? defaultLicenseAPIURL,
             purchasePrice: bundle.object(forInfoDictionaryKey: "FlicksyPurchasePrice") as? String ?? "$19"
         )
     }
 
     var isLicenseConfigured: Bool {
-        lemonStoreID > 0 && lemonProductID > 0 && lemonVariantID > 0
+        licenseAPIURL != nil
     }
 }
 
@@ -67,48 +56,27 @@ final class DirectAccessProvider: AccessProviding {
         let label: String
     }
 
-    private struct LemonResponse: Decodable {
-        let activated: Bool?
-        let deactivated: Bool?
-        let valid: Bool?
-        let error: String?
-        let licenseKey: LemonLicense?
-        let instance: LemonInstance?
-        let meta: LemonMeta?
-
-        enum CodingKeys: String, CodingKey {
-            case activated, deactivated, valid, error, instance, meta
-            case licenseKey = "license_key"
-        }
-    }
-
-    private struct LemonLicense: Decodable {
-        let status: String
-        let activationLimit: Int?
+    private struct LicenseResponse: Decodable {
+        let ok: Bool
+        let status: String?
+        let instanceID: String?
+        let createdAt: String?
         let activationUsage: Int?
-        let createdAt: String
+        let activationLimit: Int?
+        let error: String?
+        let errorCode: String?
 
         enum CodingKeys: String, CodingKey {
-            case status
-            case activationLimit = "activation_limit"
-            case activationUsage = "activation_usage"
+            case ok, status, error
+            case instanceID = "instance_id"
             case createdAt = "created_at"
+            case activationUsage = "activation_usage"
+            case activationLimit = "activation_limit"
+            case errorCode = "error_code"
         }
-    }
 
-    private struct LemonInstance: Decodable {
-        let id: String
-    }
-
-    private struct LemonMeta: Decodable {
-        let storeID: Int
-        let productID: Int
-        let variantID: Int
-
-        enum CodingKeys: String, CodingKey {
-            case storeID = "store_id"
-            case productID = "product_id"
-            case variantID = "variant_id"
+        var hasUsableStatus: Bool {
+            status == "active" || status == "inactive"
         }
     }
 
@@ -177,21 +145,14 @@ final class DirectAccessProvider: AccessProviding {
         let device = try deviceRecord()
         let response = try await request(
             endpoint: "activate",
-            fields: ["license_key": normalizedKey, "instance_name": device.label]
+            fields: ["key": normalizedKey, "instance_name": device.label]
         )
+        try throwIfFailed(response, fallback: "This license could not be activated.")
 
-        guard response.activated == true else {
-            if response.error?.localizedCaseInsensitiveContains("activation limit") == true {
-                throw AccessActionError.activationLimitReached
-            }
-            throw AccessActionError.invalidLicense(response.error ?? "This license could not be activated.")
-        }
-
-        try validateProduct(response.meta)
-        guard let license = response.licenseKey,
-              license.status == "active" || license.status == "inactive",
-              let instanceID = response.instance?.id,
-              let purchasedAt = Self.parseDate(license.createdAt)
+        guard response.hasUsableStatus,
+              let instanceID = response.instanceID,
+              let createdAt = response.createdAt,
+              let purchasedAt = Self.parseDate(createdAt)
         else {
             throw AccessActionError.invalidLicense("The license response was incomplete. Please try again.")
         }
@@ -202,8 +163,8 @@ final class DirectAccessProvider: AccessProviding {
                 instanceID: instanceID,
                 purchasedAt: purchasedAt,
                 lastValidatedAt: now,
-                activationUsage: license.activationUsage,
-                activationLimit: license.activationLimit
+                activationUsage: response.activationUsage,
+                activationLimit: response.activationLimit
             ),
             key: licenseKey
         )
@@ -221,11 +182,9 @@ final class DirectAccessProvider: AccessProviding {
 
         let response = try await request(
             endpoint: "deactivate",
-            fields: ["license_key": record.key, "instance_id": record.instanceID]
+            fields: ["key": record.key, "instance_id": record.instanceID]
         )
-        guard response.deactivated == true else {
-            throw AccessActionError.service(response.error ?? "This Mac could not be deactivated.")
-        }
+        try throwIfFailed(response, fallback: "This Mac could not be deactivated.")
         try secureStore.remove(licenseKey)
         return try localSnapshot(now: now)
     }
@@ -237,28 +196,22 @@ final class DirectAccessProvider: AccessProviding {
 
         let response = try await request(
             endpoint: "validate",
-            fields: ["license_key": record.key, "instance_id": record.instanceID]
+            fields: ["key": record.key, "instance_id": record.instanceID]
         )
-        do {
-            try validateProduct(response.meta)
-        } catch {
-            // A successful vendor response for another product must never keep
-            // a cached Flicksy entitlement alive.
-            try secureStore.remove(licenseKey)
-            return try localSnapshot(now: now)
+        if response.errorCode == "service" {
+            throw AccessActionError.service(
+                response.error ?? "The licensing service is unavailable. Try again in a moment."
+            )
         }
 
-        guard response.valid == true,
-              let license = response.licenseKey,
-              license.status == "active" || license.status == "inactive"
-        else {
+        guard response.ok, response.hasUsableStatus else {
             try secureStore.remove(licenseKey)
             return try localSnapshot(now: now)
         }
 
         record.lastValidatedAt = now
-        record.activationUsage = license.activationUsage
-        record.activationLimit = license.activationLimit
+        record.activationUsage = response.activationUsage
+        record.activationLimit = response.activationLimit
         try save(record, key: licenseKey)
         return try localSnapshot(now: now)
     }
@@ -314,40 +267,38 @@ final class DirectAccessProvider: AccessProviding {
         return record
     }
 
-    private func request(endpoint: String, fields: [String: String]) async throws -> LemonResponse {
-        guard let url = URL(string: "https://api.lemonsqueezy.com/v1/licenses/\(endpoint)") else {
+    private func request(endpoint: String, fields: [String: String]) async throws -> LicenseResponse {
+        guard let base = configuration.licenseAPIURL else {
             throw AccessActionError.configuration("The licensing service URL is invalid.")
         }
+        let url = base.appendingPathComponent(endpoint)
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        var components = URLComponents()
-        components.queryItems = fields.map { URLQueryItem(name: $0.key, value: $0.value) }
-        request.httpBody = components.percentEncodedQuery?.data(using: .utf8)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: fields)
 
         let (data, response) = try await session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
+        guard response is HTTPURLResponse else {
             throw AccessActionError.service("The licensing service returned an invalid response.")
         }
 
-        let decoded = try? decoder.decode(LemonResponse.self, from: data)
-        guard (200..<300).contains(httpResponse.statusCode), let decoded else {
-            throw AccessActionError.service(
-                decoded?.error ?? "The licensing service is unavailable. Try again in a moment."
-            )
+        if let decoded = try? decoder.decode(LicenseResponse.self, from: data) {
+            return decoded
         }
-        return decoded
+        throw AccessActionError.service("The licensing service is unavailable. Try again in a moment.")
     }
 
-    private func validateProduct(_ meta: LemonMeta?) throws {
-        guard let meta,
-              meta.storeID == configuration.lemonStoreID,
-              meta.productID == configuration.lemonProductID,
-              meta.variantID == configuration.lemonVariantID
-        else {
-            throw AccessActionError.invalidLicense("This key is not a Flicksy license.")
+    private func throwIfFailed(_ response: LicenseResponse, fallback: String) throws {
+        guard !response.ok else { return }
+        switch response.errorCode {
+        case "limit":
+            throw AccessActionError.activationLimitReached
+        case "invalid", "not_found":
+            throw AccessActionError.invalidLicense(response.error ?? fallback)
+        default:
+            throw AccessActionError.service(response.error ?? fallback)
         }
     }
 

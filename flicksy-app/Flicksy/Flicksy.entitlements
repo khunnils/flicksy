@@ -4,7 +4,7 @@
 <dict>
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
-	<!-- Direct builds contact Lemon Squeezy and the signed Sparkle feed. -->
+	<!-- Direct builds contact the Flicksy license API and the signed Sparkle feed. -->
 	<key>com.apple.security.network.client</key>
 	<true/>
 	<!-- Required by Sparkle's installer service when the host app is sandboxed. -->

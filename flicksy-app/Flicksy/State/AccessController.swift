@@ -91,8 +91,8 @@ final class AccessController {
                 apply(refreshed)
             }
         } catch {
-            // A cached direct license remains usable indefinitely when Lemon or
-            // the network is unavailable. Surface errors only when access is gated.
+            // A cached direct license remains usable indefinitely when the
+            // license API or network is unavailable. Surface errors only when access is gated.
             if showErrors, !hasAccess {
                 errorMessage = error.localizedDescription
             }

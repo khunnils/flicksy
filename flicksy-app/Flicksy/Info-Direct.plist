@@ -24,12 +24,8 @@
     <string>$(CURRENT_PROJECT_VERSION)</string>
     <key>FlicksyCheckoutURL</key>
     <string>$(FLICKSY_CHECKOUT_URL)</string>
-    <key>FlicksyLemonProductID</key>
-    <string>$(LEMON_PRODUCT_ID)</string>
-    <key>FlicksyLemonStoreID</key>
-    <string>$(LEMON_STORE_ID)</string>
-    <key>FlicksyLemonVariantID</key>
-    <string>$(LEMON_VARIANT_ID)</string>
+    <key>FlicksyLicenseAPIURL</key>
+    <string>$(FLICKSY_LICENSE_API_URL)</string>
     <key>FlicksyPurchasePrice</key>
     <string>$19</string>
     <key>LSApplicationCategoryType</key>

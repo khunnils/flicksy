@@ -59,7 +59,7 @@ final class DirectAccessProviderTests: XCTestCase {
         )
     }
 
-    func testActivationValidatesProductAndPersistsOfflineLicense() async throws {
+    func testActivationPersistsOfflineLicense() async throws {
         LicenseURLProtocol.handler = { request in
             XCTAssertEqual(request.url?.lastPathComponent, "activate")
             return Self.response(json: Self.activationJSON)
@@ -82,7 +82,12 @@ final class DirectAccessProviderTests: XCTestCase {
 
     func testActivationRejectsLicenseForAnotherProduct() async throws {
         LicenseURLProtocol.handler = { _ in
-            Self.response(json: Self.activationJSON.replacingOccurrences(of: "\"product_id\":20", with: "\"product_id\":99"))
+            Self.response(
+                json: """
+                {"ok":false,"error":"This key is not a Flicksy license.","error_code":"invalid"}
+                """,
+                status: 404
+            )
         }
 
         do {
@@ -95,9 +100,12 @@ final class DirectAccessProviderTests: XCTestCase {
 
     func testActivationLimitErrorIsPresentedClearly() async throws {
         LicenseURLProtocol.handler = { _ in
-            Self.response(json: """
-            {"activated":false,"error":"This license key has reached the activation limit."}
-            """)
+            Self.response(
+                json: """
+                {"ok":false,"error":"This license key has reached the activation limit.","error_code":"limit"}
+                """,
+                status: 403
+            )
         }
 
         do {
@@ -130,19 +138,12 @@ final class DirectAccessProviderTests: XCTestCase {
                 return Self.response(json: Self.activationJSON)
             }
             XCTAssertEqual(request.url?.lastPathComponent, "validate")
-            return Self.response(json: """
-            {
-              "valid": false,
-              "error": "The license key has been disabled.",
-              "license_key": {
-                "status": "disabled",
-                "activation_limit": 3,
-                "activation_usage": 1,
-                "created_at": "2026-08-01T10:00:00.000000Z"
-              },
-              "meta": {"store_id":10,"product_id":20,"variant_id":30}
-            }
-            """)
+            return Self.response(
+                json: """
+                {"ok":false,"status":"disabled","error":"The license key has been disabled.","error_code":"invalid"}
+                """,
+                status: 410
+            )
         }
         let store = MemorySecureStore()
         let provider = makeProvider(store: store)
@@ -163,10 +164,12 @@ final class DirectAccessProviderTests: XCTestCase {
                 isActivation = false
                 return Self.response(json: Self.activationJSON)
             }
-            let validation = Self.activationJSON
-                .replacingOccurrences(of: "\"activated\": true", with: "\"valid\": true")
-                .replacingOccurrences(of: "\"product_id\":20", with: "\"product_id\":99")
-            return Self.response(json: validation)
+            return Self.response(
+                json: """
+                {"ok":false,"error":"This key is not a Flicksy license.","error_code":"invalid"}
+                """,
+                status: 404
+            )
         }
         let store = MemorySecureStore()
         let provider = makeProvider(store: store)
@@ -218,7 +221,7 @@ final class DirectAccessProviderTests: XCTestCase {
             }
             XCTAssertEqual(request.url?.lastPathComponent, "deactivate")
             return Self.response(json: """
-            {"deactivated":true,"error":null,"license_key":{"status":"active","activation_limit":3,"activation_usage":0,"created_at":"2026-08-01T10:00:00.000000Z"},"meta":{"store_id":10,"product_id":20,"variant_id":30}}
+            {"ok":true,"status":"active","activation_usage":0,"activation_limit":3}
             """)
         }
         let provider = makeProvider()
@@ -236,9 +239,7 @@ final class DirectAccessProviderTests: XCTestCase {
         return DirectAccessProvider(
             configuration: DirectAccessConfiguration(
                 checkoutURL: URL(string: "https://example.com/buy"),
-                lemonStoreID: 10,
-                lemonProductID: 20,
-                lemonVariantID: 30,
+                licenseAPIURL: URL(string: "https://flicksy.app/api/licenses"),
                 purchasePrice: "$19"
             ),
             secureStore: store,
@@ -248,7 +249,7 @@ final class DirectAccessProviderTests: XCTestCase {
     }
 
     private static func response(json: String, status: Int = 200) -> (HTTPURLResponse, Data) {
-        let url = URL(string: "https://api.lemonsqueezy.com")!
+        let url = URL(string: "https://flicksy.app/api/licenses")!
         return (
             HTTPURLResponse(url: url, statusCode: status, httpVersion: nil, headerFields: nil)!,
             Data(json.utf8)
@@ -257,16 +258,12 @@ final class DirectAccessProviderTests: XCTestCase {
 
     private static let activationJSON = """
     {
-      "activated": true,
-      "error": null,
-      "license_key": {
-        "status": "active",
-        "activation_limit": 3,
-        "activation_usage": 1,
-        "created_at": "2026-08-01T10:00:00.000000Z"
-      },
-      "instance": {"id":"instance-123"},
-      "meta": {"store_id":10,"product_id":20,"variant_id":30}
+      "ok": true,
+      "status": "active",
+      "instance_id": "instance-123",
+      "created_at": "2026-08-01T10:00:00.000000Z",
+      "activation_usage": 1,
+      "activation_limit": 3
     }
     """
 }

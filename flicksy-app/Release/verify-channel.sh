@@ -29,7 +29,7 @@ case "$channel" in
       echo "App Store build unexpectedly contains SUFeedURL" >&2
       exit 1
     fi
-    if strings "$binary" | grep -Eqi 'api\.lemonsqueezy\.com|Enter License Key|Deactivate This Mac'; then
+    if strings "$binary" | grep -Eqi '/api/licenses|Enter License Key|Deactivate This Mac'; then
       echo "App Store executable unexpectedly contains direct-license code or UI" >&2
       exit 1
     fi

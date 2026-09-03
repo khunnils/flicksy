@@ -53,9 +53,7 @@ jobs:
             CURRENT_PROJECT_VERSION='${{ inputs.build }}'
             DEVELOPMENT_TEAM='${{ vars.APPLE_TEAM_ID }}'
             FLICKSY_CHECKOUT_URL='${{ vars.FLICKSY_CHECKOUT_URL }}'
-            LEMON_STORE_ID='${{ vars.LEMON_STORE_ID }}'
-            LEMON_PRODUCT_ID='${{ vars.LEMON_PRODUCT_ID }}'
-            LEMON_VARIANT_ID='${{ vars.LEMON_VARIANT_ID }}'
+            FLICKSY_LICENSE_API_URL='${{ vars.FLICKSY_LICENSE_API_URL }}'
             SPARKLE_FEED_URL='https://flicksy.app/updates/appcast.xml'
             SPARKLE_PUBLIC_ED_KEY='${{ vars.SPARKLE_PUBLIC_ED_KEY }}'
           )
