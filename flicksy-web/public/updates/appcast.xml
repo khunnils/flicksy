@@ -1,8 +1,18 @@
-<?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
-  <channel>
-    <title>Flicksy updates</title>
-    <link>https://flicksy.app/updates/appcast.xml</link>
-    <description>Signed updates for the direct version of Flicksy.</description>
-  </channel>
-</rss>
+<?xml version="1.0" standalone="yes"?><!-- sparkle-sign-warning:
+IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
+--><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Flicksy</title>
+        <item>
+            <title>1.0</title>
+            <pubDate>Thu, 03 Sep 2026 05:26:09 +0000</pubDate>
+            <sparkle:version>1</sparkle:version>
+            <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/khunnils/flicksy/releases/download/v1.0.0/Flicksy-1.0.dmg" length="4067206" type="application/octet-stream"></enclosure>
+        </item>
+    </channel>
+</rss><!-- sparkle-signatures:
+edSignature: CbUt61GB6eEekKKu3UPBIb1gisLANhCRgifArwm+Alw7ig1rssChfE9pIIMgvcjk5TqTHZUhpFEJFL5ABjwvAA==
+length: 921
+-->
