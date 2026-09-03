@@ -38,12 +38,16 @@ jobs:
           certificate_path="$RUNNER_TEMP/release.p12"
           keychain_path="$RUNNER_TEMP/release.keychain-db"
           printf '%s' "$CERTIFICATE" | base64 --decode > "$certificate_path"
+          [[ -s "$certificate_path" ]] || { echo "BUILD_CERTIFICATE_BASE64 decoded to an empty file" >&2; exit 1; }
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
           security set-keychain-settings -lut 21600 "$keychain_path"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
-          security import "$certificate_path" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain_path"
-          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$keychain_path"
+          # Import the full identity (cert + private key). Do not pass -t cert.
+          security import "$certificate_path" -P "$CERTIFICATE_PASSWORD" -A -f pkcs12 -k "$keychain_path"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -k "$KEYCHAIN_PASSWORD" "$keychain_path"
           security list-keychains -d user -s "$keychain_path" login.keychain-db
+          security find-identity -v -p codesigning "$keychain_path"
+          security find-identity -v -p codesigning "$keychain_path" | grep -q "Developer ID Application"
 
       - name: Test and archive direct build
         working-directory: flicksy-app
@@ -59,8 +63,13 @@ jobs:
             SPARKLE_FEED_URL='https://flicksy.app/updates/appcast.xml'
             SPARKLE_PUBLIC_ED_KEY='${{ vars.SPARKLE_PUBLIC_ED_KEY }}'
           )
-          xcodebuild test "${common[@]}" -destination 'platform=macOS'
-          xcodebuild archive "${common[@]}" -configuration Release -archivePath "$ARCHIVE_PATH"
+          # CI only has Developer ID. Tests do not need Mac Development signing.
+          xcodebuild test "${common[@]}" -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
+          xcodebuild archive "${common[@]}" \
+            -configuration Release \
+            -archivePath "$ARCHIVE_PATH" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY='Developer ID Application'
 
       - name: Export and verify direct app
         working-directory: flicksy-app

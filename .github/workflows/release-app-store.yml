@@ -32,9 +32,11 @@ jobs:
           printf '%s' "$CERTIFICATE" | base64 --decode > "$certificate_path"
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
-          security import "$certificate_path" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain_path"
-          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$keychain_path"
+          # Import the full identity (cert + private key). Do not pass -t cert.
+          security import "$certificate_path" -P "$CERTIFICATE_PASSWORD" -A -f pkcs12 -k "$keychain_path"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -k "$KEYCHAIN_PASSWORD" "$keychain_path"
           security list-keychains -d user -s "$keychain_path" login.keychain-db
+          security find-identity -v -p codesigning "$keychain_path"
 
       - name: Configure App Store Connect key
         env:
@@ -58,7 +60,7 @@ jobs:
             CURRENT_PROJECT_VERSION='${{ inputs.build }}'
             DEVELOPMENT_TEAM='${{ vars.APPLE_TEAM_ID }}'
           )
-          xcodebuild test "${common[@]}" -destination 'platform=macOS'
+          xcodebuild test "${common[@]}" -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
           xcodebuild archive "${common[@]}" "${auth[@]}" -allowProvisioningUpdates -configuration Release -archivePath "$ARCHIVE_PATH"
           Release/verify-channel.sh app-store "$ARCHIVE_PATH/Products/Applications/Flicksy App Store.app"
 
