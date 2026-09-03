@@ -13,11 +13,13 @@ on:
 jobs:
   upload:
     runs-on: macos-latest
-    env:
-      ARCHIVE_PATH: ${{ runner.temp }}/Flicksy-AppStore.xcarchive
-      EXPORT_PATH: ${{ runner.temp }}/app-store-export
     steps:
       - uses: actions/checkout@v4
+
+      - name: Configure build paths
+        run: |
+          echo "ARCHIVE_PATH=$RUNNER_TEMP/Flicksy-AppStore.xcarchive" >> "$GITHUB_ENV"
+          echo "EXPORT_PATH=$RUNNER_TEMP/app-store-export" >> "$GITHUB_ENV"
 
       - name: Import App Store distribution certificate
         env:

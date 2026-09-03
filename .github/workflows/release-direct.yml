@@ -19,13 +19,15 @@ permissions:
 jobs:
   release:
     runs-on: macos-latest
-    env:
-      ARCHIVE_PATH: ${{ runner.temp }}/Flicksy.xcarchive
-      EXPORT_PATH: ${{ runner.temp }}/export
-      UPDATES_PATH: ${{ runner.temp }}/updates
-      DMG_PATH: ${{ runner.temp }}/updates/Flicksy-${{ inputs.version }}.dmg
     steps:
       - uses: actions/checkout@v4
+
+      - name: Configure build paths
+        run: |
+          echo "ARCHIVE_PATH=$RUNNER_TEMP/Flicksy.xcarchive" >> "$GITHUB_ENV"
+          echo "EXPORT_PATH=$RUNNER_TEMP/export" >> "$GITHUB_ENV"
+          echo "UPDATES_PATH=$RUNNER_TEMP/updates" >> "$GITHUB_ENV"
+          echo "DMG_PATH=$RUNNER_TEMP/updates/Flicksy-${{ inputs.version }}.dmg" >> "$GITHUB_ENV"
 
       - name: Import Developer ID certificate
         env:
