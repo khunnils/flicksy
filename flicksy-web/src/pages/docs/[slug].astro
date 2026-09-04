@@ -1,0 +1,58 @@
+---
+import { render } from 'astro:content';
+import DocsLayout from '../../components/DocsLayout.astro';
+import { adjacentDocs, docPath, getDocs, type DocEntry } from '../../lib/docs';
+
+export const prerender = true;
+
+export async function getStaticPaths() {
+  const docs = await getDocs();
+  return docs.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry, docs },
+  }));
+}
+
+interface Props {
+  entry: DocEntry;
+  docs: DocEntry[];
+}
+
+const { entry, docs } = Astro.props;
+const { Content } = await render(entry);
+const { previous, next } = adjacentDocs(docs, entry.id);
+---
+
+<DocsLayout title={entry.data.title} description={entry.data.description} docs={docs} currentSlug={entry.id}>
+  <p class="eyebrow">Flicksy Help</p>
+  <h1>{entry.data.title}</h1>
+  <p class="lede">{entry.data.description}</p>
+  <article class="prose">
+    <Content />
+  </article>
+  <nav class="pager" aria-label="Help pagination">
+    {previous ? <a href={docPath(previous)}><span>Previous</span>{previous.data.title}</a> : <span></span>}
+    {next ? <a class="next" href={docPath(next)}><span>Next</span>{next.data.title}</a> : <span></span>}
+  </nav>
+</DocsLayout>
+
+<style>
+  h1 { margin: 12px 0 12px; font-size: clamp(36px, 5vw, 52px); line-height: 1.02; letter-spacing: -.05em; }
+  .lede { margin: 0 0 32px; color: var(--muted); font-size: 17px; }
+  .prose :global(h2) { margin: 2.1em 0 0.55em; font-size: 22px; letter-spacing: -.03em; }
+  .prose :global(h3) { margin: 1.6em 0 0.4em; font-size: 16px; }
+  .prose :global(p), .prose :global(li) { color: #555d68; }
+  .prose :global(p) { margin: 0 0 1em; }
+  .prose :global(ul), .prose :global(ol) { margin: 0 0 1.15em; padding-left: 1.2em; }
+  .prose :global(li + li) { margin-top: 0.35em; }
+  .prose :global(a) { text-underline-offset: 3px; }
+  .prose :global(strong) { color: var(--ink); font-weight: 600; }
+  .prose :global(table) { width: 100%; margin: 0 0 1.4em; border-collapse: collapse; font-size: 14px; }
+  .prose :global(th), .prose :global(td) { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  .prose :global(th) { color: var(--ink); font-weight: 600; font-size: 12px; letter-spacing: .02em; }
+  .prose :global(td:last-child), .prose :global(th:last-child) { font-variant-numeric: tabular-nums; }
+  .pager { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 48px; padding-top: 22px; border-top: 1px solid var(--line); }
+  .pager a { display: flex; flex-direction: column; gap: 4px; color: var(--ink); font-size: 15px; font-weight: 600; text-decoration: none; }
+  .pager a.next { text-align: right; }
+  .pager span { color: var(--muted); font-size: 11px; font-weight: 500; }
+</style>

@@ -1,0 +1,35 @@
+---
+import DocsLayout from '../../components/DocsLayout.astro';
+import { docPath, getDocs } from '../../lib/docs';
+
+export const prerender = true;
+
+const docs = await getDocs();
+---
+
+<DocsLayout title="Help" description="Guides for browsing, previewing, organizing, and licensing Flicksy." docs={docs}>
+  <p class="eyebrow">Flicksy Help</p>
+  <h1>Use Flicksy.</h1>
+  <p class="lede">Short guides for the Mac app. Pick a topic, or start at the beginning if you just downloaded it.</p>
+
+  <ul class="topic-grid">
+    {docs.map((entry) => (
+      <li>
+        <a href={docPath(entry)}>
+          <h2>{entry.data.title}</h2>
+          <p>{entry.data.description}</p>
+        </a>
+      </li>
+    ))}
+  </ul>
+</DocsLayout>
+
+<style>
+  .lede { max-width: 34em; margin: 0 0 36px; color: var(--muted); font-size: 17px; }
+  h1 { margin: 12px 0 14px; font-size: clamp(40px, 6vw, 58px); line-height: .98; letter-spacing: -.05em; }
+  .topic-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .topic-grid a { display: block; padding: 18px 18px 16px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.62); text-decoration: none; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+  .topic-grid a:hover { transform: translateY(-2px); border-color: rgba(132,143,158,.35); box-shadow: 0 16px 36px rgba(46,57,75,.08); }
+  .topic-grid h2 { margin: 0 0 6px; font-size: 18px; letter-spacing: -.03em; }
+  .topic-grid p { margin: 0; color: var(--muted); font-size: 13.5px; }
+</style>

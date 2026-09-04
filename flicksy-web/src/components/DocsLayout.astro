@@ -1,0 +1,84 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { docPath, type DocEntry } from '../lib/docs';
+
+interface Props {
+  title: string;
+  description: string;
+  docs: DocEntry[];
+  currentSlug?: string;
+}
+
+const { title, description, docs, currentSlug } = Astro.props;
+const pageTitle = currentSlug ? `${title} — Flicksy Help` : 'Help — Flicksy';
+---
+
+<Layout title={pageTitle} description={description}>
+  <div class="docs-shell">
+    <header class="docs-nav wrap">
+      <a class="brand" href="/" aria-label="Flicksy home">
+        <span class="brand-icon"><img src="/flicksy-mark-black.svg" alt="" width="23" height="23" /></span>
+        <span>Flicksy</span>
+      </a>
+      <a class="docs-home" href="/docs">Help</a>
+      <a class="text-link" href="/#pricing">Download</a>
+    </header>
+
+    <div class="docs-layout wrap">
+      <nav class="docs-sidebar" aria-label="Help topics">
+        <p class="eyebrow">Help</p>
+        <ul>
+          <li>
+            <a href="/docs" class:list={[{ active: !currentSlug }]}>Overview</a>
+          </li>
+          {docs.map((entry) => (
+            <li>
+              <a href={docPath(entry)} class:list={[{ active: entry.id === currentSlug }]}>{entry.data.title}</a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <main class="docs-main">
+        <slot />
+      </main>
+    </div>
+
+    <footer class="docs-footer wrap">
+      <a href="/">Flicksy</a>
+      <nav aria-label="Legal">
+        <a href="/privacy">Privacy</a>
+        <a href="/license">License</a>
+        <a href="/refunds">Refunds & recovery</a>
+      </nav>
+    </footer>
+  </div>
+</Layout>
+
+<style>
+  .docs-shell { min-height: 100vh; display: flex; flex-direction: column; }
+  .docs-nav { display: flex; align-items: center; gap: 18px; height: 72px; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 650; letter-spacing: -.025em; }
+  .brand-icon { width: 35px; height: 35px; border-radius: 11px; display: grid; place-items: center; background: rgba(255,255,255,.72); border: 1px solid rgba(255,255,255,.9); box-shadow: 0 4px 16px rgba(28,37,52,.08), inset 0 0 0 1px rgba(120,130,145,.08); }
+  .brand-icon img { width: 21px; height: 21px; }
+  .docs-home { margin-right: auto; color: var(--muted); font-size: 13px; text-decoration: none; }
+  .docs-home:hover { color: var(--ink); }
+  .text-link { font-size: 13px; color: var(--muted); text-underline-offset: 4px; }
+  .text-link:hover { color: var(--ink); }
+  .docs-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 64px; padding-bottom: 80px; flex: 1; }
+  .docs-sidebar { position: sticky; top: 28px; align-self: start; }
+  .docs-sidebar ul { list-style: none; margin: 16px 0 0; padding: 0; }
+  .docs-sidebar a { display: block; padding: 7px 0; color: var(--muted); font-size: 13.5px; text-decoration: none; }
+  .docs-sidebar a:hover { color: var(--ink); }
+  .docs-sidebar a.active { color: var(--ink); font-weight: 600; }
+  .docs-main { min-width: 0; max-width: 720px; padding-top: 8px; }
+  .docs-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 0 36px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+  .docs-footer a { color: inherit; text-decoration: none; }
+  .docs-footer nav { display: flex; gap: 14px; }
+  .docs-footer a:hover { color: var(--ink); }
+  @media (max-width: 800px) {
+    .docs-layout { grid-template-columns: 1fr; gap: 28px; }
+    .docs-sidebar { position: static; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+    .docs-sidebar ul { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+  }
+</style>

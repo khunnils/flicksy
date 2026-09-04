@@ -5,6 +5,7 @@
 //  Created by Nils Hein on 21/8/26.
 //
 
+import AppKit
 import SwiftUI
 
 @main
@@ -20,6 +21,11 @@ struct FlicksyApp: App {
         }
         .commands {
             AboutCommands(access: access, updater: updater)
+            CommandGroup(after: .help) {
+                Button("Flicksy Help") {
+                    NSWorkspace.shared.open(flicksyHelpURL)
+                }
+            }
             if let model {
                 GetInfoCommands(model: model)
 
@@ -224,6 +230,14 @@ struct FlicksyApp: App {
         }
         .keyboardShortcut("f", modifiers: .command)
         .disabled(!model.hasSelectedSource || model.viewerItemID != nil)
+    }
+
+    private var flicksyHelpURL: URL {
+        let checkout = Bundle.main.object(forInfoDictionaryKey: "FlicksyCheckoutURL") as? String
+        if let checkout, let host = URL(string: checkout)?.host, let docs = URL(string: "https://\(host)/docs") {
+            return docs
+        }
+        return URL(string: "https://flicksy.me/docs")!
     }
 }
 
