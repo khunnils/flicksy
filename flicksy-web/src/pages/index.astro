@@ -5,7 +5,7 @@ import { readPublicConfig } from '../lib/environment';
 
 export const prerender = false;
 
-const { directDownloadURL, appStoreURL } = readPublicConfig(env);
+const { directDownloadURL } = readPublicConfig(env);
 const directPurchaseURL = '/buy?source=web';
 
 const features = [
@@ -33,10 +33,9 @@ const faqs = [
   { q: 'Does Flicksy import or copy my files?', a: 'No. Flicksy reads the folders already on your Mac and connected drives. Your files and folder structure stay untouched.' },
   { q: 'Is it a photo library or cloud backup?', a: 'Neither. Flicksy is a fast, visual window onto local media. Nothing is uploaded and there is no library to maintain.' },
   { q: 'Which Macs are supported?', a: 'Flicksy is a native Apple Silicon app for macOS 15 and newer.' },
-  { q: 'What is included in the trial?', a: 'Everything in the direct version. Its 14-day trial begins only when you start it, does not auto-renew, and never creates a charge. The Mac App Store version is a paid-upfront download and has no trial.' },
-  { q: 'Do I need a Flicksy account?', a: 'No. Direct customers receive a license key by email; Mac App Store customers use their Apple Account.' },
-  { q: 'Can I move a purchase between stores?', a: 'No. Direct and Mac App Store purchases are separate. Buy through the channel where you expect to recover or redownload Flicksy later.' },
-  { q: 'How many Macs can use a direct license?', a: 'A direct license activates up to three Macs. Deactivate an old Mac from Flicksy before moving that seat to another.' },
+  { q: 'What is included in the trial?', a: 'The complete app. The 14-day trial begins only when you start it, does not auto-renew, and never creates a charge.' },
+  { q: 'Do I need a Flicksy account?', a: 'No. After purchase, a license key arrives by email.' },
+  { q: 'How many Macs can I use?', a: 'A license activates up to three Macs. Deactivate an old Mac from Flicksy before moving that seat to another.' },
 ];
 ---
 
@@ -56,10 +55,10 @@ const faqs = [
         <h1><strong>Meet Flicksy</strong><span>A modern media browser for Mac</span></h1>
         <p class="hero-lead">Designed for content creators, Flicksy brings every clip, image, and sound into one beautifully fast Mac app. Skim, compare, organize, and drag the right moment straight into your editor.</p>
         <div class="hero-actions">
-          <a class="button button-dark" href={directDownloadURL}>Download direct trial <span>↘</span></a>
+          <a class="button button-dark" href={directDownloadURL}>Download now <span>↘</span></a>
           <a class="text-link" href="#how">See how it works <span>↓</span></a>
         </div>
-        <p class="fine-print">Full app included · $19 once · lifetime app and updates</p>
+        <p class="fine-print">14-day full trial · $24.99 once · all 1.x updates</p>
       </div>
 
       <div class="iridescent-stage" aria-label="Flicksy app screenshot">
@@ -122,26 +121,23 @@ const faqs = [
 
     <section class="section pricing" id="pricing">
       <div class="wrap pricing-grid">
-        <div class="pricing-copy" data-reveal><p class="eyebrow">Simple by design</p><h2>One tiny price.<br />One less subscription.</h2><p>Try the direct app free for 14 days, or buy the paid-upfront Mac App Store version. Either way, it is $19 once.</p><div class="compatibility"><span>●</span> macOS 15+ · Apple Silicon</div></div>
+        <div class="pricing-copy" data-reveal><p class="eyebrow">Simple by design</p><h2>No subscription.<br />Yours forever.</h2><p>Fourteen days with the full app, then $24.99 once. No account, no subscription, and all 1.x updates included.</p><div class="compatibility"><span>●</span> macOS 15+ · Apple Silicon</div></div>
         <div class="price-card" data-reveal data-reveal-delay="1">
-          <div class="price-top"><img src="/flicksy-app-icon.png" alt="Flicksy app icon" width="72" height="72" /><span>Lifetime license</span></div>
-          <div class="price-line"><strong>$19</strong><span>USD<br />one-time</span></div>
-          <ul><li>Lifetime app access</li><li>All future Flicksy updates</li><li>14-day trial in the direct version</li><li>Video, images, and audio</li><li>No Flicksy account or subscription</li></ul>
+          <div class="price-top"><img src="/flicksy-app-icon.png" alt="Flicksy app icon" width="72" height="72" /><span>Flicksy</span></div>
+          <div class="price-line"><strong>$24.99</strong><span>USD<br />once</span></div>
+          <ul>
+            <li>14-day full trial</li>
+            <li>Up to 3 Macs</li>
+            <li>No subscription</li>
+            <li>No account</li>
+            <li>All 1.x updates</li>
+          </ul>
           <div class="purchase-actions">
-            <a class="button button-dark button-wide" href={directPurchaseURL} id="direct-purchase">Buy direct — $19 <span>↗</span></a>
-            <a class="button button-light button-wide" href={directDownloadURL}>Download direct trial <span>↓</span></a>
-            {appStoreURL && <a class="button button-light button-wide" href={appStoreURL} id="app-store">Buy on the Mac App Store — $19 <span>↗</span></a>}
+            <a class="button button-dark button-wide" href={directPurchaseURL} id="direct-purchase">Buy — $24.99 <span>↗</span></a>
+            <a class="button button-light button-wide" href={directDownloadURL}>Download now <span>↓</span></a>
           </div>
-          <p class="channel-note">Direct keys arrive by email and cover three Macs. App Store customers redownload Flicksy from their Apple Account’s Purchased list. Purchases do not transfer between stores.</p>
+          <p class="channel-note">A license key arrives by email and activates up to three Macs.</p>
         </div>
-      </div>
-    </section>
-
-    <section class="section purchase-details" id="pricing-details">
-      <div class="wrap detail-grid">
-        <article><p class="eyebrow">Direct trial</p><h3>Fourteen days, on your terms.</h3><p>In the direct build, the clock begins when you click Start 14-Day Trial inside Flicksy—not when you download it. You get the complete app. There is no automatic renewal or charge.</p></article>
-        <article><p class="eyebrow">Direct</p><h3>A key, not an account.</h3><p>Checkout emails your license key. Activate up to three Macs, and recover the order through <a href="https://creem.io/my-orders/login">Creem My Orders</a>.</p></article>
-        <article><p class="eyebrow">Mac App Store</p><h3>Paid upfront with Apple.</h3><p>The App Store build is a $19 paid download with no in-app trial, purchase, activation, or restore screen. Redownload it from your Apple Account’s Purchased list.</p></article>
       </div>
     </section>
 
@@ -273,7 +269,7 @@ const faqs = [
   .price-top { display: flex; align-items: center; justify-content: space-between; color: #8a909a; font-size: 11px; }
   .price-top img { width: 64px; height: 64px; border-radius: 16px; box-shadow: 0 8px 18px rgba(34,42,54,.14); }
   .price-line { display: flex; align-items: flex-end; gap: 13px; margin: 26px 0; }
-  .price-line strong { font-size: 70px; line-height: .85; letter-spacing: -.065em; }
+  .price-line strong { font-size: 62px; line-height: .85; letter-spacing: -.065em; }
   .price-line span { color: #8b929d; font: 9px/1.35 var(--font-mono); text-transform: uppercase; letter-spacing: .08em; }
   .price-card ul { list-style: none; margin: 0 0 25px; padding: 0; }
   .price-card li { position: relative; padding: 9px 0 9px 23px; border-top: 1px solid rgba(130,140,153,.16); font-size: 13px; }
