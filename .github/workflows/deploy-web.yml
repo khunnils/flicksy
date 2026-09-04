@@ -1,0 +1,82 @@
+name: Deploy website
+
+on:
+  push:
+    branches: [dev, main]
+    paths:
+      - 'flicksy-web/**'
+      - '.github/workflows/deploy-web.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flicksy-web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'test' }}
+    defaults:
+      run:
+        working-directory: flicksy-web
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      FLICKSY_WEB_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'test' }}
+      FLICKSY_SITE_URL: ${{ github.ref == 'refs/heads/main' && 'https://flicksy.me' || 'https://preview.flicksy.me' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+          cache: pnpm
+          cache-dependency-path: flicksy-web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check && pnpm test
+      - name: Preserve live Sparkle appcast
+        if: env.FLICKSY_WEB_ENV == 'production'
+        run: |
+          if curl --fail --silent --show-error --output public/updates/appcast.xml https://flicksy.me/updates/appcast.xml; then
+            echo "Preserved live production appcast"
+          else
+            echo "Live appcast unavailable; using committed file"
+          fi
+      - name: Build website
+        run: pnpm "build:$FLICKSY_WEB_ENV"
+      - name: Inject production Wrangler vars
+        if: env.FLICKSY_WEB_ENV == 'production'
+        run: |
+          app_store_url='${{ vars.FLICKSY_APP_STORE_URL }}'
+          product_id='${{ vars.CREEM_PRODUCT_ID }}'
+          [[ "$app_store_url" =~ ^https://apps\.apple\.com/.+/id[0-9]+$ ]] || { echo "FLICKSY_APP_STORE_URL is invalid" >&2; exit 1; }
+          [[ "$product_id" =~ ^prod_[A-Za-z0-9]+$ && "$product_id" != prod_REPLACE_BEFORE_DEPLOY ]] || { echo "CREEM_PRODUCT_ID is invalid" >&2; exit 1; }
+          jq \
+            --arg app_store_url "$app_store_url" \
+            --arg product_id "$product_id" \
+            '.vars.FLICKSY_APP_STORE_URL = $app_store_url | .vars.CREEM_PRODUCT_ID = $product_id' \
+            dist/server/wrangler.json > "$RUNNER_TEMP/wrangler-production.json"
+          mv "$RUNNER_TEMP/wrangler-production.json" dist/server/wrangler.json
+      - name: Configure Creem secret
+        env:
+          CREEM_API_KEY: ${{ secrets.CREEM_API_KEY }}
+        run: |
+          if [[ "$FLICKSY_WEB_ENV" == production ]]; then
+            [[ -n "$CREEM_API_KEY" && "$CREEM_API_KEY" != creem_test_* ]] || { echo "Expected a live Creem API key" >&2; exit 1; }
+          else
+            [[ "$CREEM_API_KEY" == creem_test_* ]] || { echo "Expected a Creem test API key" >&2; exit 1; }
+          fi
+          printf '%s' "$CREEM_API_KEY" | pnpm exec wrangler secret put CREEM_API_KEY --env "$FLICKSY_WEB_ENV"
+      - name: Deploy website
+        run: pnpm exec wrangler deploy --config dist/server/wrangler.json
+      - name: Health check
+        run: |
+          response="$(curl --fail --silent --show-error "$FLICKSY_SITE_URL/api/health")"
+          [[ "$(jq -r '.ok' <<<"$response")" == true ]]
+          [[ "$(jq -r '.environment' <<<"$response")" == "$FLICKSY_WEB_ENV" ]]

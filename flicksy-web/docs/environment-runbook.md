@@ -32,8 +32,10 @@ card or live API key into the test environment.
 
 ## Branches
 
-Pushes to `dev` deploy `preview.flicksy.me` and, when app sources change, replace
-the `test-latest` Flicksy Test DMG. Production stays on `main`.
+Pushes that change `flicksy-web` on `dev` deploy `preview.flicksy.me`; the same
+path on `main` deploys `flicksy.me`. App changes on `dev` also replace the
+`test-latest` Flicksy Test DMG. Direct production app releases still publish the
+DMG, signed appcast, and production Worker together.
 
 ## Promotion checks
 

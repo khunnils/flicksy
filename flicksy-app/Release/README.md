@@ -30,12 +30,12 @@ test trial and license state cannot unlock or consume production state.
 
 ## Workflows
 
-Every push to `dev` deploys the test website to `preview.flicksy.me`. App changes
-on `dev` also sign and notarize `Flicksy Test`, then replace the
-`test-latest/Flicksy-Test.dmg` prerelease asset. Production releases stay on
-`main`: the production workflow requires environment approval, revalidates the
-selected commit, publishes the DMG and signed appcast, and deploys the
-production Worker from that same checkout.
+Website changes on `dev` deploy `preview.flicksy.me`; website changes on `main`
+deploy `flicksy.me`. App changes on `dev` also sign and notarize `Flicksy Test`,
+then replace the `test-latest/Flicksy-Test.dmg` prerelease asset. Direct
+production releases stay on `main`: that workflow requires environment
+approval, revalidates the selected commit, publishes the DMG and signed
+appcast, and redeploys the production Worker from that same checkout.
 
 The App Store workflow creates one signed archive, verifies it contains no
 Sparkle, direct-license, trial, purchase, or restore behavior, and uploads that
