@@ -47,7 +47,13 @@ struct AboutView: View {
                 .foregroundStyle(.tertiary)
                 .padding(.top, 14)
 
-            Text(access.state == .licensed ? "Lifetime license" : "Trial version")
+            Group {
+#if APP_STORE_DISTRIBUTION
+                Text(access.state == .licensed ? "Paid App Store download" : "Purchase verification required")
+#else
+                Text(access.state == .licensed ? "Lifetime license" : "Trial version")
+#endif
+            }
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.top, 5)

@@ -12,20 +12,26 @@ struct DirectAccessConfiguration: Equatable {
     let licenseAPIURL: URL?
     let purchasePrice: String
 
-    static let defaultLicenseAPIURL = URL(string: "https://flicksy.app/api/licenses")!
+    static let defaultLicenseAPIURL = URL(string: "https://flicksy.me/api/licenses")!
 
     static func fromBundle(_ bundle: Bundle = .main) -> DirectAccessConfiguration {
         let checkout = bundle.object(forInfoDictionaryKey: "FlicksyCheckoutURL") as? String
         let licenseAPI = bundle.object(forInfoDictionaryKey: "FlicksyLicenseAPIURL") as? String
         return DirectAccessConfiguration(
             checkoutURL: checkout.flatMap(URL.init(string:)),
-            licenseAPIURL: licenseAPI.flatMap(URL.init(string:)) ?? defaultLicenseAPIURL,
+            licenseAPIURL: normalizedLicenseBaseURL(licenseAPI.flatMap(URL.init(string:)) ?? defaultLicenseAPIURL),
             purchasePrice: bundle.object(forInfoDictionaryKey: "FlicksyPurchasePrice") as? String ?? "$19"
         )
     }
 
     var isLicenseConfigured: Bool {
         licenseAPIURL != nil
+    }
+
+    private static func normalizedLicenseBaseURL(_ url: URL) -> URL? {
+        let actions = ["activate", "validate", "deactivate"]
+        guard !actions.contains(url.lastPathComponent.lowercased()) else { return nil }
+        return url
     }
 }
 
@@ -92,9 +98,10 @@ final class DirectAccessProvider: AccessProviding {
     private let deviceKey = "device"
 
     convenience init() {
+        let bundleID = Bundle.main.bundleIdentifier ?? "cloudedminds.Flicksy"
         self.init(
             configuration: .fromBundle(),
-            secureStore: KeychainSecureStore()
+            secureStore: KeychainSecureStore(service: "\(bundleID).access.direct")
         )
     }
 
@@ -215,6 +222,24 @@ final class DirectAccessProvider: AccessProviding {
         try save(record, key: licenseKey)
         return try localSnapshot(now: now)
     }
+
+#if TEST_ENVIRONMENT
+    func resetTrialForTesting(now: Date) async throws -> AccessSnapshot {
+        try secureStore.remove(trialKey)
+        return try localSnapshot(now: now)
+    }
+
+    func expireTrialForTesting(now: Date) async throws -> AccessSnapshot {
+        try save(
+            TrialRecord(
+                startedAt: now.addingTimeInterval(-Self.trialDuration - 1),
+                lastSeenAt: now
+            ),
+            key: trialKey
+        )
+        return try localSnapshot(now: now)
+    }
+#endif
 
     private func localSnapshot(now: Date) throws -> AccessSnapshot {
         if let license = try load(LicenseRecord.self, key: licenseKey) {

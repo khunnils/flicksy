@@ -5,7 +5,7 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
-    <string>$(FLICKSY_DISPLAY_NAME)</string>
+    <string>Flicksy</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIconName</key>
@@ -15,19 +15,15 @@
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>$(PRODUCT_NAME)</string>
+    <string>Flicksy</string>
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
     <string>$(MARKETING_VERSION)</string>
     <key>CFBundleVersion</key>
     <string>$(CURRENT_PROJECT_VERSION)</string>
-    <key>FlicksyCheckoutURL</key>
-    <string>$(FLICKSY_CHECKOUT_URL)</string>
-    <key>FlicksyLicenseAPIURL</key>
-    <string>$(FLICKSY_LICENSE_API_URL)</string>
-    <key>FlicksyPurchasePrice</key>
-    <string>$19</string>
+    <key>FlicksyAppStoreAppID</key>
+    <string>$(FLICKSY_APP_STORE_APP_ID)</string>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.graphics-design</string>
     <key>LSMinimumSystemVersion</key>
@@ -38,15 +34,5 @@
     <string>© 2026 Flicksy</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
-    <key>SUEnableInstallerLauncherService</key>
-    <true/>
-    <key>SUFeedURL</key>
-    <string>$(SPARKLE_FEED_URL)</string>
-    <key>SUPublicEDKey</key>
-    <string>$(SPARKLE_PUBLIC_ED_KEY)</string>
-    <key>SURequireSignedFeed</key>
-    <true/>
-    <key>SUSendProfileInfo</key>
-    <false/>
 </dict>
 </plist>

@@ -1,0 +1,76 @@
+name: Publish Flicksy Test candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Marketing version
+        required: true
+      build:
+        description: Integer build number
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  candidate:
+    runs-on: macos-latest
+    environment: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure paths
+        run: |
+          echo "ARCHIVE_PATH=$RUNNER_TEMP/Flicksy-Test.xcarchive" >> "$GITHUB_ENV"
+          echo "EXPORT_PATH=$RUNNER_TEMP/Flicksy-Test-export" >> "$GITHUB_ENV"
+          echo "DMG_PATH=$RUNNER_TEMP/Flicksy-Test.dmg" >> "$GITHUB_ENV"
+      - name: Import Developer ID certificate
+        env:
+          CERTIFICATE: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          certificate_path="$RUNNER_TEMP/release.p12"
+          keychain_path="$RUNNER_TEMP/release.keychain-db"
+          printf '%s' "$CERTIFICATE" | base64 --decode > "$certificate_path"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security import "$certificate_path" -P "$CERTIFICATE_PASSWORD" -A -f pkcs12 -k "$keychain_path"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -k "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security list-keychains -d user -s "$keychain_path" login.keychain-db
+      - name: Test, archive, and verify Flicksy Test
+        working-directory: flicksy-app
+        run: |
+          Release/verify-source.sh test
+          xcodebuild test -project Flicksy.xcodeproj -scheme Flicksy -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
+          xcodebuild archive \
+            -project Flicksy.xcodeproj \
+            -scheme 'Flicksy - Direct Test' \
+            -configuration 'Direct Test' \
+            -archivePath "$ARCHIVE_PATH" \
+            MARKETING_VERSION='${{ inputs.version }}' \
+            CURRENT_PROJECT_VERSION='${{ inputs.build }}' \
+            DEVELOPMENT_TEAM='${{ vars.APPLE_TEAM_ID }}' \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY='Developer ID Application'
+          xcodebuild -exportArchive -archivePath "$ARCHIVE_PATH" -exportPath "$EXPORT_PATH" -exportOptionsPlist Release/ExportOptions-DeveloperID.plist
+          Release/verify-channel.sh direct-test "$EXPORT_PATH/Flicksy Test.app"
+      - name: Notarize test DMG
+        working-directory: flicksy-app
+        env:
+          NOTARY_APPLE_ID: ${{ vars.APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
+          NOTARY_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+        run: |
+          Release/create-dmg.sh "$EXPORT_PATH/Flicksy Test.app" "$DMG_PATH"
+          xcrun notarytool submit "$DMG_PATH" --apple-id "$NOTARY_APPLE_ID" --password "$NOTARY_PASSWORD" --team-id "$NOTARY_TEAM_ID" --wait
+          xcrun stapler staple "$DMG_PATH"
+          xcrun stapler validate "$DMG_PATH"
+      - name: Replace stable test candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view test-latest >/dev/null 2>&1; then
+            gh release create test-latest --prerelease --title 'Flicksy Test — latest candidate' --notes 'Replaceable test candidate for preview.flicksy.me.'
+          fi
+          gh release upload test-latest "$DMG_PATH" --clobber

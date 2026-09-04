@@ -1,50 +1,47 @@
 # Flicksy releases
 
-Both release schemes must receive the same `MARKETING_VERSION` and
-`CURRENT_PROJECT_VERSION` values. The GitHub workflows do this explicitly.
+Flicksy ships through two independent channels. The direct channel has a local
+14-day trial and Creem license activation. The Mac App Store channel is a $19
+paid-upfront app with no in-app products or trial.
 
-## One-time store setup
+## Build identities
 
-- Creem: create one $19 non-subscription product with perpetual license keys
-  and an activation limit of three. Record the product id (`prod_…`) and
-  payment link. Set `CREEM_API_KEY` as a Cloudflare secret and
-  `CREEM_PRODUCT_ID` as a Cloudflare var for `flicksy-web`. The Mac app talks
-  only to `https://flicksy.app/api/licenses`; it never ships the Creem key.
-- App Store Connect: create free non-consumable
-  `cloudedminds.Flicksy.trial14` (display name “14-day Trial”) and paid
-  non-consumable `cloudedminds.Flicksy.lifetime` (display name “Flicksy
-  Lifetime”, US base price $19). Leave Family Sharing disabled.
-- Sparkle: run Sparkle’s `generate_keys --account Flicksy` once. Put only the
-  public key in `SPARKLE_PUBLIC_ED_KEY`; store the exported private key as the
-  `SPARKLE_PRIVATE_KEY` release secret.
-- Website: set the three public variables documented in
-  `flicksy-web/.env.example` to the final download, checkout, and App Store URLs.
+| Scheme | Bundle | Services |
+| --- | --- | --- |
+| `Flicksy - Direct Test` | `cloudedminds.Flicksy.test`, “Flicksy Test” | preview checkout/license API; Sparkle disabled |
+| `Flicksy - Direct Production` | `cloudedminds.Flicksy` | live checkout/license API; signed production appcast |
+| `Flicksy - App Store` | `cloudedminds.Flicksy` | signed `AppTransaction` verification only |
 
-## Direct workflow configuration
+The direct configurations derive their Keychain service from the bundle ID, so
+test trial and license state cannot unlock or consume production state.
 
-Repository variables: `APPLE_TEAM_ID`, `APPLE_ID`, `FLICKSY_CHECKOUT_URL`,
-`FLICKSY_LICENSE_API_URL`, `SPARKLE_PUBLIC_ED_KEY`.
+## One-time external setup
 
-`FLICKSY_LICENSE_API_URL` should be `https://flicksy.app/api/licenses`
-(or your current Worker hostname while previewing).
+- Creem: keep the existing sandbox product for `test`. Create a separate live
+  $19 one-time product with perpetual license keys and a three-device limit.
+- App Store Connect: create Flicksy as a $19 paid app, complete agreements,
+  banking and tax, then set `FLICKSY_APP_STORE_APP_ID`, API key values, and the
+  final listing URL in the protected GitHub `production` environment. Do not
+  create in-app purchase products.
+- Cloudflare: use a token that can deploy Workers and manage both custom-domain
+  routes. Test and production Creem keys are Worker secrets, never app values.
+- Sparkle: the public key is committed in `DirectProduction.xcconfig`; its
+  matching private key belongs in the production `SPARKLE_PRIVATE_KEY` secret.
 
-Repository secrets: `BUILD_CERTIFICATE_BASE64`, `P12_PASSWORD`,
-`KEYCHAIN_PASSWORD`, `APP_SPECIFIC_PASSWORD`, `SPARKLE_PRIVATE_KEY`.
+## Workflows
 
-The direct workflow archives with Developer ID, exports the app, builds a DMG
-with an Applications shortcut, notarizes and staples it, verifies Gatekeeper,
-publishes the versioned and stable-name DMGs to GitHub Releases, generates a
-signed Sparkle appcast, and commits that feed to
-`flicksy-web/public/updates/appcast.xml`.
+Every main push deploys the test website. `release-direct-test.yml` signs and
+notarizes `Flicksy Test`, then replaces the `test-latest/Flicksy-Test.dmg`
+prerelease asset. The production workflow requires environment approval,
+revalidates the selected commit, publishes the DMG and signed appcast, and
+deploys the production Worker from that same checkout.
 
-## App Store workflow configuration
+The App Store workflow creates one signed archive, verifies it contains no
+Sparkle, direct-license, trial, purchase, or restore behavior, and uploads that
+archive to App Store Connect. Promote the accepted TestFlight build to App Store
+release in App Store Connect without rebuilding it.
 
-In addition to the signing certificate secrets and `APPLE_TEAM_ID`, configure
-`APP_STORE_CONNECT_KEY_ID` and `APP_STORE_CONNECT_ISSUER_ID` as repository
-variables and `APP_STORE_CONNECT_PRIVATE_KEY` as a secret. The workflow tests
-the dedicated scheme, archives it, proves that the archive has no Sparkle,
-direct-license UI, or StoreKit test file, then uploads it to App Store Connect.
-
-Credentials and the Sparkle private key must remain release secrets. The direct
-app contains the Flicksy license API URL and sends the customer-provided key to
-that proxy; the Creem API key stays on the server.
+Run `Release/verify-source.sh test` locally. Production verification additionally
+requires the live App Store URL and live Creem product ID. Archive verification
+uses `Release/verify-channel.sh` with `direct-test`, `direct-production`, or
+`app-store`.

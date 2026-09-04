@@ -9,8 +9,15 @@
   "scripts": {
     "dev": "astro dev --port 4700",
     "build": "astro build",
+    "check": "astro check",
+    "test": "vitest run",
     "preview": "astro preview --port 4700",
-    "deploy": "wrangler deploy",
+    "build:test": "CLOUDFLARE_ENV=test astro build",
+    "build:production": "CLOUDFLARE_ENV=production astro build",
+    "deploy:test": "pnpm build:test && wrangler deploy --config dist/server/wrangler.json",
+    "deploy:production": "pnpm build:production && wrangler deploy --config dist/server/wrangler.json",
+    "dry-run:test": "pnpm build:test && wrangler deploy --config dist/server/wrangler.json --dry-run",
+    "dry-run:production": "pnpm build:production && wrangler deploy --config dist/server/wrangler.json --dry-run",
     "astro": "astro"
   },
   "dependencies": {
@@ -18,6 +25,9 @@
     "astro": "^7.2.9"
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.6",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
     "wrangler": "^4.128.0"
   }
 }

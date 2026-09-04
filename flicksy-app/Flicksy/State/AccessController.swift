@@ -125,6 +125,18 @@ final class AccessController {
         await perform { try await provider.deactivate(now: now()) }
     }
 
+#if TEST_ENVIRONMENT && DIRECT_DISTRIBUTION
+    func resetTrialForTesting() async {
+        guard let provider = provider as? DirectAccessProvider else { return }
+        await perform { try await provider.resetTrialForTesting(now: now()) }
+    }
+
+    func expireTrialForTesting() async {
+        guard let provider = provider as? DirectAccessProvider else { return }
+        await perform { try await provider.expireTrialForTesting(now: now()) }
+    }
+#endif
+
     private func perform(_ operation: () async throws -> AccessSnapshot) async {
         guard !isBusy else { return }
         isBusy = true

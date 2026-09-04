@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: flicksy-web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+          cache: pnpm
+          cache-dependency-path: flicksy-web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm dry-run:test
+      - run: pnpm dry-run:production
+
+  mac-apps:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify environment source
+        run: flicksy-app/Release/verify-source.sh test
+      - name: Test direct app
+        working-directory: flicksy-app
+        run: >-
+          xcodebuild test
+          -project Flicksy.xcodeproj
+          -scheme Flicksy
+          -destination 'platform=macOS'
+          CODE_SIGNING_ALLOWED=NO
+      - name: Test App Store app
+        working-directory: flicksy-app
+        run: >-
+          xcodebuild test
+          -project Flicksy.xcodeproj
+          -scheme 'Flicksy - App Store'
+          -destination 'platform=macOS'
+          CODE_SIGNING_ALLOWED=NO

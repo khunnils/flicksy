@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		BB0000000000000000000003 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = BB0000000000000000000005 /* Sparkle */; };
-		BB0000000000000000000051 /* Flicksy/Configuration/Flicksy.storekit in Resources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000050 /* Flicksy/Configuration/Flicksy.storekit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -33,23 +32,26 @@
 		AA0000000000000000000002 /* FlicksyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FlicksyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB0000000000000000000001 /* Flicksy App Store.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Flicksy App Store.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB0000000000000000000002 /* FlicksyAppStoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FlicksyAppStoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		BB0000000000000000000050 /* Flicksy/Configuration/Flicksy.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Flicksy/Configuration/Flicksy.storekit; sourceTree = SOURCE_ROOT; };
+		CC0000000000000000000001 /* ProjectRelease.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Configurations/ProjectRelease.xcconfig; sourceTree = SOURCE_ROOT; };
+		CC0000000000000000000002 /* DirectBase.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Configurations/DirectBase.xcconfig; sourceTree = SOURCE_ROOT; };
+		CC0000000000000000000003 /* DirectTest.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Configurations/DirectTest.xcconfig; sourceTree = SOURCE_ROOT; };
+		CC0000000000000000000004 /* DirectProduction.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Configurations/DirectProduction.xcconfig; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
 		BB0000000000000000000040 /* Exceptions for "Flicksy" folder in "Flicksy" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Configuration/Flicksy.storekit,
-				Info-Direct.plist,
+				"Info-AppStore.plist",
+				"Info-Direct.plist",
 			);
 			target = 29986C753037E7160009632B /* Flicksy */;
 		};
 		BB0000000000000000000041 /* Exceptions for "Flicksy" folder in "Flicksy App Store" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Configuration/Flicksy.storekit,
-				Info-Direct.plist,
+				"Info-AppStore.plist",
+				"Info-Direct.plist",
 			);
 			target = BB0000000000000000000013 /* Flicksy App Store */;
 		};
@@ -110,7 +112,10 @@
 			children = (
 				29986C783037E7160009632B /* Flicksy */,
 				AA0000000000000000000003 /* FlicksyTests */,
-				BB0000000000000000000050 /* Flicksy/Configuration/Flicksy.storekit */,
+				CC0000000000000000000001 /* ProjectRelease.xcconfig */,
+				CC0000000000000000000002 /* DirectBase.xcconfig */,
+				CC0000000000000000000003 /* DirectTest.xcconfig */,
+				CC0000000000000000000004 /* DirectProduction.xcconfig */,
 				29986C773037E7160009632B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -297,7 +302,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BB0000000000000000000051 /* Flicksy/Configuration/Flicksy.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -480,7 +484,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Flicksy/Info-Direct.plist;
+				INFOPLIST_FILE = "Flicksy/Info-Direct.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Flicksy;
 				INFOPLIST_KEY_FlicksyCheckoutURL = "$(FLICKSY_CHECKOUT_URL)";
 				INFOPLIST_KEY_FlicksyLicenseAPIURL = "$(FLICKSY_LICENSE_API_URL)";
@@ -523,7 +527,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Flicksy/Info-Direct.plist;
+				INFOPLIST_FILE = "Flicksy/Info-Direct.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Flicksy;
 				INFOPLIST_KEY_FlicksyCheckoutURL = "$(FLICKSY_CHECKOUT_URL)";
 				INFOPLIST_KEY_FlicksyLicenseAPIURL = "$(FLICKSY_LICENSE_API_URL)";
@@ -603,7 +607,8 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Flicksy/Info-AppStore.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Flicksy;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Flicksy";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -638,7 +643,8 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Flicksy/Info-AppStore.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Flicksy;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Flicksy";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -698,6 +704,34 @@
 			};
 			name = Release;
 		};
+		CC0000000000000000000010 /* Direct Test */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = CC0000000000000000000001 /* ProjectRelease.xcconfig */;
+			buildSettings = {
+			};
+			name = "Direct Test";
+		};
+		CC0000000000000000000011 /* Direct Production */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = CC0000000000000000000001 /* ProjectRelease.xcconfig */;
+			buildSettings = {
+			};
+			name = "Direct Production";
+		};
+		CC0000000000000000000012 /* Direct Test */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = CC0000000000000000000003 /* DirectTest.xcconfig */;
+			buildSettings = {
+			};
+			name = "Direct Test";
+		};
+		CC0000000000000000000013 /* Direct Production */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = CC0000000000000000000004 /* DirectProduction.xcconfig */;
+			buildSettings = {
+			};
+			name = "Direct Production";
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -706,6 +740,8 @@
 			buildConfigurations = (
 				29986C7F3037E7170009632B /* Debug */,
 				29986C803037E7170009632B /* Release */,
+				CC0000000000000000000010 /* Direct Test */,
+				CC0000000000000000000011 /* Direct Production */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -715,6 +751,8 @@
 			buildConfigurations = (
 				29986C823037E7170009632B /* Debug */,
 				29986C833037E7170009632B /* Release */,
+				CC0000000000000000000012 /* Direct Test */,
+				CC0000000000000000000013 /* Direct Production */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

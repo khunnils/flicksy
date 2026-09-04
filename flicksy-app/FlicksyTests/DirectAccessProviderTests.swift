@@ -232,6 +232,16 @@ final class DirectAccessProviderTests: XCTestCase {
         XCTAssertEqual(result.state, .trialAvailable)
     }
 
+    func testConfiguredLicenseURLMustBeTheBaseAndAppendsActionOnce() async throws {
+        LicenseURLProtocol.handler = { request in
+            XCTAssertEqual(request.url?.absoluteString, "https://flicksy.me/api/licenses/activate")
+            return Self.response(json: Self.activationJSON)
+        }
+        let provider = makeProvider()
+
+        _ = try await provider.activate(licenseKey: "12345678-1234-1234", now: start)
+    }
+
     private func makeProvider(store suppliedStore: SecureStoring? = nil) -> DirectAccessProvider {
         let store = suppliedStore ?? MemorySecureStore()
         let sessionConfiguration = URLSessionConfiguration.ephemeral
@@ -239,7 +249,7 @@ final class DirectAccessProviderTests: XCTestCase {
         return DirectAccessProvider(
             configuration: DirectAccessConfiguration(
                 checkoutURL: URL(string: "https://example.com/buy"),
-                licenseAPIURL: URL(string: "https://flicksy.app/api/licenses"),
+                licenseAPIURL: URL(string: "https://flicksy.me/api/licenses"),
                 purchasePrice: "$19"
             ),
             secureStore: store,
@@ -249,7 +259,7 @@ final class DirectAccessProviderTests: XCTestCase {
     }
 
     private static func response(json: String, status: Int = 200) -> (HTTPURLResponse, Data) {
-        let url = URL(string: "https://flicksy.app/api/licenses")!
+        let url = URL(string: "https://flicksy.me/api/licenses")!
         return (
             HTTPURLResponse(url: url, statusCode: status, httpVersion: nil, headerFields: nil)!,
             Data(json.utf8)

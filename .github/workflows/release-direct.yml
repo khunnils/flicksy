@@ -1,4 +1,4 @@
-name: Release direct app
+name: Release direct app and production website
 
 on:
   workflow_dispatch:
@@ -19,6 +19,10 @@ permissions:
 jobs:
   release:
     runs-on: macos-latest
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
 
@@ -28,6 +32,9 @@ jobs:
           echo "EXPORT_PATH=$RUNNER_TEMP/export" >> "$GITHUB_ENV"
           echo "UPDATES_PATH=$RUNNER_TEMP/updates" >> "$GITHUB_ENV"
           echo "DMG_PATH=$RUNNER_TEMP/updates/Flicksy-${{ inputs.version }}.dmg" >> "$GITHUB_ENV"
+
+      - name: Verify approved source configuration
+        run: flicksy-app/Release/verify-source.sh production '${{ vars.FLICKSY_APP_STORE_URL }}' '${{ vars.CREEM_PRODUCT_ID }}'
 
       - name: Import Developer ID certificate
         env:
@@ -42,32 +49,23 @@ jobs:
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
           security set-keychain-settings -lut 21600 "$keychain_path"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
-          # Import the full identity (cert + private key). Do not pass -t cert.
           security import "$certificate_path" -P "$CERTIFICATE_PASSWORD" -A -f pkcs12 -k "$keychain_path"
           security set-key-partition-list -S apple-tool:,apple:,codesign: -k "$KEYCHAIN_PASSWORD" "$keychain_path"
           security list-keychains -d user -s "$keychain_path" login.keychain-db
-          security find-identity -v -p codesigning "$keychain_path"
-          security find-identity -v -p codesigning "$keychain_path" | grep -q "Developer ID Application"
+          security find-identity -v -p codesigning "$keychain_path" | grep -q 'Developer ID Application'
 
-      - name: Test and archive direct build
+      - name: Test and archive direct production build
         working-directory: flicksy-app
         run: |
-          set -o pipefail
-          common=(
-            -project Flicksy.xcodeproj -scheme Flicksy
-            MARKETING_VERSION='${{ inputs.version }}'
-            CURRENT_PROJECT_VERSION='${{ inputs.build }}'
-            DEVELOPMENT_TEAM='${{ vars.APPLE_TEAM_ID }}'
-            FLICKSY_CHECKOUT_URL='${{ vars.FLICKSY_CHECKOUT_URL }}'
-            FLICKSY_LICENSE_API_URL='${{ vars.FLICKSY_LICENSE_API_URL }}'
-            SPARKLE_FEED_URL='https://flicksy.app/updates/appcast.xml'
-            SPARKLE_PUBLIC_ED_KEY='${{ vars.SPARKLE_PUBLIC_ED_KEY }}'
-          )
-          # CI only has Developer ID. Tests do not need Mac Development signing.
-          xcodebuild test "${common[@]}" -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
-          xcodebuild archive "${common[@]}" \
-            -configuration Release \
+          xcodebuild test -project Flicksy.xcodeproj -scheme Flicksy -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
+          xcodebuild archive \
+            -project Flicksy.xcodeproj \
+            -scheme 'Flicksy - Direct Production' \
+            -configuration 'Direct Production' \
             -archivePath "$ARCHIVE_PATH" \
+            MARKETING_VERSION='${{ inputs.version }}' \
+            CURRENT_PROJECT_VERSION='${{ inputs.build }}' \
+            DEVELOPMENT_TEAM='${{ vars.APPLE_TEAM_ID }}' \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY='Developer ID Application'
 
@@ -75,9 +73,9 @@ jobs:
         working-directory: flicksy-app
         run: |
           xcodebuild -exportArchive -archivePath "$ARCHIVE_PATH" -exportPath "$EXPORT_PATH" -exportOptionsPlist Release/ExportOptions-DeveloperID.plist
-          Release/verify-channel.sh direct "$EXPORT_PATH/Flicksy.app"
+          Release/verify-channel.sh direct-production "$EXPORT_PATH/Flicksy.app"
 
-      - name: Create, notarize, and staple DMG
+      - name: Create, notarize, and assess DMG
         working-directory: flicksy-app
         env:
           NOTARY_APPLE_ID: ${{ vars.APPLE_ID }}
@@ -89,8 +87,6 @@ jobs:
           xcrun notarytool submit "$DMG_PATH" --apple-id "$NOTARY_APPLE_ID" --password "$NOTARY_PASSWORD" --team-id "$NOTARY_TEAM_ID" --wait
           xcrun stapler staple "$DMG_PATH"
           xcrun stapler validate "$DMG_PATH"
-          # spctl on a DMG container often reports "no usable signature" even when
-          # notarization/stapling succeeded. Assess the app inside instead.
           mount_point="$RUNNER_TEMP/flicksy-dmg-mount"
           mkdir -p "$mount_point"
           hdiutil attach "$DMG_PATH" -nobrowse -readonly -mountpoint "$mount_point"
@@ -105,7 +101,7 @@ jobs:
           cp "$DMG_PATH" "$RUNNER_TEMP/Flicksy.dmg"
           gh release upload '${{ inputs.tag }}' "$RUNNER_TEMP/Flicksy.dmg"
 
-      - name: Generate and publish signed appcast
+      - name: Generate signed appcast
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
@@ -114,9 +110,40 @@ jobs:
           private_key="$RUNNER_TEMP/sparkle-private-key"
           printf '%s' "$SPARKLE_PRIVATE_KEY" > "$private_key"
           "$sparkle_bin" --ed-key-file "$private_key" --download-url-prefix "https://github.com/${{ github.repository }}/releases/download/${{ inputs.tag }}/" "$UPDATES_PATH"
+          mkdir -p flicksy-web/public/updates
           cp "$UPDATES_PATH/appcast.xml" flicksy-web/public/updates/appcast.xml
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git add flicksy-web/public/updates/appcast.xml
-          git commit -m 'Publish Flicksy ${{ inputs.version }} appcast'
-          git push
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+          cache: pnpm
+          cache-dependency-path: flicksy-web/pnpm-lock.yaml
+      - name: Build verified production website
+        working-directory: flicksy-web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm check
+          pnpm test
+          pnpm build:production
+          jq \
+            --arg app_store_url '${{ vars.FLICKSY_APP_STORE_URL }}' \
+            --arg product_id '${{ vars.CREEM_PRODUCT_ID }}' \
+            '.vars.FLICKSY_APP_STORE_URL = $app_store_url | .vars.CREEM_PRODUCT_ID = $product_id' \
+            dist/server/wrangler.json > "$RUNNER_TEMP/wrangler-production.json"
+          mv "$RUNNER_TEMP/wrangler-production.json" dist/server/wrangler.json
+      - name: Configure live Creem secret and deploy production site
+        working-directory: flicksy-web
+        env:
+          CREEM_API_KEY: ${{ secrets.CREEM_API_KEY }}
+        run: |
+          [[ -n "$CREEM_API_KEY" && "$CREEM_API_KEY" != creem_test_* ]] || { echo "Expected a live Creem API key" >&2; exit 1; }
+          printf '%s' "$CREEM_API_KEY" | pnpm exec wrangler secret put CREEM_API_KEY --env production
+          pnpm exec wrangler deploy --config dist/server/wrangler.json
+      - name: Production health check
+        run: |
+          response="$(curl --fail --silent --show-error https://flicksy.me/api/health)"
+          [[ "$(jq -r '.ok' <<<"$response")" == true ]]
+          [[ "$(jq -r '.environment' <<<"$response")" == production ]]

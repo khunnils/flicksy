@@ -1,3 +1,5 @@
+import { readCreemConfig, type CreemRuntimeConfig, type FlicksyBindings } from './environment';
+
 export const licenseActions = ['activate', 'validate', 'deactivate'] as const;
 
 export type LicenseAction = (typeof licenseActions)[number];
@@ -15,10 +17,7 @@ export type LicenseProxyResponse = {
   error_code?: LicenseErrorCode;
 };
 
-export type CreemEnv = {
-  CREEM_API_KEY?: string;
-  CREEM_PRODUCT_ID?: string;
-};
+export type CreemEnv = FlicksyBindings;
 
 type LicenseRequestBody = {
   key?: unknown;
@@ -32,6 +31,7 @@ type CreemLicenseInstance = {
 };
 
 type CreemLicense = {
+  mode?: unknown;
   status?: unknown;
   product_id?: unknown;
   created_at?: unknown;
@@ -56,6 +56,7 @@ export async function handleLicenseRequest(
   action: string,
   request: Request,
   env: CreemEnv,
+  fetcher: typeof fetch = fetch,
 ): Promise<Response> {
   if (!isLicenseAction(action)) {
     return json(
@@ -71,8 +72,10 @@ export async function handleLicenseRequest(
     );
   }
 
-  const apiKey = env.CREEM_API_KEY?.trim();
-  if (!apiKey) {
+  let config: CreemRuntimeConfig;
+  try {
+    config = readCreemConfig(env);
+  } catch {
     return json(
       { ok: false, error: 'Licensing is not configured.', error_code: 'service' },
       500,
@@ -118,15 +121,15 @@ export async function handleLicenseRequest(
     payload.instance_id = instanceId;
   }
 
-  const creemUrl = `${creemApiUrl(apiKey)}/v1/licenses/${action}`;
+  const creemUrl = `${config.apiURL}/v1/licenses/${action}`;
   let creemResponse: Response;
   try {
-    creemResponse = await fetch(creemUrl, {
+    creemResponse = await fetcher(creemUrl, {
       method: 'POST',
       headers: {
         accept: 'application/json',
         'content-type': 'application/json',
-        'x-api-key': apiKey,
+        'x-api-key': config.apiKey,
       },
       body: JSON.stringify(payload),
     });
@@ -150,8 +153,9 @@ export async function handleLicenseRequest(
 
   const license = (parsed ?? {}) as CreemLicense;
   const productId = readString(license.product_id);
-  const expectedProductId = env.CREEM_PRODUCT_ID?.trim();
-  if (expectedProductId && productId && productId !== expectedProductId) {
+  const mode = readString(license.mode);
+  const expectedMode = config.environment === 'test' ? 'test' : 'prod';
+  if (productId !== config.productID || mode !== expectedMode) {
     return json(
       { ok: false, error: 'This key is not a Flicksy license.', error_code: 'invalid' },
       404,
@@ -190,12 +194,6 @@ export async function handleLicenseRequest(
     activation_usage: readNumber(license.activation),
     activation_limit: readLimit(license.activation_limit),
   });
-}
-
-function creemApiUrl(apiKey: string): string {
-  return apiKey.startsWith('creem_test_')
-    ? 'https://test-api.creem.io'
-    : 'https://api.creem.io';
 }
 
 function mappedCreemError(status: number, parsed: unknown, action: LicenseAction): Response {

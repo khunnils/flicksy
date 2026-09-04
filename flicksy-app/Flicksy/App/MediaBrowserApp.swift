@@ -266,14 +266,16 @@ private struct AboutCommands: Commands {
                 openWindow(id: LicenseView.windowID)
             }
 
+#if DIRECT_DISTRIBUTION
             if access.state != .licensed {
                 Button("Buy Flicksy…") {
                     Task { await access.purchase() }
                 }
             }
+#endif
 
 #if APP_STORE_DISTRIBUTION
-            Button("Restore Purchases") {
+            Button("Verify App Store Purchase") {
                 Task { await access.restore() }
             }
 #endif

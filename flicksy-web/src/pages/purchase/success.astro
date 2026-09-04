@@ -1,0 +1,75 @@
+---
+import { env } from 'cloudflare:workers';
+import Layout from '../../layouts/Layout.astro';
+import { retrieveCompletedCheckout, verifyRedirectSignature } from '../../lib/creem';
+import { readCreemConfig } from '../../lib/environment';
+
+export const prerender = false;
+
+let licenseKey: string | undefined;
+let errorMessage: string | undefined;
+try {
+  const config = readCreemConfig(env);
+  const rawQuery = Astro.request.url.split('?')[1] ?? '';
+  if (!await verifyRedirectSignature(rawQuery, config.apiKey)) {
+    throw new Error('This purchase return link could not be verified.');
+  }
+  const checkoutID = Astro.url.searchParams.get('checkout_id') ?? '';
+  const checkout = await retrieveCompletedCheckout(config, checkoutID);
+  licenseKey = checkout.licenseKey;
+} catch (error) {
+  errorMessage = error instanceof Error ? error.message : 'The purchase could not be verified.';
+  Astro.response.status = 400;
+}
+---
+
+<Layout title="Your Flicksy purchase" description="Activate your Flicksy direct license.">
+  <main class="purchase-result">
+    <a class="brand" href="/"><img src="/flicksy-mark-black.svg" alt="" width="26" height="26" /> Flicksy</a>
+    {licenseKey ? (
+      <section>
+        <p class="eyebrow">Purchase complete</p>
+        <h1>Your Flicksy license is ready.</h1>
+        <p>Copy this key, open Flicksy, and choose <strong>Activate License</strong>. We also sent the key to the email used at checkout.</p>
+        <div class="license-row">
+          <code id="license-key">{licenseKey}</code>
+          <button id="copy-license" type="button">Copy license key</button>
+        </div>
+        <p class="fine">Keep this key private. It can activate up to three Macs.</p>
+        <a class="button" href="/">Back to Flicksy</a>
+      </section>
+    ) : (
+      <section>
+        <p class="eyebrow error">Verification needed</p>
+        <h1>We could not show the license yet.</h1>
+        <p>{errorMessage}</p>
+        <p>Check your Creem receipt or recover the order through <a href="https://creem.io/my-orders/login">Creem My Orders</a>.</p>
+        <a class="button" href="/buy?source=web">Return to checkout</a>
+      </section>
+    )}
+  </main>
+</Layout>
+
+<script>
+  document.querySelector('#copy-license')?.addEventListener('click', async (event) => {
+    const key = document.querySelector('#license-key')?.textContent ?? '';
+    await navigator.clipboard.writeText(key);
+    if (event.currentTarget instanceof HTMLButtonElement) event.currentTarget.textContent = 'Copied';
+  });
+</script>
+
+<style>
+  .purchase-result { width: min(760px, calc(100% - 40px)); margin: 0 auto; padding: 48px 0 100px; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; color: inherit; font-weight: 650; text-decoration: none; }
+  section { margin-top: 90px; padding: clamp(28px, 6vw, 58px); border: 1px solid var(--line); border-radius: 28px; background: white; box-shadow: 0 24px 70px rgba(35, 43, 58, .08); }
+  .eyebrow { margin: 0; color: #68717d; font: 11px/1.2 var(--font-mono); letter-spacing: .13em; text-transform: uppercase; }
+  .eyebrow.error { color: #a04444; }
+  h1 { margin: 14px 0 18px; font-size: clamp(38px, 7vw, 62px); line-height: 1; letter-spacing: -.055em; }
+  p { color: var(--muted); font-size: 16px; }
+  .license-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin: 30px 0 12px; }
+  code { min-width: 0; overflow-x: auto; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: #f5f6f8; font-size: 14px; white-space: nowrap; }
+  button, .button { padding: 13px 18px; border: 0; border-radius: 12px; background: #1b1e23; color: white; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; }
+  .button { display: inline-block; margin-top: 20px; }
+  .fine { font-size: 12px; }
+  @media (max-width: 620px) { .license-row { grid-template-columns: 1fr; } }
+</style>

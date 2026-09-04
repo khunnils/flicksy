@@ -1,43 +1,45 @@
-# Astro Starter Kit: Minimal
+# Flicksy website
+
+The Astro site is a Cloudflare Worker with two isolated runtime environments:
+
+| Environment | Host | Commerce | Download |
+| --- | --- | --- | --- |
+| `test` | `preview.flicksy.me` | Creem test API/product | `test-latest/Flicksy-Test.dmg` |
+| `production` | `flicksy.me` | Creem live API/product | stable `Flicksy.dmg` |
+
+The Worker reads `FLICKSY_ENVIRONMENT`, `FLICKSY_SITE_URL`,
+`FLICKSY_DIRECT_DOWNLOAD_URL`, `FLICKSY_APP_STORE_URL`, and
+`CREEM_PRODUCT_ID` as environment variables. `CREEM_API_KEY` must be stored as
+a secret. Test and live keys are rejected when used in the opposite environment.
+
+## Local development
 
 ```sh
-npm create astro@latest -- --template minimal
+pnpm install --frozen-lockfile
+cp .env.example .dev.vars
+# Replace CREEM_API_KEY with a real Creem test key.
+pnpm dev
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+The direct purchase starts at `/buy?source=web|app`. Creem returns to
+`/purchase/success`, where the signed query and completed checkout are verified
+before the license key is displayed. `/api/health` reports only environment and
+configuration readiness.
 
-## 🚀 Project Structure
+## Verification and deployment
 
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+```sh
+pnpm check
+pnpm test
+pnpm build
+pnpm dry-run:test
+pnpm dry-run:production
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+Deployments use `pnpm deploy:test` or `pnpm deploy:production`. CI supplies the
+matching Cloudflare token and `CREEM_API_KEY` through GitHub environments. The
+production placeholders in `wrangler.jsonc` are deliberately rejected by the
+release verifier until the live Creem product and App Store listing exist.
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
-
-Any static assets, like images, can be placed in the `public/` directory.
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `pnpm install`            | Installs dependencies                            |
-| `pnpm dev`                | Starts local dev server at `localhost:4700`      |
-| `pnpm build`              | Build your production site to `./dist/`          |
-| `pnpm preview`            | Preview your build locally, before deploying     |
-| `pnpm astro ...`          | Run CLI commands like `astro add`, `astro check` |
-| `pnpm astro -- --help`    | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+Hosted checkout smoke testing uses Playwright CLI and stores evidence in the
+repository-level `output/playwright/` directory; see `docs/environment-runbook.md`.

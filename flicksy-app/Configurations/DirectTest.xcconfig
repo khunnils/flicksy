@@ -1,0 +1,10 @@
+#include "DirectBase.xcconfig"
+
+FLICKSY_CHECKOUT_URL = https:/$()/preview.flicksy.me/buy?source=app
+FLICKSY_DISPLAY_NAME = Flicksy Test
+FLICKSY_LICENSE_API_URL = https:/$()/preview.flicksy.me/api/licenses
+PRODUCT_BUNDLE_IDENTIFIER = cloudedminds.Flicksy.test
+PRODUCT_NAME = Flicksy Test
+SPARKLE_FEED_URL =
+SPARKLE_PUBLIC_ED_KEY =
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = DIRECT_DISTRIBUTION TEST_ENVIRONMENT $(inherited)

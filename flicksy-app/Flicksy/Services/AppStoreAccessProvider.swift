@@ -7,37 +7,131 @@
 import Foundation
 import StoreKit
 
+struct AppStoreAccessConfiguration: Equatable, Sendable {
+    let bundleID: String
+    let appID: UInt64?
+
+    static func fromBundle(_ bundle: Bundle = .main) -> AppStoreAccessConfiguration {
+        let rawAppID = bundle.object(forInfoDictionaryKey: "FlicksyAppStoreAppID") as? String
+        return AppStoreAccessConfiguration(
+            bundleID: bundle.bundleIdentifier ?? "",
+            appID: rawAppID.flatMap(UInt64.init)
+        )
+    }
+}
+
+struct VerifiedAppPurchase: Equatable, Codable, Sendable {
+    let bundleID: String
+    let appID: UInt64?
+    let appTransactionID: String
+    let originalPurchaseDate: Date
+    let revocationDate: Date?
+}
+
+enum AppPurchaseVerification: Sendable {
+    case verified(VerifiedAppPurchase)
+    case unverified
+}
+
+protocol AppPurchaseVerifying: Sendable {
+    func current() async throws -> AppPurchaseVerification
+    func refresh() async throws -> AppPurchaseVerification
+}
+
+struct StoreKitAppPurchaseVerifier: AppPurchaseVerifying {
+    func current() async throws -> AppPurchaseVerification {
+        map(try await AppTransaction.shared)
+    }
+
+    func refresh() async throws -> AppPurchaseVerification {
+        map(try await AppTransaction.refresh())
+    }
+
+    private func map(_ result: VerificationResult<AppTransaction>) -> AppPurchaseVerification {
+        switch result {
+        case .verified(let transaction):
+            return .verified(
+                VerifiedAppPurchase(
+                    bundleID: transaction.bundleID,
+                    appID: transaction.appID,
+                    appTransactionID: transaction.appTransactionID,
+                    originalPurchaseDate: transaction.originalPurchaseDate,
+                    revocationDate: Self.revocationDate(from: transaction.jsonRepresentation)
+                )
+            )
+        case .unverified:
+            return .unverified
+        }
+    }
+
+    // StoreKit adds the paid-app revocation field to AppTransaction on newer
+    // systems. Reading the already verified JSON keeps macOS 15 builds able to
+    // reject it without weakening the deployment target.
+    private static func revocationDate(from json: Data) -> Date? {
+        guard let object = try? JSONSerialization.jsonObject(with: json) as? [String: Any]
+        else { return nil }
+        let raw = object["revocationDate"] ?? object["revocation_date"]
+        if let milliseconds = raw as? Double {
+            return Date(timeIntervalSince1970: milliseconds / 1_000)
+        }
+        guard let value = raw as? String else { return nil }
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return fractional.date(from: value) ?? ISO8601DateFormatter().date(from: value)
+    }
+}
+
 @MainActor
 final class AppStoreAccessProvider: AccessProviding {
     let channel = DistributionChannel.appStore
 
-    static let trialProductID = "cloudedminds.Flicksy.trial14"
-    static let lifetimeProductID = "cloudedminds.Flicksy.lifetime"
-    static let trialDuration: TimeInterval = 14 * 24 * 60 * 60
+    private let configuration: AppStoreAccessConfiguration
+    private let verifier: AppPurchaseVerifying
+    private let secureStore: SecureStoring
+    private let cacheKey = "verified-app-purchase"
+    private let encoder = JSONEncoder()
+    private let decoder = JSONDecoder()
 
-    private var products: [String: Product] = [:]
-    private var verifiedPurchases: [String: Transaction] = [:]
-    private var updatesTask: Task<Void, Never>?
+    convenience init() {
+        let bundleID = Bundle.main.bundleIdentifier ?? "cloudedminds.Flicksy"
+        self.init(
+            configuration: .fromBundle(),
+            verifier: StoreKitAppPurchaseVerifier(),
+            secureStore: KeychainSecureStore(service: "\(bundleID).access.appstore")
+        )
+    }
 
-    deinit {
-        updatesTask?.cancel()
+    init(
+        configuration: AppStoreAccessConfiguration,
+        verifier: AppPurchaseVerifying,
+        secureStore: SecureStoring
+    ) {
+        self.configuration = configuration
+        self.verifier = verifier
+        self.secureStore = secureStore
     }
 
     func currentSnapshot(now: Date) async throws -> AccessSnapshot {
-        // Product metadata is useful for localized pricing, but an App Store
-        // outage must not hide an entitlement that is already on the receipt.
-        try? await loadProductsIfNeeded()
-        return await entitlementSnapshot(now: now)
+        do {
+            return try snapshot(from: try await verifier.current())
+        } catch let error as AccessActionError {
+            throw error
+        } catch {
+            if let cached = try loadCachedPurchase(), isExpected(cached), cached.revocationDate == nil {
+                return licensedSnapshot(cached)
+            }
+            throw AccessActionError.service(
+                "Flicksy could not read the App Store purchase. Connect to the internet and choose Verify Purchase."
+            )
+        }
     }
 
     func startTrial(now: Date) async throws -> AccessSnapshot {
-        try await purchaseProduct(id: Self.trialProductID)
-        return await entitlementSnapshot(now: now)
+        throw AccessActionError.configuration("The paid Mac App Store version does not include a trial.")
     }
 
     func purchase(now: Date) async throws -> AccessSnapshot {
-        try await purchaseProduct(id: Self.lifetimeProductID)
-        return await entitlementSnapshot(now: now)
+        throw AccessActionError.configuration("Flicksy is purchased upfront from the Mac App Store.")
     }
 
     func activate(licenseKey: String, now: Date) async throws -> AccessSnapshot {
@@ -45,115 +139,49 @@ final class AppStoreAccessProvider: AccessProviding {
     }
 
     func restore(now: Date) async throws -> AccessSnapshot {
-        try await AppStore.sync()
-        return await entitlementSnapshot(now: now)
+        try snapshot(from: try await verifier.refresh())
     }
 
     func deactivate(now: Date) async throws -> AccessSnapshot {
-        throw AccessActionError.configuration("App Store purchases cannot be deactivated from Flicksy.")
+        throw AccessActionError.configuration("Mac App Store purchases cannot be deactivated from Flicksy.")
     }
 
-    func observeChanges(_ handler: @escaping @MainActor () -> Void) {
-        updatesTask?.cancel()
-        updatesTask = Task {
-            for await result in Transaction.updates {
-                guard !Task.isCancelled else { return }
-                if case .verified(let transaction) = result {
-                    if transaction.revocationDate == nil {
-                        verifiedPurchases[transaction.productID] = transaction
-                    } else {
-                        verifiedPurchases.removeValue(forKey: transaction.productID)
-                    }
-                    await transaction.finish()
-                    handler()
-                }
-            }
+    private func snapshot(from result: AppPurchaseVerification) throws -> AccessSnapshot {
+        guard configuration.appID != nil, !configuration.bundleID.isEmpty else {
+            throw AccessActionError.configuration("This build is missing its App Store identity.")
         }
+        guard case .verified(let purchase) = result else {
+            try? secureStore.remove(cacheKey)
+            throw AccessActionError.unverifiedPurchase
+        }
+        guard isExpected(purchase) else {
+            try? secureStore.remove(cacheKey)
+            throw AccessActionError.unverifiedPurchase
+        }
+        guard purchase.revocationDate == nil else {
+            try? secureStore.remove(cacheKey)
+            throw AccessActionError.appPurchaseRevoked
+        }
+
+        try secureStore.set(encoder.encode(purchase), for: cacheKey)
+        return licensedSnapshot(purchase)
     }
 
-    private func loadProductsIfNeeded() async throws {
-        guard products.isEmpty else { return }
-        let loaded = try await Product.products(for: [Self.trialProductID, Self.lifetimeProductID])
-        products = Dictionary(uniqueKeysWithValues: loaded.map { ($0.id, $0) })
+    private func isExpected(_ purchase: VerifiedAppPurchase) -> Bool {
+        purchase.bundleID == configuration.bundleID && purchase.appID == configuration.appID
     }
 
-    private func purchaseProduct(id: String) async throws {
-        try await loadProductsIfNeeded()
-        guard let product = products[id] else {
-            throw AccessActionError.configuration("This Flicksy purchase is not available from the App Store.")
-        }
-
-        switch try await product.purchase() {
-        case .success(let verification):
-            guard case .verified(let transaction) = verification else {
-                throw AccessActionError.unverifiedPurchase
-            }
-            verifiedPurchases[transaction.productID] = transaction
-            await transaction.finish()
-        case .pending:
-            throw AccessActionError.purchasePending
-        case .userCancelled:
-            throw AccessActionError.purchaseCancelled
-        @unknown default:
-            throw AccessActionError.service("The App Store returned an unknown purchase result.")
-        }
+    private func licensedSnapshot(_ purchase: VerifiedAppPurchase) -> AccessSnapshot {
+        AccessSnapshot(
+            state: .licensed,
+            purchasePrice: "$19",
+            purchasedAt: purchase.originalPurchaseDate
+        )
     }
 
-    private func entitlementSnapshot(now: Date) async -> AccessSnapshot {
-        var trialPurchaseDate: Date?
-        var lifetimePurchaseDate: Date?
-
-        for await result in Transaction.currentEntitlements {
-            guard case .verified(let transaction) = result,
-                  transaction.revocationDate == nil
-            else { continue }
-
-            verifiedPurchases[transaction.productID] = transaction
-
-            record(transaction, trialPurchaseDate: &trialPurchaseDate, lifetimePurchaseDate: &lifetimePurchaseDate)
-        }
-
-        // StoreKit can deliver the verified purchase result before the updated
-        // transaction appears in currentEntitlements. Keep that verified result
-        // for the lifetime of this provider so the UI unlocks immediately.
-        for transaction in verifiedPurchases.values where transaction.revocationDate == nil {
-            record(transaction, trialPurchaseDate: &trialPurchaseDate, lifetimePurchaseDate: &lifetimePurchaseDate)
-        }
-
-        let price = products[Self.lifetimeProductID]?.displayPrice
-        if let lifetimePurchaseDate {
-            return AccessSnapshot(
-                state: .licensed,
-                purchasePrice: price,
-                purchasedAt: lifetimePurchaseDate
-            )
-        }
-
-        if let trialPurchaseDate {
-            let expiresAt = trialPurchaseDate.addingTimeInterval(Self.trialDuration)
-            return AccessSnapshot(
-                state: now < expiresAt ? .trialActive(expiresAt: expiresAt) : .expired,
-                purchasePrice: price
-            )
-        }
-
-        return AccessSnapshot(state: .trialAvailable, purchasePrice: price)
-    }
-
-    private func record(
-        _ transaction: Transaction,
-        trialPurchaseDate: inout Date?,
-        lifetimePurchaseDate: inout Date?
-    ) {
-
-        switch transaction.productID {
-            case Self.lifetimeProductID:
-                lifetimePurchaseDate = min(lifetimePurchaseDate ?? transaction.purchaseDate, transaction.purchaseDate)
-            case Self.trialProductID:
-                trialPurchaseDate = min(trialPurchaseDate ?? transaction.purchaseDate, transaction.purchaseDate)
-            default:
-                break
-        }
+    private func loadCachedPurchase() throws -> VerifiedAppPurchase? {
+        guard let data = try secureStore.data(for: cacheKey) else { return nil }
+        return try decoder.decode(VerifiedAppPurchase.self, from: data)
     }
 }
 #endif

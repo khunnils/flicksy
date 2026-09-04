@@ -1,4 +1,30 @@
 {
   "name": "flicksy-web",
   "compatibility_date": "2025-09-03",
+  "env": {
+    "test": {
+      "routes": [
+        { "pattern": "preview.flicksy.me", "custom_domain": true }
+      ],
+      "vars": {
+        "FLICKSY_ENVIRONMENT": "test",
+        "FLICKSY_SITE_URL": "https://preview.flicksy.me",
+        "FLICKSY_DIRECT_DOWNLOAD_URL": "https://github.com/khunnils/flicksy/releases/download/test-latest/Flicksy-Test.dmg",
+        "FLICKSY_APP_STORE_URL": "",
+        "CREEM_PRODUCT_ID": "prod_2nZWLPHXTxohlTco7vMNl"
+      }
+    },
+    "production": {
+      "routes": [
+        { "pattern": "flicksy.me", "custom_domain": true }
+      ],
+      "vars": {
+        "FLICKSY_ENVIRONMENT": "production",
+        "FLICKSY_SITE_URL": "https://flicksy.me",
+        "FLICKSY_DIRECT_DOWNLOAD_URL": "https://github.com/khunnils/flicksy/releases/latest/download/Flicksy.dmg",
+        "FLICKSY_APP_STORE_URL": "https://apps.apple.com/app/idREPLACE_BEFORE_DEPLOY",
+        "CREEM_PRODUCT_ID": "prod_REPLACE_BEFORE_DEPLOY"
+      }
+    }
+  }
 }

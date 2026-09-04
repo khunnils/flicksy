@@ -19,10 +19,12 @@ struct FlicksyRootView: View {
                     MainView()
                         .environment(browserModel)
                         .safeAreaInset(edge: .top, spacing: 0) {
+#if DIRECT_DISTRIBUTION
                             if access.shouldShowTrialReminder {
                                 TrialReminderView()
                                     .environment(access)
                             }
+#endif
                         }
                 } else {
                     ProgressView("Opening Flicksy…")
@@ -158,23 +160,11 @@ struct AccessGateView: View {
 
     private var appStoreControls: some View {
         VStack(spacing: 12) {
-            if canStartTrial {
-                Button("Start 14-Day Free Trial") {
-                    Task { await access.startTrial() }
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-            }
-
-            Button("Buy Flicksy\(access.purchasePrice.map { " — \($0)" } ?? "")") {
-                Task { await access.purchase() }
-            }
-            .controlSize(.large)
-
-            Button("Restore Purchases") {
+            Button("Verify App Store Purchase") {
                 Task { await access.restore() }
             }
-            .buttonStyle(.link)
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
 
             if access.isBusy {
                 ProgressView()
@@ -191,7 +181,10 @@ struct AccessGateView: View {
     }
 
     private var title: String {
-        switch access.state {
+#if APP_STORE_DISTRIBUTION
+        return "Verify your paid download"
+#else
+        return switch access.state {
         case .expired:
             "Your trial has ended"
         case .recoverableError:
@@ -199,10 +192,15 @@ struct AccessGateView: View {
         default:
             "Try everything for 14 days"
         }
+#endif
     }
 
     private var message: String {
-        switch access.state {
+#if APP_STORE_DISTRIBUTION
+        if case .recoverableError(let message, _) = access.state { return message }
+        return "Flicksy verifies the App Store-signed purchase included with this download. No trial or in-app purchase is required."
+#else
+        return switch access.state {
         case .expired:
             "Buy Flicksy once to keep using the complete app and receive every future update. Your folders and Flicksy library remain untouched."
         case .recoverableError(let message, _):
@@ -210,13 +208,14 @@ struct AccessGateView: View {
         default:
             "The complete app is included. The trial starts only when you choose, does not renew, and never charges you automatically."
         }
+#endif
     }
 
     private var footer: String {
 #if DIRECT_DISTRIBUTION
         "No Flicksy account required. Your license key arrives by email and works on up to three Macs."
 #else
-        "No Flicksy account required. Trial and purchase access are managed by your Apple Account."
+        "No Flicksy account required. The paid download is associated with your Apple Account."
 #endif
     }
 
@@ -232,6 +231,7 @@ struct AccessGateView: View {
 #endif
 }
 
+#if DIRECT_DISTRIBUTION
 struct TrialReminderView: View {
     @Environment(AccessController.self) private var access
 
@@ -254,6 +254,7 @@ struct TrialReminderView: View {
         .overlay(alignment: .bottom) { Divider() }
     }
 }
+#endif
 
 struct LicenseView: View {
     static let windowID = "flicksy-license"
@@ -315,6 +316,14 @@ struct LicenseView: View {
             if let usage = access.activationUsage, let limit = access.activationLimit {
                 LabeledContent("Activations", value: "\(usage) of \(limit)")
             }
+
+#if TEST_ENVIRONMENT
+            HStack {
+                Button("Reset Trial") { Task { await access.resetTrialForTesting() } }
+                Button("Expire Trial") { Task { await access.expireTrialForTesting() } }
+            }
+            .help("Flicksy Test only — production builds do not contain these controls.")
+#endif
 #endif
 
             controls
@@ -358,13 +367,12 @@ struct LicenseView: View {
 #else
         HStack {
             if access.state != .licensed {
-                Button("Buy Flicksy\(access.purchasePrice.map { " — \($0)" } ?? "")") {
-                    Task { await access.purchase() }
-                }
+                Button("Verify App Store Purchase") { Task { await access.restore() } }
                 .buttonStyle(.borderedProminent)
+            } else {
+                Label("Paid download verified", systemImage: "checkmark.seal.fill")
+                    .foregroundStyle(.secondary)
             }
-            Spacer()
-            Button("Restore Purchases") { Task { await access.restore() } }
         }
 #endif
     }

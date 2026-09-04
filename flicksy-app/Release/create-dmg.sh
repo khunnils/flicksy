@@ -17,8 +17,10 @@ fi
 stage_dir="$(mktemp -d)"
 trap 'rm -rf "$stage_dir"' EXIT
 
-ditto "$app_path" "$stage_dir/Flicksy.app"
+app_name="$(basename "$app_path")"
+volume_name="${app_name%.app}"
+ditto "$app_path" "$stage_dir/$app_name"
 ln -s /Applications "$stage_dir/Applications"
 mkdir -p "$(dirname "$dmg_path")"
 rm -f "$dmg_path"
-hdiutil create -volname Flicksy -srcfolder "$stage_dir" -ov -format UDZO "$dmg_path"
+hdiutil create -volname "$volume_name" -srcfolder "$stage_dir" -ov -format UDZO "$dmg_path"

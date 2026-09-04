@@ -1,15 +1,17 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { env } from 'cloudflare:workers';
+import { readPublicConfig } from '../lib/environment';
 
-const directDownloadURL = import.meta.env.PUBLIC_FLICKSY_DIRECT_DOWNLOAD_URL ?? 'https://github.com/khunnils/flicksy/releases/latest/download/Flicksy.dmg';
-const directPurchaseURL = import.meta.env.PUBLIC_FLICKSY_CHECKOUT_URL ?? '#direct-purchase';
-const appStoreURL = import.meta.env.PUBLIC_FLICKSY_APP_STORE_URL ?? '#app-store';
+export const prerender = false;
+
+const { directDownloadURL, appStoreURL } = readPublicConfig(env);
+const directPurchaseURL = '/buy?source=web';
 
 const features = [
   { icon: '⌁', title: 'Skim without opening', text: 'Move across any thumbnail to scrub through a clip. The right frame finds you before another player window can open.' },
   { icon: '⌇', title: 'See the sound', text: 'Audio appears as a waveform, ready to play from any point. Find the hit without auditioning a folder of filenames.' },
   { icon: '✦', title: 'Keep the good stuff close', text: 'Favorite, tag, and collect media across folders while every original stays exactly where you put it.' },
-  { icon: '↗', title: 'Drag into your editor', text: 'Take a clip straight into Final Cut, Premiere, CapCut, or anywhere else that accepts a file.' },
 ];
 
 const featureInventory = [
@@ -31,9 +33,9 @@ const faqs = [
   { q: 'Does Flicksy import or copy my files?', a: 'No. Flicksy reads the folders already on your Mac and connected drives. Your files and folder structure stay untouched.' },
   { q: 'Is it a photo library or cloud backup?', a: 'Neither. Flicksy is a fast, visual window onto local media. Nothing is uploaded and there is no library to maintain.' },
   { q: 'Which Macs are supported?', a: 'Flicksy is a native Apple Silicon app for macOS 15 and newer.' },
-  { q: 'What is included in the trial?', a: 'Everything. The 14-day trial begins only when you start it, does not auto-renew, and never creates a charge.' },
+  { q: 'What is included in the trial?', a: 'Everything in the direct version. Its 14-day trial begins only when you start it, does not auto-renew, and never creates a charge. The Mac App Store version is a paid-upfront download and has no trial.' },
   { q: 'Do I need a Flicksy account?', a: 'No. Direct customers receive a license key by email; Mac App Store customers use their Apple Account.' },
-  { q: 'Can I move a purchase between stores?', a: 'No. Direct and Mac App Store purchases are separate. Buy through the channel where you expect to restore Flicksy later.' },
+  { q: 'Can I move a purchase between stores?', a: 'No. Direct and Mac App Store purchases are separate. Buy through the channel where you expect to recover or redownload Flicksy later.' },
   { q: 'How many Macs can use a direct license?', a: 'A direct license activates up to three Macs. Deactivate an old Mac from Flicksy before moving that seat to another.' },
 ];
 ---
@@ -71,25 +73,25 @@ const faqs = [
     <section class="showcase section wrap" id="how">
       <div class="showcase-grid">
         <div class="showcase-copy" data-reveal>
-          <p class="eyebrow">Feels at home on Mac</p><h2>A media browser that gets out of your way.</h2>
-          <p>No imported library. No alien interface. Flicksy feels familiar from the first click—with a native sidebar, familiar controls, Quick Look speed, and the polish you expect on macOS.</p>
+          <p class="eyebrow">Mac native</p><h2>All your media, in one place.</h2>
+          <p>Images, video, and audio live together in one fast, native view. Browse real folders and external drives without importing a library, learning a new interface, or moving a single file.</p>
           <ul class="check-list"><li><span>✓</span> Built in Swift for Apple Silicon</li><li><span>✓</span> Reads folders and external drives in place</li><li><span>✓</span> Stays fluid across thousands of assets</li></ul>
         </div>
-        <div class="window-wrap" data-reveal data-reveal-delay="1"><div class="app-window detail-window"><img src="/app-browser-history.jpeg" alt="Flicksy browser window showing images and video from a project folder" width="1896" height="1316" /></div></div>
+        <div class="window-wrap" data-reveal data-reveal-delay="1"><div class="app-window detail-window"><img src="/app-browser-audio.png" alt="Flicksy showing an audio library with file details, playback controls, and a waveform" width="3030" height="1740" /></div></div>
       </div>
     </section>
 
     <section class="horizon">
       <div class="horizon-orb horizon-orb-a"></div><div class="horizon-orb horizon-orb-b"></div>
       <div class="wrap horizon-content">
-        <div class="section-intro light" data-reveal><p class="eyebrow">Made for momentum</p><h2>Keep your hands moving.<br />Keep your ideas intact.</h2><p>Every part of Flicksy is tuned to shorten the distance between “I know I have it” and “there it is.” Quick Jump gets you to any folder or collection fast, while the ⌘K command palette keeps every action within reach.</p></div>
+        <div class="section-intro light" data-reveal><p class="eyebrow">Made for momentum</p><h2>Keep your hands moving.<br />Keep your ideas intact.</h2><p>Flicksy is keyboard-first by design. Press ⌘J to jump to any folder or collection, then use ⌘K for everything else—so the distance between “I know I have it” and “there it is” stays short.</p></div>
         <div class="feature-grid">{features.map((feature, index) => <article class="glass-card" data-reveal data-reveal-delay={String(index % 4)}><span class="feature-icon">{feature.icon}</span><h3>{feature.title}</h3><p>{feature.text}</p></article>)}</div>
         <div class="preview-card">
           <div class="preview-copy" data-reveal><p class="eyebrow">Built-in adjustments</p><h3>Stay in the flow, even for the little fixes.</h3><p>Preview, rotate, and flip an image, or crop with standardized guides for common print formats—all without leaving your media browser.</p></div>
           <div class="app-window preview-window" data-reveal data-reveal-delay="1"><img src="/app-preview-crop.jpeg" alt="Flicksy image preview with native macOS crop controls" width="1784" height="1154" /></div>
         </div>
         <div class="preview-card comparison-card">
-          <div class="preview-copy" data-reveal data-reveal-delay="1"><p class="eyebrow">Made to compare</p><h3>Choose the best shot, without the window shuffle.</h3><p>Finder can select images. Preview can open them. Flicksy lets you compare them in sensible layouts..</p></div>
+          <div class="preview-copy" data-reveal data-reveal-delay="1"><p class="eyebrow">Made to compare</p><h3>Choose the best shot, without the window shuffle.</h3><p>Finder can select images. Preview can open them. Flicksy lets you compare them in sensible layouts.</p></div>
           <div class="app-window comparison-window" data-reveal><img src="/app-compare.jpeg" alt="Flicksy comparing four images side by side in a native macOS window" width="3562" height="2608" /></div>
         </div>
       </div>
@@ -120,26 +122,26 @@ const faqs = [
 
     <section class="section pricing" id="pricing">
       <div class="wrap pricing-grid">
-        <div class="pricing-copy" data-reveal><p class="eyebrow">Simple by design</p><h2>One tiny price.<br />One less subscription.</h2><p>Try the whole app free. Pay once only if Flicksy earns a place in your Dock.</p><div class="compatibility"><span>●</span> macOS 15+ · Apple Silicon</div></div>
+        <div class="pricing-copy" data-reveal><p class="eyebrow">Simple by design</p><h2>One tiny price.<br />One less subscription.</h2><p>Try the direct app free for 14 days, or buy the paid-upfront Mac App Store version. Either way, it is $19 once.</p><div class="compatibility"><span>●</span> macOS 15+ · Apple Silicon</div></div>
         <div class="price-card" data-reveal data-reveal-delay="1">
           <div class="price-top"><img src="/flicksy-app-icon.png" alt="Flicksy app icon" width="72" height="72" /><span>Lifetime license</span></div>
           <div class="price-line"><strong>$19</strong><span>USD<br />one-time</span></div>
-          <ul><li>Lifetime app access</li><li>All future Flicksy updates</li><li>Full-featured 14-day trial</li><li>Video, images, and audio</li><li>No Flicksy account or subscription</li></ul>
+          <ul><li>Lifetime app access</li><li>All future Flicksy updates</li><li>14-day trial in the direct version</li><li>Video, images, and audio</li><li>No Flicksy account or subscription</li></ul>
           <div class="purchase-actions">
             <a class="button button-dark button-wide" href={directPurchaseURL} id="direct-purchase">Buy direct — $19 <span>↗</span></a>
             <a class="button button-light button-wide" href={directDownloadURL}>Download direct trial <span>↓</span></a>
-            <a class="button button-light button-wide" href={appStoreURL} id="app-store">View on the Mac App Store <span>↗</span></a>
+            {appStoreURL && <a class="button button-light button-wide" href={appStoreURL} id="app-store">Buy on the Mac App Store — $19 <span>↗</span></a>}
           </div>
-          <p class="channel-note">Direct keys arrive by email and cover three Macs. App Store purchases restore through your Apple Account. Purchases do not transfer between stores.</p>
+          <p class="channel-note">Direct keys arrive by email and cover three Macs. App Store customers redownload Flicksy from their Apple Account’s Purchased list. Purchases do not transfer between stores.</p>
         </div>
       </div>
     </section>
 
     <section class="section purchase-details" id="pricing-details">
       <div class="wrap detail-grid">
-        <article><p class="eyebrow">Your trial</p><h3>Fourteen days, on your terms.</h3><p>The clock begins when you click Start 14-Day Trial inside Flicksy—not when you download it. You get the complete app. There is no automatic renewal or charge.</p></article>
+        <article><p class="eyebrow">Direct trial</p><h3>Fourteen days, on your terms.</h3><p>In the direct build, the clock begins when you click Start 14-Day Trial inside Flicksy—not when you download it. You get the complete app. There is no automatic renewal or charge.</p></article>
         <article><p class="eyebrow">Direct</p><h3>A key, not an account.</h3><p>Checkout emails your license key. Activate up to three Macs, and recover the order through <a href="https://creem.io/my-orders/login">Creem My Orders</a>.</p></article>
-        <article><p class="eyebrow">Mac App Store</p><h3>Purchased with Apple.</h3><p>Start the trial, buy, and restore with your Apple Account. App Store pricing is localized and shown by Apple before purchase.</p></article>
+        <article><p class="eyebrow">Mac App Store</p><h3>Paid upfront with Apple.</h3><p>The App Store build is a $19 paid download with no in-app trial, purchase, activation, or restore screen. Redownload it from your Apple Account’s Purchased list.</p></article>
       </div>
     </section>
 
@@ -217,7 +219,7 @@ const faqs = [
   .window-wrap { position: relative; }
   .window-wrap::before { content: ''; position: absolute; inset: -70px -80px; z-index: -1; border-radius: 50%; background: radial-gradient(circle, rgba(221,232,255,.8), rgba(243,225,242,.35) 45%, transparent 72%); }
   .detail-window { transform: rotate(1deg); }
-  .detail-window img { clip-path: inset(2.7% 3% 5.2% 3% round 18px); }
+  .detail-window img { height: auto; object-fit: contain; clip-path: inset(0 round 18px); }
   .horizon { position: relative; overflow: hidden; padding: 125px 0 0; background: #1c2530; color: #f7f9fb; isolation: isolate; }
   .horizon::after { content: ''; position: absolute; inset: auto 0 0; height: 34%; z-index: -1; background: linear-gradient(180deg, transparent, rgba(14,20,28,.35)); }
   .horizon-orb { position: absolute; z-index: -2; border-radius: 50%; }
@@ -225,7 +227,7 @@ const faqs = [
   .horizon-orb-b { width: 900px; height: 700px; left: -350px; top: 290px; background: #2d4354; }
   .horizon-content { position: relative; }
   .light { max-width: 690px; } .light .eyebrow, .light p { color: #9eaeba; } .light h2 { margin: 16px 0 22px; }
-  .feature-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 55px; }
+  .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 55px; }
   .glass-card { min-height: 270px; padding: 25px; border: 1px solid rgba(255,255,255,.11); border-radius: 22px; background: rgba(255,255,255,.055); box-shadow: inset 0 1px 0 rgba(255,255,255,.06); backdrop-filter: blur(20px); transition: transform .35s cubic-bezier(.22,1,.36,1), border-color .35s ease, background .35s ease, box-shadow .35s ease; }
   .glass-card:hover { transform: translateY(-4px); border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.075); box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 18px 45px rgba(5,11,18,.12); }
   .feature-icon { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; background: rgba(255,255,255,.08); color: #dbe9f3; font-size: 18px; }
@@ -238,7 +240,7 @@ const faqs = [
   .comparison-card { grid-template-columns: 1.55fr .68fr; padding-bottom: 125px; }
   .comparison-card .preview-copy { order: 2; }
   .comparison-card .comparison-window { order: 1; }
-  .comparison-window img { height: auto; object-fit: contain; clip-path: inset(3.1% 3.1% 6.2% 3.1% round 19px); filter: drop-shadow(0 38px 32px rgba(0,0,0,.35)) drop-shadow(0 8px 12px rgba(0,0,0,.2)); }
+  .comparison-window img { height: auto; object-fit: contain; clip-path: inset(0 round 19px); filter: drop-shadow(0 38px 32px rgba(0,0,0,.35)) drop-shadow(0 8px 12px rgba(0,0,0,.2)); }
   .organize { padding-top: 130px; }
   .organize-grid { margin-top: 58px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
   .soft-card { display: flex; flex-direction: column; min-height: 440px; padding: 16px; border: 1px solid rgba(132,143,158,.17); background: rgba(255,255,255,.7); border-radius: 25px; box-shadow: 0 20px 50px rgba(46,57,75,.06); transition: transform .35s cubic-bezier(.22,1,.36,1), box-shadow .35s ease, border-color .35s ease; }
@@ -311,7 +313,7 @@ const faqs = [
   @media (max-width: 950px) {
     .iridescent-stage { min-height: auto; margin-left: -20px; margin-right: -20px; padding: 50px 30px 90px; }
     .showcase-grid { grid-template-columns: 1fr; gap: 55px; } .showcase-copy { max-width: 650px; }
-    .feature-grid { grid-template-columns: 1fr 1fr; } .preview-card, .comparison-card { grid-template-columns: 1fr; } .preview-copy { max-width: 560px; }
+    .feature-grid { grid-template-columns: repeat(3, 1fr); } .preview-card, .comparison-card { grid-template-columns: 1fr; } .preview-copy { max-width: 560px; }
     .comparison-card .preview-copy, .comparison-card .comparison-window { order: initial; }
     .organize-grid { grid-template-columns: 1fr 1fr; } .favorites-card { grid-column: span 2; }
     .inventory-grid { grid-template-columns: repeat(2, 1fr); }

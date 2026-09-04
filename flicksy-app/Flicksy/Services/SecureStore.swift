@@ -29,7 +29,7 @@ enum SecureStoreError: LocalizedError {
 final class KeychainSecureStore: SecureStoring {
     private let service: String
 
-    init(service: String = "cloudedminds.Flicksy.access.direct") {
+    init(service: String = "\(Bundle.main.bundleIdentifier ?? "cloudedminds.Flicksy").access") {
         self.service = service
     }
 

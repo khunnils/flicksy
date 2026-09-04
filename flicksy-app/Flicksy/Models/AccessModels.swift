@@ -46,6 +46,7 @@ enum AccessActionError: LocalizedError, Equatable {
     case purchasePending
     case purchaseCancelled
     case unverifiedPurchase
+    case appPurchaseRevoked
     case service(String)
 
     var errorDescription: String? {
@@ -61,7 +62,9 @@ enum AccessActionError: LocalizedError, Equatable {
         case .purchaseCancelled:
             nil
         case .unverifiedPurchase:
-            "The App Store purchase could not be verified. Try restoring purchases."
+            "The paid App Store download could not be verified. Connect to the internet and choose Verify Purchase."
+        case .appPurchaseRevoked:
+            "Apple reports that this app purchase was revoked. Download Flicksy from the purchasing Apple Account or contact Apple Support."
         }
     }
 }

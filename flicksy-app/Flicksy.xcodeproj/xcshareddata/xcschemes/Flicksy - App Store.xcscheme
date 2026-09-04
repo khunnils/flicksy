@@ -59,8 +59,6 @@
             ReferencedContainer = "container:Flicksy.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <StoreKitConfigurationFileReference identifier = "../../Flicksy/Configuration/Flicksy.storekit">
-      </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
