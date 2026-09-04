@@ -301,6 +301,7 @@ final class BrowserModel {
     }
 
     func presentCommandPalette() {
+        if !isCommandPalettePresented { AppAnalytics.shared.record(.commandPaletteOpened) }
         isSearchPresented = false
         isQuickGotoPresented = false
         isQuickGotoFieldFocused = false
@@ -2724,6 +2725,7 @@ final class BrowserModel {
         let candidates = comparisonCandidates(clicked: item)
         guard candidates.count >= 2 else { return }
         if let requestedLayout, !requestedLayout.isAvailable(for: candidates.count) { return }
+        AppAnalytics.shared.record(.comparisonOpened)
 
         comparePreparationTask?.cancel()
 
@@ -3050,6 +3052,7 @@ final class BrowserModel {
     }
 
     func openViewer(_ item: MediaItem) {
+        AppAnalytics.shared.record(.previewOpened)
         // The viewer creates its own player; releasing the inline ones keeps the
         // "one player at a time" invariant and stops audio playing underneath it.
         clearImageComparisonState()

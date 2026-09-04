@@ -14,6 +14,10 @@ struct FlicksyApp: App {
     @State private var access = AccessController()
     @State private var updater = UpdateController()
 
+    init() {
+        AppAnalytics.shared.start()
+    }
+
     var body: some Scene {
         WindowGroup {
             FlicksyRootView(browserModel: $model)
@@ -196,6 +200,10 @@ struct FlicksyApp: App {
                     }
                 }
             }
+        }
+
+        Settings {
+            AnalyticsSettingsView()
         }
 
         Window("About Flicksy", id: AboutView.windowID) {

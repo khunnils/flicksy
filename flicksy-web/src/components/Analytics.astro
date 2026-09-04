@@ -1,0 +1,11 @@
+---
+import { env } from 'cloudflare:workers';
+const appID = env.FLICKSY_TELEMETRYDECK_APP_ID ?? '';
+const testMode = env.FLICKSY_ENVIRONMENT !== 'production';
+---
+<div id="analytics-config" hidden data-app-id={appID} data-test-mode={String(testMode)}></div>
+<script>
+  import { setupAnalytics } from '../lib/analytics';
+  const config = document.querySelector<HTMLElement>('#analytics-config');
+  if (config) setupAnalytics(config.dataset.appId ?? '', config.dataset.testMode !== 'false');
+</script>

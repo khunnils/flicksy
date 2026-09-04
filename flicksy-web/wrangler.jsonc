@@ -8,6 +8,7 @@
       ],
       "vars": {
         "FLICKSY_ENVIRONMENT": "test",
+        "FLICKSY_TELEMETRYDECK_APP_ID": "EA9C901A-3BDD-4943-A617-0357BB5C6BA2",
         "FLICKSY_SITE_URL": "https://preview.flicksy.me",
         "FLICKSY_DIRECT_DOWNLOAD_URL": "https://github.com/khunnils/flicksy/releases/download/test-latest/Flicksy-Test.dmg",
         "FLICKSY_APP_STORE_URL": "",
@@ -20,6 +21,7 @@
       ],
       "vars": {
         "FLICKSY_ENVIRONMENT": "production",
+        "FLICKSY_TELEMETRYDECK_APP_ID": "EA9C901A-3BDD-4943-A617-0357BB5C6BA2",
         "FLICKSY_SITE_URL": "https://flicksy.me",
         "FLICKSY_DIRECT_DOWNLOAD_URL": "https://github.com/khunnils/flicksy/releases/latest/download/Flicksy.dmg",
         "FLICKSY_APP_STORE_URL": "https://apps.apple.com/app/idREPLACE_BEFORE_DEPLOY",

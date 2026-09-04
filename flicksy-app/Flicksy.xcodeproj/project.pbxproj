@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		BB0000000000000000000003 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = BB0000000000000000000005 /* Sparkle */; };
+		DD0000000000000000000001 /* TelemetryDeck in Frameworks */ = {isa = PBXBuildFile; productRef = DD0000000000000000000003 /* TelemetryDeck */; };
+		DD0000000000000000000002 /* TelemetryDeck in Frameworks */ = {isa = PBXBuildFile; productRef = DD0000000000000000000003 /* TelemetryDeck */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -80,6 +82,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BB0000000000000000000003 /* Sparkle in Frameworks */,
+				DD0000000000000000000001 /* TelemetryDeck in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -94,6 +97,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DD0000000000000000000002 /* TelemetryDeck in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -152,6 +156,7 @@
 			name = Flicksy;
 			packageProductDependencies = (
 				BB0000000000000000000005 /* Sparkle */,
+				DD0000000000000000000003 /* TelemetryDeck */,
 			);
 			productName = Flicksy;
 			productReference = 29986C763037E7160009632B /* Flicksy.app */;
@@ -197,6 +202,7 @@
 			);
 			name = "Flicksy App Store";
 			packageProductDependencies = (
+				DD0000000000000000000003 /* TelemetryDeck */,
 			);
 			productName = Flicksy;
 			productReference = BB0000000000000000000001 /* Flicksy App Store.app */;
@@ -261,6 +267,7 @@
 			mainGroup = 29986C6D3037E7160009632B;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				DD0000000000000000000004 /* XCRemoteSwiftPackageReference "SwiftSDK" */,
 				BB0000000000000000000004 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -843,6 +850,14 @@
 				version = 2.9.6;
 			};
 		};
+		DD0000000000000000000004 /* XCRemoteSwiftPackageReference "SwiftSDK" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/TelemetryDeck/SwiftSDK";
+			requirement = {
+				kind = exactVersion;
+				version = 2.14.2;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -850,6 +865,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = BB0000000000000000000004 /* XCRemoteSwiftPackageReference "Sparkle" */;
 			productName = Sparkle;
+		};
+		DD0000000000000000000003 /* TelemetryDeck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DD0000000000000000000004 /* XCRemoteSwiftPackageReference "SwiftSDK" */;
+			productName = TelemetryDeck;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -55,7 +55,7 @@ const faqs = [
         <h1><strong>Meet Flicksy</strong><span>A modern media browser for Mac</span></h1>
         <p class="hero-lead">Designed for content creators, Flicksy brings every clip, image, and sound into one beautifully fast Mac app. Skim, compare, organize, and drag the right moment straight into your editor.</p>
         <div class="hero-actions">
-          <a class="button button-dark" href={directDownloadURL}>Download now <span>↘</span></a>
+          <a class="button button-dark" href={directDownloadURL} data-analytics-event="com.flicksy.Web.downloadClicked">Download now <span>↘</span></a>
           <a class="text-link" href="#how">See how it works <span>↓</span></a>
         </div>
         <p class="fine-print">14-day full trial · $24.99 once · all 1.x updates</p>
@@ -133,8 +133,8 @@ const faqs = [
             <li>All 1.x updates</li>
           </ul>
           <div class="purchase-actions">
-            <a class="button button-dark button-wide" href={directPurchaseURL} id="direct-purchase">Buy — $24.99 <span>↗</span></a>
-            <a class="button button-light button-wide" href={directDownloadURL}>Download now <span>↓</span></a>
+            <a class="button button-dark button-wide" href={directPurchaseURL} data-analytics-event="com.flicksy.Web.purchaseClicked" id="direct-purchase">Buy — $24.99 <span>↗</span></a>
+            <a class="button button-light button-wide" href={directDownloadURL} data-analytics-event="com.flicksy.Web.downloadClicked">Download now <span>↓</span></a>
           </div>
           <p class="channel-note">A license key arrives by email and activates up to three Macs.</p>
         </div>
