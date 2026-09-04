@@ -1,14 +1,20 @@
 name: Publish Flicksy Test candidate
 
 on:
+  push:
+    branches: [dev]
+    paths:
+      - 'flicksy-app/**'
+      - '.github/workflows/release-direct-test.yml'
   workflow_dispatch:
     inputs:
       version:
-        description: Marketing version
-        required: true
+        description: Marketing version (defaults to 1.0 on push)
+        required: false
+        default: '1.0'
       build:
-        description: Integer build number
-        required: true
+        description: Integer build number (defaults to the run number on push)
+        required: false
 
 permissions:
   contents: write
@@ -17,6 +23,9 @@ jobs:
   candidate:
     runs-on: macos-latest
     environment: test
+    env:
+      MARKETING_VERSION: ${{ inputs.version || '1.0' }}
+      BUILD_NUMBER: ${{ inputs.build || github.run_number }}
     steps:
       - uses: actions/checkout@v4
       - name: Configure paths
@@ -48,8 +57,8 @@ jobs:
             -scheme 'Flicksy - Direct Test' \
             -configuration 'Direct Test' \
             -archivePath "$ARCHIVE_PATH" \
-            MARKETING_VERSION='${{ inputs.version }}' \
-            CURRENT_PROJECT_VERSION='${{ inputs.build }}' \
+            MARKETING_VERSION="$MARKETING_VERSION" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             DEVELOPMENT_TEAM='${{ vars.APPLE_TEAM_ID }}' \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY='Developer ID Application'

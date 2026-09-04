@@ -30,6 +30,11 @@ insufficient-funds, bad-CVC, and expired-card test cases. Save a screenshot afte
 each result and capture a trace when diagnosing a failure. Never paste a real
 card or live API key into the test environment.
 
+## Branches
+
+Pushes to `dev` deploy `preview.flicksy.me` and, when app sources change, replace
+the `test-latest` Flicksy Test DMG. Production stays on `main`.
+
 ## Promotion checks
 
 - Test download resolves to `test-latest/Flicksy-Test.dmg`.

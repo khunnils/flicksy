@@ -36,10 +36,12 @@ pnpm dry-run:test
 pnpm dry-run:production
 ```
 
-Deployments use `pnpm deploy:test` or `pnpm deploy:production`. CI supplies the
-matching Cloudflare token and `CREEM_API_KEY` through GitHub environments. The
-production placeholders in `wrangler.jsonc` are deliberately rejected by the
-release verifier until the live Creem product and App Store listing exist.
+Deployments use `pnpm deploy:test` or `pnpm deploy:production`. Pushes to `dev`
+deploy the test site; production deploys from `main` via the release workflow.
+CI supplies the matching Cloudflare token and `CREEM_API_KEY` through GitHub
+environments. The production placeholders in `wrangler.jsonc` are deliberately
+rejected by the release verifier until the live Creem product and App Store
+listing exist.
 
 Hosted checkout smoke testing uses Playwright CLI and stores evidence in the
 repository-level `output/playwright/` directory; see `docs/environment-runbook.md`.
