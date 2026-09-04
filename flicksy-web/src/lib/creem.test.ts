@@ -14,11 +14,11 @@ const config: CreemRuntimeConfig = {
 describe('Creem checkout', () => {
   it('creates a hosted checkout with environment metadata', async () => {
     const fetcher = vi.fn(async () => new Response(JSON.stringify({
-      checkout_url: 'https://checkout.creem.io/checkout/ch_123',
+      checkout_url: 'https://creem.io/test/checkout/ch_123',
     }), { status: 200 })) as unknown as typeof fetch;
 
     await expect(createCheckout(config, 'app', fetcher)).resolves.toBe(
-      'https://checkout.creem.io/checkout/ch_123',
+      'https://creem.io/test/checkout/ch_123',
     );
     const [, init] = vi.mocked(fetcher).mock.calls[0];
     expect(JSON.parse(String(init?.body))).toMatchObject({
@@ -26,6 +26,39 @@ describe('Creem checkout', () => {
       success_url: 'https://preview.flicksy.me/purchase/success',
       metadata: { source: 'app', environment: 'test' },
     });
+  });
+
+  it('accepts Creem checkout hosts used in test and live', async () => {
+    for (const checkoutURL of [
+      'https://creem.io/test/checkout/ch_123',
+      'https://www.creem.io/test/checkout/ch_123',
+      'https://checkout.creem.io/ch_123',
+    ]) {
+      const fetcher = vi.fn(async () => new Response(JSON.stringify({
+        checkout_url: checkoutURL,
+      }), { status: 200 })) as unknown as typeof fetch;
+      await expect(createCheckout(config, 'web', fetcher)).resolves.toBe(checkoutURL);
+    }
+  });
+
+  it('reads camelCase checkoutUrl from Creem', async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({
+      checkoutUrl: 'https://creem.io/test/checkout/ch_123',
+    }), { status: 200 })) as unknown as typeof fetch;
+
+    await expect(createCheckout(config, 'web', fetcher)).resolves.toBe(
+      'https://creem.io/test/checkout/ch_123',
+    );
+  });
+
+  it('rejects a checkout URL off the Creem domain', async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({
+      checkout_url: 'https://example.com/checkout/ch_123',
+    }), { status: 200 })) as unknown as typeof fetch;
+
+    await expect(createCheckout(config, 'web', fetcher)).rejects.toThrow(
+      'Creem returned an invalid checkout URL.',
+    );
   });
 
   it('returns only a completed matching license', async () => {

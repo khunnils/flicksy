@@ -17,6 +17,7 @@ type CreemCheckout = {
   product?: unknown;
   product_id?: unknown;
   checkout_url?: unknown;
+  checkoutUrl?: unknown;
   license_keys?: unknown;
   metadata?: unknown;
 };
@@ -44,7 +45,7 @@ export async function createCheckout(
   const parsed = await readJSON(response) as CreemCheckout;
   if (!response.ok) throw new Error(readCreemMessage(parsed) ?? 'Checkout is unavailable.');
 
-  const checkoutURL = readString(parsed.checkout_url);
+  const checkoutURL = readString(parsed.checkout_url) ?? readString(parsed.checkoutUrl);
   if (!checkoutURL || !isCreemCheckoutURL(checkoutURL)) {
     throw new Error('Creem returned an invalid checkout URL.');
   }
@@ -176,10 +177,14 @@ function readString(value: unknown): string | undefined {
 function isCreemCheckoutURL(value: string): boolean {
   try {
     const url = new URL(value);
-    return url.protocol === 'https:' && (url.hostname === 'checkout.creem.io' || url.hostname === 'www.creem.io');
+    return url.protocol === 'https:' && isCreemHostname(url.hostname);
   } catch {
     return false;
   }
+}
+
+function isCreemHostname(hostname: string): boolean {
+  return hostname === 'creem.io' || hostname.endsWith('.creem.io');
 }
 
 function constantTimeEqual(left: string, right: string): boolean {
