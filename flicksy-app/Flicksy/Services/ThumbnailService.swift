@@ -177,10 +177,20 @@ actor ThumbnailService {
     /// Read an image's oriented pixel dimensions without decoding its pixels.
     /// Comparison uses this to choose its initial layout for off-screen items.
     nonisolated static func pixelSize(for url: URL) -> CGSize? {
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
-        let (width, height) = originalPixelSize(of: source)
-        guard let width, let height, width > 0, height > 0 else { return nil }
-        return CGSize(width: width, height: height)
+        if let size = svgImage(at: url)?.size {
+            guard size.width.isFinite, size.height.isFinite,
+                  size.width > 0, size.height > 0
+            else { return nil }
+            return size
+        }
+
+        if let source = CGImageSourceCreateWithURL(url as CFURL, nil) {
+            let (width, height) = originalPixelSize(of: source)
+            if let width, let height, width > 0, height > 0 {
+                return CGSize(width: width, height: height)
+            }
+        }
+        return nil
     }
 
     // MARK: - Generation
@@ -188,26 +198,102 @@ actor ThumbnailService {
     /// Synchronous ImageIO thumbnail generation, run off the actor via a detached
     /// task. `nonisolated` so it never touches actor-isolated state.
     nonisolated private static func generate(url: URL, maxPixel: Int) -> Thumbnail? {
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        if UTType(filenameExtension: url.pathExtension)?.conforms(to: .svg) == true {
+            return generateSVG(url: url, maxPixel: maxPixel)
+        }
 
-        let (pixelWidth, pixelHeight) = originalPixelSize(of: source)
+        if let source = CGImageSourceCreateWithURL(url as CFURL, nil) {
+            let (pixelWidth, pixelHeight) = originalPixelSize(of: source)
 
-        let options: [CFString: Any] = [
-            kCGImageSourceCreateThumbnailFromImageAlways: true,
-            kCGImageSourceThumbnailMaxPixelSize: maxPixel,
-            // Apply EXIF orientation so portrait photos are not rendered sideways.
-            kCGImageSourceCreateThumbnailWithTransform: true,
-            // Decode into the cache immediately on this background thread rather
-            // than lazily on the main thread at draw time.
-            kCGImageSourceShouldCacheImmediately: true,
-        ]
+            let options: [CFString: Any] = [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceThumbnailMaxPixelSize: maxPixel,
+                // Apply EXIF orientation so portrait photos are not rendered sideways.
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                // Decode into the cache immediately on this background thread rather
+                // than lazily on the main thread at draw time.
+                kCGImageSourceShouldCacheImmediately: true,
+            ]
 
-        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+            if let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) {
+                let image = NSImage(
+                    cgImage: cgImage,
+                    size: NSSize(width: cgImage.width, height: cgImage.height)
+                )
+                return Thumbnail(image: image, pixelWidth: pixelWidth, pixelHeight: pixelHeight)
+            }
+        }
+
+        return nil
+    }
+
+    /// ImageIO does not rasterize SVG files, even though AppKit can represent
+    /// them. Draw AppKit's vector representation into an explicitly sized bitmap
+    /// so SVGs use the same bounded memory, disk cache, and display paths as
+    /// ordinary still images.
+    nonisolated private static func generateSVG(url: URL, maxPixel: Int) -> Thumbnail? {
+        guard let sourceImage = svgImage(at: url) else { return nil }
+
+        let sourceSize = sourceImage.size
+        guard sourceSize.width.isFinite, sourceSize.height.isFinite,
+              sourceSize.width > 0, sourceSize.height > 0
+        else { return nil }
+        let largestEdge = max(sourceSize.width, sourceSize.height)
+
+        let scale = CGFloat(maxPixel) / largestEdge
+        let pixelWidth = max(1, Int((sourceSize.width * scale).rounded()))
+        let pixelHeight = max(1, Int((sourceSize.height * scale).rounded()))
+
+        guard let bitmap = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: pixelWidth,
+            pixelsHigh: pixelHeight,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ), let context = NSGraphicsContext(bitmapImageRep: bitmap) else {
             return nil
         }
 
-        let image = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
-        return Thumbnail(image: image, pixelWidth: pixelWidth, pixelHeight: pixelHeight)
+        bitmap.size = NSSize(width: pixelWidth, height: pixelHeight)
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        context.cgContext.clear(CGRect(x: 0, y: 0, width: pixelWidth, height: pixelHeight))
+        sourceImage.draw(
+            in: NSRect(x: 0, y: 0, width: pixelWidth, height: pixelHeight),
+            from: .zero,
+            operation: .copy,
+            fraction: 1
+        )
+        context.flushGraphics()
+        NSGraphicsContext.restoreGraphicsState()
+
+        guard let cgImage = bitmap.cgImage else { return nil }
+        let image = NSImage(
+            cgImage: cgImage,
+            size: NSSize(width: pixelWidth, height: pixelHeight)
+        )
+        return Thumbnail(
+            image: image,
+            pixelWidth: reportedDimension(sourceSize.width),
+            pixelHeight: reportedDimension(sourceSize.height)
+        )
+    }
+
+    nonisolated private static func reportedDimension(_ value: CGFloat) -> Int? {
+        guard value.isFinite, value > 0, value <= CGFloat(Int.max) else { return nil }
+        return Int(value.rounded())
+    }
+
+    nonisolated private static func svgImage(at url: URL) -> NSImage? {
+        guard UTType(filenameExtension: url.pathExtension)?.conforms(to: .svg) == true else {
+            return nil
+        }
+        return NSImage(contentsOf: url)
     }
 
     /// Read the source image's pixel dimensions from metadata without decoding it.

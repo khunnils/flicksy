@@ -540,7 +540,9 @@ final class BrowserModel {
         }
     }
 
-    static let minThumbnailSize: Double = 80
+    /// Small enough for dense icon and sprite folders while leaving captions
+    /// usable. Photo folders still open at `defaultThumbnailSize`.
+    static let minThumbnailSize: Double = 48
     static let maxThumbnailSize: Double = 400
     static let defaultThumbnailSize: Double = 200
     static let thumbnailSizeStep: Double = 28

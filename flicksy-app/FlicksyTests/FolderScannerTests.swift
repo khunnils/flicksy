@@ -32,12 +32,14 @@ final class FolderScannerTests: XCTestCase {
     /// folder even though the catalog indexes recursively.
     func testScannerReturnsOnlyDirectChildren() async throws {
         try write("direct.png")
+        try write("vector.svg")
         try write("clip.mov")
         try write("sub/nested.png")
         try write("sub/deeper/buried.mp3")
 
         let items = try await FolderScanner.mediaItems(in: root)
-        XCTAssertEqual(Set(items.map(\.name)), ["direct.png", "clip.mov"])
+        XCTAssertEqual(Set(items.map(\.name)), ["direct.png", "vector.svg", "clip.mov"])
+        XCTAssertEqual(items.first(where: { $0.name == "vector.svg" })?.type, .image)
     }
 
     func testTreeSkipsExcludedHiddenPackagedAndSymlinkedDirectories() async throws {

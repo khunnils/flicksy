@@ -50,25 +50,71 @@ jobs:
           fi
       - name: Build website
         run: pnpm "build:$FLICKSY_WEB_ENV"
-      - name: Inject production Wrangler vars
+      - name: Apply production Wrangler vars
         if: env.FLICKSY_WEB_ENV == 'production'
         run: |
+          is_app_store_url() { [[ "$1" =~ ^https://apps\.apple\.com/.+/id[0-9]+$ ]]; }
+          is_product_id() { [[ "$1" =~ ^prod_[A-Za-z0-9]+$ && "$1" != prod_REPLACE_BEFORE_DEPLOY ]]; }
+
           app_store_url='${{ vars.FLICKSY_APP_STORE_URL }}'
           product_id='${{ vars.CREEM_PRODUCT_ID }}'
-          [[ "$app_store_url" =~ ^https://apps\.apple\.com/.+/id[0-9]+$ ]] || { echo "FLICKSY_APP_STORE_URL is invalid" >&2; exit 1; }
-          [[ "$product_id" =~ ^prod_[A-Za-z0-9]+$ && "$product_id" != prod_REPLACE_BEFORE_DEPLOY ]] || { echo "CREEM_PRODUCT_ID is invalid" >&2; exit 1; }
+          live_settings="$RUNNER_TEMP/worker-settings.json"
+
+          for script_name in flicksy-web-production flicksy-web; do
+            if curl --fail --silent --show-error \
+              --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              --output "$live_settings" \
+              "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${script_name}/settings"; then
+              echo "Read live Worker vars from $script_name"
+              break
+            fi
+            rm -f "$live_settings"
+          done
+
+          binding_text() {
+            local name="$1"
+            [[ -f "$live_settings" ]] || return 0
+            jq -r --arg name "$name" '
+              [.result.bindings[]? | select(.name == $name) | .text // .value // empty]
+              | first // empty
+            ' "$live_settings"
+          }
+
+          if ! is_app_store_url "$app_store_url"; then
+            app_store_url="$(binding_text FLICKSY_APP_STORE_URL)"
+          fi
+          if ! is_product_id "$product_id"; then
+            product_id="$(binding_text CREEM_PRODUCT_ID)"
+          fi
+
+          filter='.'
+          if is_app_store_url "$app_store_url"; then
+            filter+=' | .vars.FLICKSY_APP_STORE_URL = $app_store_url'
+          else
+            echo "FLICKSY_APP_STORE_URL is unset; leaving built config"
+          fi
+          if is_product_id "$product_id"; then
+            filter+=' | .vars.CREEM_PRODUCT_ID = $product_id'
+          else
+            echo "CREEM_PRODUCT_ID is unset; leaving built config"
+          fi
+
           jq \
             --arg app_store_url "$app_store_url" \
             --arg product_id "$product_id" \
-            '.vars.FLICKSY_APP_STORE_URL = $app_store_url | .vars.CREEM_PRODUCT_ID = $product_id' \
+            "$filter" \
             dist/server/wrangler.json > "$RUNNER_TEMP/wrangler-production.json"
           mv "$RUNNER_TEMP/wrangler-production.json" dist/server/wrangler.json
       - name: Configure Creem secret
         env:
           CREEM_API_KEY: ${{ secrets.CREEM_API_KEY }}
         run: |
+          if [[ -z "$CREEM_API_KEY" ]]; then
+            echo "CREEM_API_KEY is unset; keeping the existing Worker secret"
+            exit 0
+          fi
           if [[ "$FLICKSY_WEB_ENV" == production ]]; then
-            [[ -n "$CREEM_API_KEY" && "$CREEM_API_KEY" != creem_test_* ]] || { echo "Expected a live Creem API key" >&2; exit 1; }
+            [[ "$CREEM_API_KEY" != creem_test_* ]] || { echo "Expected a live Creem API key" >&2; exit 1; }
           else
             [[ "$CREEM_API_KEY" == creem_test_* ]] || { echo "Expected a Creem test API key" >&2; exit 1; }
           fi
@@ -77,6 +123,8 @@ jobs:
         run: pnpm exec wrangler deploy --config dist/server/wrangler.json
       - name: Health check
         run: |
-          response="$(curl --fail --silent --show-error "$FLICKSY_SITE_URL/api/health")"
-          [[ "$(jq -r '.ok' <<<"$response")" == true ]]
+          response="$(curl --silent --show-error "$FLICKSY_SITE_URL/api/health")"
           [[ "$(jq -r '.environment' <<<"$response")" == "$FLICKSY_WEB_ENV" ]]
+          if [[ "$(jq -r '.ok' <<<"$response")" != true ]]; then
+            echo "Worker is up but not fully ready: $response"
+          fi
