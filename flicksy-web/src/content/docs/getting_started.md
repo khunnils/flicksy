@@ -23,7 +23,7 @@ The first launch may ask for permission to read folders you choose. Flicksy only
 
 The complete app is included. The 14-day trial begins only when you click **Start 14-Day Free Trial** inside Flicksy — not when you download it. It does not auto-renew and never creates a charge.
 
-You can buy a license at any time from the trial screen, **Flicksy → Buy Flicksy…**, or [the website](/#pricing). See [Trial and license](/docs/trial_and_license).
+You can buy a license at any time from the trial screen or **Flicksy → Buy Flicksy…**. See [Trial and license](/docs/trial_and_license).
 
 ## Take the welcome tour
 

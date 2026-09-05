@@ -14,7 +14,7 @@ When the trial ends, your folders and Flicksy organization stay on disk. Buy a l
 
 ## Buy and activate
 
-1. Buy from [flicksy.me](/#pricing) or **Flicksy → Buy Flicksy…** in the app.
+1. Buy from **Flicksy → Buy Flicksy…** in the app.
 2. Checkout emails a license key.
 3. Paste the key into Flicksy and choose **Activate**.
 

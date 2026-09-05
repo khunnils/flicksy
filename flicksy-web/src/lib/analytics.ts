@@ -4,7 +4,11 @@ export const analyticsPreferenceKey = 'flicksy.analytics.disabled';
 const pages = new Set(['/', '/docs', '/privacy', '/license', '/refunds',
   '/docs/getting_started', '/docs/browsing', '/docs/preview', '/docs/audio',
   '/docs/organize', '/docs/keyboard_shortcuts', '/docs/trial_and_license']);
-const events = new Set(['com.flicksy.Web.downloadClicked', 'com.flicksy.Web.purchaseClicked']);
+const events = new Set([
+  'com.flicksy.Web.downloadClicked',
+  'com.flicksy.Web.purchaseClicked',
+  'com.flicksy.Web.appStoreClicked',
+]);
 
 // An allowlist avoids leaking arbitrary path segments, queries, fragments or
 // purchase callback data. Checkout/success and unknown pages send nothing.
