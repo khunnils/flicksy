@@ -98,7 +98,7 @@ final class DirectAccessProvider: AccessProviding {
     private let deviceKey = "device"
 
     convenience init() {
-        let bundleID = Bundle.main.bundleIdentifier ?? "cloudedminds.Flicksy"
+        let bundleID = Bundle.main.bundleIdentifier ?? "me.flicksy.app"
         self.init(
             configuration: .fromBundle(),
             secureStore: KeychainSecureStore(service: "\(bundleID).access.direct")

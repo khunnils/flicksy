@@ -10,7 +10,7 @@ import Foundation
 /// filesystem work; `BrowserModel` debounces bursts before starting cancellable
 /// background rescans.
 final class FileSystemMonitor: @unchecked Sendable {
-    private let queue = DispatchQueue(label: "cloudedminds.Flicksy.filesystem-monitor", qos: .utility)
+    private let queue = DispatchQueue(label: "me.flicksy.app.filesystem-monitor", qos: .utility)
     private let onChange: @MainActor @Sendable (_ hasStructuralChanges: Bool) -> Void
     private var stream: FSEventStreamRef?
 

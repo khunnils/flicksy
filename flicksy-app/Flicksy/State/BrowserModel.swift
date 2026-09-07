@@ -41,6 +41,56 @@ enum BrowserSource: Hashable, Sendable {
     case folder(MediaFolder.ID)
 }
 
+/// App-wide stores shared by all browser windows. The model itself remains
+/// window-scoped; these services hold only persisted library state.
+@MainActor
+@Observable
+final class SharedLibraryServices {
+    static let shared = SharedLibraryServices()
+
+    let rootStore = RootFolderStore()
+    let libraryRepository = LibraryRepository()
+    let standardFolderStore = StandardFolderStore()
+    let scanExclusionStore = FolderScanExclusionStore()
+    let clipboardStore = ClipboardHistoryStore()
+    let onboardingStore = OnboardingStore()
+
+    // Keep models reachable while an inspector window may still refer to them.
+    // The browser's own tasks are cancelled by `shutdown` when its window closes.
+    private var models: [UUID: BrowserModel] = [:]
+
+    func register(_ model: BrowserModel) {
+        models[model.sessionID] = model
+    }
+
+    func unregister(_ model: BrowserModel) {
+        models.removeValue(forKey: model.sessionID)
+    }
+
+    func model(for sessionID: UUID) -> BrowserModel? {
+        models[sessionID]
+    }
+
+    func notifyOrganizationChanged(excluding source: BrowserModel) {
+        for model in models.values where model !== source {
+            Task { @MainActor in
+                await model.refreshOrganization(reloadSelection: true, broadcast: false)
+            }
+        }
+    }
+
+    func notifyRootFoldersChanged(excluding source: BrowserModel) {
+        for model in models.values where model !== source {
+            model.refreshSharedRoots()
+        }
+    }
+}
+
+struct MediaInfoWindowRequest: Hashable, Codable, Sendable {
+    let sessionID: UUID
+    let itemID: String
+}
+
 /// Cache reads and live scan batches race through one stream. Fast local folders
 /// usually produce a live batch first; slower/network folders can paint from the
 /// cache without delaying reconciliation.
@@ -188,6 +238,7 @@ final class MediaItemSelectionState {
 @Observable
 @MainActor
 final class BrowserModel {
+    let sessionID = UUID()
     /// One pruned tree per authorized root folder, shown in the sidebar.
     private(set) var rootTrees: [MediaFolder] = []
 
@@ -894,11 +945,12 @@ final class BrowserModel {
     private static let sortKeyKey = "sortKey"
     private static let sortAscendingKey = "sortAscending"
 
-    private let rootStore = RootFolderStore()
+    private let services: SharedLibraryServices
+    private let rootStore: RootFolderStore
     private let libraryRepository: LibraryRepository
-    private let standardFolderStore = StandardFolderStore()
-    private let scanExclusionStore = FolderScanExclusionStore()
-    private let clipboardStore = ClipboardHistoryStore()
+    private let standardFolderStore: StandardFolderStore
+    private let scanExclusionStore: FolderScanExclusionStore
+    private let clipboardStore: ClipboardHistoryStore
     private let onboardingStore: OnboardingStore
     private var scanTask: Task<Void, Never>?
     private var mediaTask: Task<Void, Never>?
@@ -927,13 +979,23 @@ final class BrowserModel {
     // MARK: - Lifecycle
 
     convenience init() {
-        self.init(onboardingStore: OnboardingStore())
+        self.init(services: .shared)
     }
 
-    init(onboardingStore: OnboardingStore, libraryRepository: LibraryRepository = LibraryRepository()) {
-        self.libraryRepository = libraryRepository
-        self.onboardingStore = onboardingStore
-        isWelcomePresented = onboardingStore.shouldPresent
+    init(
+        services: SharedLibraryServices,
+        onboardingStore: OnboardingStore? = nil,
+        libraryRepository: LibraryRepository? = nil
+    ) {
+        let usesSharedServices = onboardingStore == nil && libraryRepository == nil
+        self.services = services
+        rootStore = services.rootStore
+        self.libraryRepository = libraryRepository ?? services.libraryRepository
+        standardFolderStore = services.standardFolderStore
+        scanExclusionStore = services.scanExclusionStore
+        clipboardStore = services.clipboardStore
+        self.onboardingStore = onboardingStore ?? services.onboardingStore
+        isWelcomePresented = self.onboardingStore.shouldPresent
 
         PersistentMediaCache.scheduleMaintenance()
 
@@ -953,7 +1015,15 @@ final class BrowserModel {
         } else {
             sortAscending = UserDefaults.standard.bool(forKey: Self.sortAscendingKey)
         }
+        if usesSharedServices { services.register(self) }
     }
+
+    convenience init(onboardingStore: OnboardingStore, libraryRepository: LibraryRepository = LibraryRepository()) {
+        self.init(services: .shared, onboardingStore: onboardingStore, libraryRepository: libraryRepository)
+    }
+
+    // Window teardown cancels view tasks automatically; shared stores remain
+    // alive for other windows.
 
     /// Restore persisted root folders and scan them. Call once when the UI appears.
     func restore() {
@@ -977,6 +1047,7 @@ final class BrowserModel {
         loadError = nil
         restartFilesystemMonitoring()
         rescanRoots()
+        services.notifyRootFoldersChanged(excluding: self)
         return url
     }
 
@@ -988,6 +1059,7 @@ final class BrowserModel {
         loadError = nil
         restartFilesystemMonitoring()
         rescanRoots()
+        services.notifyRootFoldersChanged(excluding: self)
         return true
     }
 
@@ -1001,6 +1073,7 @@ final class BrowserModel {
         }
         restartFilesystemMonitoring()
         rescanRoots()
+        services.notifyRootFoldersChanged(excluding: self)
     }
 
     /// Hide a subdirectory from the sidebar and skip it on future scans.
@@ -1014,6 +1087,7 @@ final class BrowserModel {
             setMediaItems([])
         }
         rescanRoots()
+        services.notifyRootFoldersChanged(excluding: self)
     }
 
     func hasHiddenSubfolders(under folder: MediaFolder) -> Bool {
@@ -1392,7 +1466,7 @@ final class BrowserModel {
         reorderCollectionItem(item, before: target)
     }
 
-    private func refreshOrganization(reloadSelection: Bool) async {
+    fileprivate func refreshOrganization(reloadSelection: Bool, broadcast: Bool = true) async {
         do {
             async let loadedTags = libraryRepository.tags()
             async let loadedCollections = libraryRepository.collections()
@@ -1401,6 +1475,7 @@ final class BrowserModel {
             smartCollections = try await libraryRepository.smartCollections(rootPaths: smartCollectionRoots.map(\.path))
             invalidateCommandPaletteSearchIndex()
             if reloadSelection || isSmartCollectionSelected { loadMediaForSelection(preservingInteraction: true) }
+            if broadcast { services.notifyOrganizationChanged(excluding: self) }
         } catch { organizationError = error.localizedDescription }
     }
 
@@ -1514,8 +1589,10 @@ final class BrowserModel {
         editAudioTagsRequest = AudioTagsEditRequest(items: targets)
     }
 
-    func registerInfoItem(_ item: MediaItem) {
+    @discardableResult
+    func registerInfoItem(_ item: MediaItem) -> MediaInfoWindowRequest {
         infoItems[item.id] = item
+        return MediaInfoWindowRequest(sessionID: sessionID, itemID: item.id)
     }
 
     func mediaItemForInfo(id: MediaItem.ID) -> MediaItem? {
@@ -1894,6 +1971,23 @@ final class BrowserModel {
         ) { [weak self] hasStructuralChanges in
             self?.filesystemDidChange(hasStructuralChanges: hasStructuralChanges)
         }
+    }
+
+    fileprivate func refreshSharedRoots() {
+        restartFilesystemMonitoring()
+        rescanRoots()
+    }
+
+    func shutdown() {
+        scanTask?.cancel()
+        mediaTask?.cancel()
+        monitorRefreshTask?.cancel()
+        treeRefreshTask?.cancel()
+        sortRefreshTask?.cancel()
+        commandPaletteIndexTask?.cancel()
+        comparePreparationTask?.cancel()
+        clipboardMonitorTask?.cancel()
+        fileSystemMonitor = nil
     }
 
     /// Editors often emit several rename/write events for one save. Coalesce the

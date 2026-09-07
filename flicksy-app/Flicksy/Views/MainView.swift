@@ -113,7 +113,9 @@ struct MainView: View {
         }
         .onDisappear {
             removeScrollMonitor()
+            model.shutdown()
         }
+        .focusedSceneValue(\.browserModel, model)
         .alert(
             "Folder Problem",
             isPresented: Binding(

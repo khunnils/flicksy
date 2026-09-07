@@ -25,17 +25,17 @@ case "$channel" in
     public_key="$(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' "$info")"
 
     if [[ "$channel" == "direct-test" ]]; then
-      [[ "$bundle_id" == "cloudedminds.Flicksy.test" && "$display_name" == "Flicksy Test" ]] || { echo "Direct test identity is incorrect" >&2; exit 1; }
+      [[ "$bundle_id" == "me.flicksy.app.test" && "$display_name" == "Flicksy Test" ]] || { echo "Direct test identity is incorrect" >&2; exit 1; }
       [[ "$checkout_url" == "https://preview.flicksy.me/buy?source=app" ]] || { echo "Direct test checkout URL is incorrect" >&2; exit 1; }
       [[ "$license_url" == "https://preview.flicksy.me/api/licenses" ]] || { echo "Direct test license base URL is incorrect" >&2; exit 1; }
       [[ -z "$feed_url" && -z "$public_key" ]] || { echo "Sparkle must be disabled in Flicksy Test" >&2; exit 1; }
     else
-      [[ "$bundle_id" == "cloudedminds.Flicksy" && "$display_name" == "Flicksy" ]] || { echo "Direct production identity is incorrect" >&2; exit 1; }
+      [[ "$bundle_id" == "me.flicksy.app" && "$display_name" == "Flicksy" ]] || { echo "Direct production identity is incorrect" >&2; exit 1; }
       [[ "$checkout_url" == "https://flicksy.me/buy?source=app" ]] || { echo "Direct production checkout URL is incorrect" >&2; exit 1; }
       [[ "$license_url" == "https://flicksy.me/api/licenses" ]] || { echo "Direct production license base URL is incorrect" >&2; exit 1; }
       [[ "$feed_url" == "https://flicksy.me/updates/appcast.xml" ]] || { echo "Direct production appcast URL is incorrect" >&2; exit 1; }
       [[ -n "$public_key" && ! "$public_key" =~ REPLACE|PLACEHOLDER|SUPublicEDKey ]] || { echo "Direct production Sparkle public key is missing or a placeholder" >&2; exit 1; }
-      if strings "$binary" | grep -Eq 'preview\.flicksy\.me|cloudedminds\.Flicksy\.test|Reset Trial|Expire Trial'; then
+      if strings "$binary" | grep -Eq 'preview\.flicksy\.me|me\.flicksy\.app\.test|Reset Trial|Expire Trial'; then
         echo "Direct production executable contains test-only configuration or controls" >&2
         exit 1
       fi
@@ -58,7 +58,7 @@ case "$channel" in
       echo "App Store build unexpectedly embeds the StoreKit test configuration" >&2
       exit 1
     fi
-    if strings "$binary" | grep -Eq 'cloudedminds\.Flicksy\.(trial14|lifetime)|Start 14-Day Free Trial|Restore Purchases|Buy Flicksy'; then
+    if strings "$binary" | grep -Eq 'me\.flicksy\.app\.(trial14|lifetime)|Start 14-Day Free Trial|Restore Purchases|Buy Flicksy'; then
       echo "App Store executable unexpectedly contains trial or in-app purchase behavior" >&2
       exit 1
     fi

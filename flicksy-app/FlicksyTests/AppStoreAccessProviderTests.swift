@@ -5,7 +5,7 @@ import XCTest
 @MainActor
 final class AppStoreAccessProviderTests: XCTestCase {
     private let configuration = AppStoreAccessConfiguration(
-        bundleID: "cloudedminds.Flicksy",
+        bundleID: "me.flicksy.app",
         appID: 123_456_789
     )
     private let purchaseDate = Date(timeIntervalSince1970: 2_000_000)

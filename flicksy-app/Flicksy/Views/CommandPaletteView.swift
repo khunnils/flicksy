@@ -662,8 +662,7 @@ struct CommandPaletteView: View {
         case .getInfo:
             guard let item = model.commandPaletteSelectionItems.first else { return }
             dismiss()
-            model.registerInfoItem(item)
-            openWindow(id: MediaInfoView.windowID, value: item.id)
+            openWindow(id: MediaInfoView.windowID, value: model.registerInfoItem(item))
         case .resizeImage: model.presentImageResize()
         case .editMetaTags: dismissThen { model.presentAudioTagsEditor() }
         case .toggleFavorite: dismissThen { model.toggleFavorite() }

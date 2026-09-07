@@ -28,7 +28,7 @@ assert_absent() {
   fi
 }
 
-assert_contains "$test_config" 'cloudedminds\.Flicksy\.test' "Direct test bundle ID is missing"
+assert_contains "$test_config" 'me\.flicksy\.app\.test' "Direct test bundle ID is missing"
 assert_contains "$test_config" 'preview\.flicksy\.me/api/licenses' "Direct test license base is missing"
 assert_contains "$test_config" 'TEST_ENVIRONMENT' "Direct test controls are not compile-time isolated"
 assert_contains "$production_config" 'FLICKSY_LICENSE_API_URL = https:.+flicksy\.me/api/licenses$' "Production license URL must be the /api/licenses base"
@@ -36,7 +36,7 @@ assert_contains "$production_config" 'SPARKLE_FEED_URL = https:.+flicksy\.me/upd
 assert_contains "$production_config" 'SPARKLE_PUBLIC_ED_KEY = [A-Za-z0-9+/]{40,}={0,2}$' "Production Sparkle public key is missing"
 
 [[ ! -e "$root/flicksy-app/Flicksy/Configuration/Flicksy.storekit" ]] || { echo "StoreKit test configuration must not ship" >&2; exit 1; }
-if grep -Eq 'cloudedminds\.Flicksy\.(trial14|lifetime)' "$root/flicksy-app/Flicksy/Services/AppStoreAccessProvider.swift"; then
+if grep -Eq 'me\.flicksy\.app\.(trial14|lifetime)' "$root/flicksy-app/Flicksy/Services/AppStoreAccessProvider.swift"; then
   echo "App Store provider still contains IAP product IDs" >&2
   exit 1
 fi
@@ -48,7 +48,7 @@ if [[ "$mode" == "production" ]]; then
   product_id="$3"
   [[ "$app_store_url" =~ ^https://apps\.apple\.com/.+/id[0-9]+$ ]] || { echo "Production App Store URL is invalid" >&2; exit 1; }
   [[ "$product_id" =~ ^prod_[A-Za-z0-9]+$ && "$product_id" != "prod_2nZWLPHXTxohlTco7vMNl" ]] || { echo "Production Creem product ID is invalid or still the test product" >&2; exit 1; }
-  if grep -Eq 'preview\.flicksy\.me|cloudedminds\.Flicksy\.test|TEST_ENVIRONMENT' "$production_config"; then
+  if grep -Eq 'preview\.flicksy\.me|me\.flicksy\.app\.test|TEST_ENVIRONMENT' "$production_config"; then
     echo "Production direct configuration contains test values" >&2
     exit 1
   fi

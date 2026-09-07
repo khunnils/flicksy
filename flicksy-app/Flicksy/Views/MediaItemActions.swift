@@ -75,8 +75,7 @@ struct MediaItemInteractionsModifier: ViewModifier {
         }
 
         Button {
-            model.registerInfoItem(item)
-            openWindow(id: MediaInfoView.windowID, value: item.id)
+            openWindow(id: MediaInfoView.windowID, value: model.registerInfoItem(item))
         } label: {
             Label("Get Info", systemImage: "info.circle")
         }

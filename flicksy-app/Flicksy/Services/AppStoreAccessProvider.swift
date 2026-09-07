@@ -93,7 +93,7 @@ final class AppStoreAccessProvider: AccessProviding {
     private let decoder = JSONDecoder()
 
     convenience init() {
-        let bundleID = Bundle.main.bundleIdentifier ?? "cloudedminds.Flicksy"
+        let bundleID = Bundle.main.bundleIdentifier ?? "me.flicksy.app"
         self.init(
             configuration: .fromBundle(),
             verifier: StoreKitAppPurchaseVerifier(),

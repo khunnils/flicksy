@@ -8,9 +8,9 @@ paid-upfront app with no in-app products or trial.
 
 | Scheme | Bundle | Services |
 | --- | --- | --- |
-| `Flicksy - Direct Test` | `cloudedminds.Flicksy.test`, “Flicksy Test” | preview checkout/license API; Sparkle disabled |
-| `Flicksy - Direct Production` | `cloudedminds.Flicksy` | live checkout/license API; signed production appcast |
-| `Flicksy - App Store` | `cloudedminds.Flicksy` | signed `AppTransaction` verification only |
+| `Flicksy - Direct Test` | `me.flicksy.app.test`, “Flicksy Test” | preview checkout/license API; Sparkle disabled |
+| `Flicksy - Direct Production` | `me.flicksy.app` | live checkout/license API; signed production appcast |
+| `Flicksy - App Store` | `me.flicksy.app` | signed `AppTransaction` verification only |
 
 The direct configurations derive their Keychain service from the bundle ID, so
 test trial and license state cannot unlock or consume production state.

@@ -7,7 +7,9 @@ import SwiftUI
 
 struct FlicksyRootView: View {
     @Environment(AccessController.self) private var access
-    @Binding var browserModel: BrowserModel?
+    @State private var browserModel: BrowserModel?
+
+    init() {}
 
     var body: some View {
         Group {

@@ -528,6 +528,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DNFW227Q78;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -549,7 +550,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = cloudedminds.Flicksy;
+				PRODUCT_BUNDLE_IDENTIFIER = me.flicksy.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -571,6 +572,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DNFW227Q78;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -592,7 +594,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = cloudedminds.Flicksy;
+				PRODUCT_BUNDLE_IDENTIFIER = me.flicksy.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -612,7 +614,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				PRODUCT_BUNDLE_IDENTIFIER = cloudedminds.FlicksyTests;
+				PRODUCT_BUNDLE_IDENTIFIER = me.flicksy.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DIRECT_DISTRIBUTION $(inherited)";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -631,7 +633,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				PRODUCT_BUNDLE_IDENTIFIER = cloudedminds.FlicksyTests;
+				PRODUCT_BUNDLE_IDENTIFIER = me.flicksy.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DIRECT_DISTRIBUTION $(inherited)";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -665,7 +667,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = cloudedminds.Flicksy;
+				PRODUCT_BUNDLE_IDENTIFIER = me.flicksy.app;
 				PRODUCT_MODULE_NAME = Flicksy;
 				PRODUCT_NAME = "Flicksy App Store";
 				REGISTER_APP_GROUPS = YES;
@@ -701,7 +703,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = cloudedminds.Flicksy;
+				PRODUCT_BUNDLE_IDENTIFIER = me.flicksy.app;
 				PRODUCT_MODULE_NAME = Flicksy;
 				PRODUCT_NAME = "Flicksy App Store";
 				REGISTER_APP_GROUPS = YES;
@@ -722,7 +724,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				PRODUCT_BUNDLE_IDENTIFIER = cloudedminds.FlicksyAppStoreTests;
+				PRODUCT_BUNDLE_IDENTIFIER = me.flicksy.app.appstore-tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "APP_STORE_DISTRIBUTION $(inherited)";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -741,7 +743,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				PRODUCT_BUNDLE_IDENTIFIER = cloudedminds.FlicksyAppStoreTests;
+				PRODUCT_BUNDLE_IDENTIFIER = me.flicksy.app.appstore-tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "APP_STORE_DISTRIBUTION $(inherited)";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -771,6 +773,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = CC0000000000000000000003 /* Configurations/DirectTest.xcconfig */;
 			buildSettings = {
+				DEVELOPMENT_TEAM = DNFW227Q78;
 			};
 			name = "Direct Test";
 		};
@@ -778,6 +781,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = CC0000000000000000000004 /* Configurations/DirectProduction.xcconfig */;
 			buildSettings = {
+				DEVELOPMENT_TEAM = DNFW227Q78;
 			};
 			name = "Direct Production";
 		};
