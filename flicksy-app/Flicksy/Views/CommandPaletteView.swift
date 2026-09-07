@@ -52,6 +52,7 @@ private struct CommandPaletteRow: Identifiable, Hashable {
     let title: String
     let detail: String?
     let systemImage: String
+    let applicationIcon: NSImage?
     var trailing: String?
     var destructive = false
     let keywords: [String]
@@ -249,10 +250,17 @@ struct CommandPaletteView: View {
         let selected = row.id == selectedID
         return Button { execute(row) } label: {
             HStack(spacing: 13) {
-                Image(systemName: row.systemImage)
-                    .font(.system(size: 16))
-                    .foregroundStyle(row.destructive ? Color.red : Color.secondary)
-                    .frame(width: 24)
+                if let applicationIcon = row.applicationIcon {
+                    Image(nsImage: applicationIcon)
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: 22, height: 22)
+                } else {
+                    Image(systemName: row.systemImage)
+                        .font(.system(size: 16))
+                        .foregroundStyle(row.destructive ? Color.red : Color.secondary)
+                        .frame(width: 24)
+                }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(row.title)
@@ -311,7 +319,7 @@ struct CommandPaletteView: View {
         case .manageCollections: nestedSections(rows: manageCollectionRows, title: "Collections")
         case .selectionTags: nestedSections(rows: selectionTagRows, title: "Tags")
         case .selectionCollections: nestedSections(rows: selectionCollectionRows, title: "Collections")
-        case .openWith: nestedSections(rows: openWithRows, title: "Applications")
+        case .openWith: nestedSections(rows: openWithRows(), title: "Applications")
         }
     }
 
@@ -333,6 +341,11 @@ struct CommandPaletteView: View {
             result.append(.init(id: "commands", title: "Commands", rows: commandMatches))
         }
 
+        let applicationMatches = ranked(openWithRows(directAction: true))
+        if !applicationMatches.isEmpty {
+            result.append(.init(id: "open-with", title: "Open With", rows: applicationMatches))
+        }
+
         let destinationMatches = (model.commandPaletteSearchIndex?.destinations ?? model.browserDestinations)
             .compactMap { destination -> (BrowserDestination, Int)? in
                 destination.matchRank(for: query).map { (destination, $0) }
@@ -342,22 +355,30 @@ struct CommandPaletteView: View {
                     ? lhs.0.title.localizedStandardCompare(rhs.0.title) == .orderedAscending
                     : lhs.1 < rhs.1
             }
+            .prefix(20)
             .map { destinationRow($0.0) }
         if !destinationMatches.isEmpty {
             result.append(.init(id: "destinations", title: "Folders & Destinations", rows: destinationMatches))
         }
 
-        let fileMatches = (model.commandPaletteSearchIndex?.files ?? [])
-            .compactMap { location -> (CommandPaletteFileLocation, Int)? in
-                location.matchRank(for: query).map { (location, $0) }
-            }
-            .sorted { lhs, rhs in
-                if lhs.1 != rhs.1 { return lhs.1 < rhs.1 }
-                let name = lhs.0.item.name.localizedStandardCompare(rhs.0.item.name)
-                if name != .orderedSame { return name == .orderedAscending }
-                return lhs.0.locationTitle.localizedStandardCompare(rhs.0.locationTitle) == .orderedAscending
-            }
-            .map { fileRow($0.0) }
+        let normalizedQuery = BrowserDestination.normalized(query)
+        let fileMatches: [CommandPaletteRow]
+        if normalizedQuery.count >= 3 {
+            fileMatches = (model.commandPaletteSearchIndex?.files ?? [])
+                .compactMap { location -> (CommandPaletteFileLocation, Int)? in
+                    location.matchRank(for: normalizedQuery).map { (location, $0) }
+                }
+                .sorted { lhs, rhs in
+                    if lhs.1 != rhs.1 { return lhs.1 < rhs.1 }
+                    let name = lhs.0.item.name.localizedStandardCompare(rhs.0.item.name)
+                    if name != .orderedSame { return name == .orderedAscending }
+                    return lhs.0.locationTitle.localizedStandardCompare(rhs.0.locationTitle) == .orderedAscending
+                }
+                .prefix(50)
+                .map { fileRow($0.0) }
+        } else {
+            fileMatches = []
+        }
         if !fileMatches.isEmpty {
             result.append(.init(id: "files", title: "Files", rows: fileMatches))
         }
@@ -523,15 +544,16 @@ struct CommandPaletteView: View {
         return rows
     }
 
-    private var openWithRows: [CommandPaletteRow] {
+    private func openWithRows(directAction: Bool = false) -> [CommandPaletteRow] {
         OpenWithApplicationsCache.shared.applications(for: model.commandPaletteSelectionItems).map { application in
             command(
                 id: "open-app-\(application.id)",
-                title: application.name,
+                title: directAction ? "Open with \(application.name)" : application.name,
                 detail: "Application",
                 icon: "app",
+                applicationIcon: application.icon,
                 action: .openWithApplication(application),
-                keywords: [application.name]
+                keywords: [application.name, "open with"]
             )
         }
     }
@@ -561,6 +583,7 @@ struct CommandPaletteView: View {
             title: destination.title,
             detail: destination.detail,
             systemImage: destination.systemImage,
+            applicationIcon: nil,
             trailing: destination.kind.rawValue,
             keywords: [destination.kind.rawValue],
             payload: .destination(destination)
@@ -573,6 +596,7 @@ struct CommandPaletteView: View {
             title: location.item.name,
             detail: "\(location.locationTitle)  ·  \(location.physicalPath)",
             systemImage: location.item.type.commandPaletteSystemImage,
+            applicationIcon: nil,
             trailing: location.locationKind,
             keywords: [location.locationTitle, location.locationKind, location.physicalPath],
             payload: .file(location)
@@ -584,6 +608,7 @@ struct CommandPaletteView: View {
         title: String,
         detail: String? = nil,
         icon: String,
+        applicationIcon: NSImage? = nil,
         trailing: String? = nil,
         action: CommandPaletteAction,
         destructive: Bool = false,
@@ -594,6 +619,7 @@ struct CommandPaletteView: View {
             title: title,
             detail: detail,
             systemImage: icon,
+            applicationIcon: applicationIcon,
             trailing: trailing,
             destructive: destructive,
             keywords: keywords,

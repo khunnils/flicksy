@@ -30,6 +30,19 @@ struct CommandPaletteFileLocation: Identifiable, Hashable, Sendable {
     let source: BrowserSource
     let locationTitle: String
     let locationKind: String
+    private let normalizedName: String
+    private let normalizedLocation: String
+    private let normalizedPath: String
+
+    init(item: MediaItem, source: BrowserSource, locationTitle: String, locationKind: String) {
+        self.item = item
+        self.source = source
+        self.locationTitle = locationTitle
+        self.locationKind = locationKind
+        normalizedName = BrowserDestination.normalized(item.name)
+        normalizedLocation = BrowserDestination.normalized(locationTitle)
+        normalizedPath = BrowserDestination.normalized(item.url.path(percentEncoded: false))
+    }
 
     nonisolated var id: String { "\(item.id)|\(source.commandPaletteID)" }
     nonisolated var physicalPath: String { item.url.deletingLastPathComponent().path(percentEncoded: false) }
@@ -37,13 +50,10 @@ struct CommandPaletteFileLocation: Identifiable, Hashable, Sendable {
     nonisolated func matchRank(for query: String) -> Int? {
         let query = BrowserDestination.normalized(query)
         guard !query.isEmpty else { return nil }
-        let name = BrowserDestination.normalized(item.name)
-        let location = BrowserDestination.normalized(locationTitle)
-        let path = BrowserDestination.normalized(item.url.path(percentEncoded: false))
-        if name == query { return 0 }
-        if name.hasPrefix(query) { return 1 }
-        if name.contains(query) { return 2 }
-        if location.contains(query) || path.contains(query) { return 3 }
+        if normalizedName == query { return 0 }
+        if normalizedName.hasPrefix(query) { return 1 }
+        if normalizedName.contains(query) { return 2 }
+        if normalizedLocation.contains(query) || normalizedPath.contains(query) { return 3 }
         return nil
     }
 }
