@@ -10,10 +10,7 @@ import Observation
 @MainActor
 final class AccessController {
     private(set) var state: AccessState = .loading
-    private(set) var purchasePrice: String?
     private(set) var purchasedAt: Date?
-    private(set) var activationUsage: Int?
-    private(set) var activationLimit: Int?
     private(set) var isBusy = false
     var errorMessage: String?
 
@@ -86,17 +83,6 @@ final class AccessController {
             return
         }
 
-        do {
-            if let refreshed = try await provider.revalidateIfNeeded(now: now()) {
-                apply(refreshed)
-            }
-        } catch {
-            // A cached direct license remains usable indefinitely when the
-            // license API or network is unavailable. Surface errors only when access is gated.
-            if showErrors, !hasAccess {
-                errorMessage = error.localizedDescription
-            }
-        }
     }
 
     func startTrial() async {
@@ -107,22 +93,8 @@ final class AccessController {
         await perform { try await provider.purchase(now: now()) }
     }
 
-    func activate(licenseKey: String) async -> Bool {
-        var succeeded = false
-        await perform {
-            let snapshot = try await provider.activate(licenseKey: licenseKey, now: now())
-            succeeded = snapshot.state == .licensed
-            return snapshot
-        }
-        return succeeded
-    }
-
     func restore() async {
         await perform { try await provider.restore(now: now()) }
-    }
-
-    func deactivate() async {
-        await perform { try await provider.deactivate(now: now()) }
     }
 
 #if TEST_ENVIRONMENT && DIRECT_DISTRIBUTION
@@ -145,8 +117,6 @@ final class AccessController {
 
         do {
             apply(try await operation())
-        } catch AccessActionError.purchaseCancelled {
-            // Cancellation is an expected outcome and does not need an alert.
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -154,9 +124,6 @@ final class AccessController {
 
     private func apply(_ snapshot: AccessSnapshot) {
         state = snapshot.state
-        purchasePrice = snapshot.purchasePrice
         purchasedAt = snapshot.purchasedAt
-        activationUsage = snapshot.activationUsage
-        activationLimit = snapshot.activationLimit
     }
 }

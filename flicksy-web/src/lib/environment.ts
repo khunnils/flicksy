@@ -5,8 +5,6 @@ export type FlicksyBindings = {
   FLICKSY_SITE_URL?: string;
   FLICKSY_DIRECT_DOWNLOAD_URL?: string;
   FLICKSY_APP_STORE_URL?: string;
-  CREEM_API_KEY?: string;
-  CREEM_PRODUCT_ID?: string;
 };
 
 export type PublicRuntimeConfig = {
@@ -14,12 +12,6 @@ export type PublicRuntimeConfig = {
   siteURL: string;
   directDownloadURL: string;
   appStoreURL?: string;
-};
-
-export type CreemRuntimeConfig = PublicRuntimeConfig & {
-  apiKey: string;
-  apiURL: string;
-  productID: string;
 };
 
 export function readPublicConfig(bindings: FlicksyBindings): PublicRuntimeConfig {
@@ -34,36 +26,8 @@ export function readPublicConfig(bindings: FlicksyBindings): PublicRuntimeConfig
   return { environment, siteURL, directDownloadURL, appStoreURL };
 }
 
-export function readCreemConfig(bindings: FlicksyBindings): CreemRuntimeConfig {
-  const publicConfig = readPublicConfig(bindings);
-  const apiKey = readRequired(bindings.CREEM_API_KEY, 'CREEM_API_KEY');
-  const productID = readRequired(bindings.CREEM_PRODUCT_ID, 'CREEM_PRODUCT_ID');
-
-  if (!productID.startsWith('prod_') || isPlaceholder(productID)) {
-    throw new Error('CREEM_PRODUCT_ID is not configured.');
-  }
-
-  const isTestKey = apiKey.startsWith('creem_test_');
-  if (publicConfig.environment === 'test' && !isTestKey) {
-    throw new Error('The test environment requires a Creem test API key.');
-  }
-  if (publicConfig.environment === 'production' && isTestKey) {
-    throw new Error('The production environment cannot use a Creem test API key.');
-  }
-
-  return {
-    ...publicConfig,
-    apiKey,
-    apiURL: publicConfig.environment === 'test'
-      ? 'https://test-api.creem.io'
-      : 'https://api.creem.io',
-    productID,
-  };
-}
-
 export function configurationReadiness(bindings: FlicksyBindings) {
   let site = false;
-  let commerce = false;
   try {
     const config = readPublicConfig(bindings);
     site = true;
@@ -74,14 +38,7 @@ export function configurationReadiness(bindings: FlicksyBindings) {
     site = false;
   }
 
-  try {
-    readCreemConfig(bindings);
-    commerce = true;
-  } catch {
-    commerce = false;
-  }
-
-  return { site, commerce };
+  return { site, commerce: site };
 }
 
 function readEnvironment(value: string | undefined): FlicksyEnvironment {

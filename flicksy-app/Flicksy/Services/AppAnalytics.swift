@@ -2,7 +2,7 @@ import Foundation
 import TelemetryDeck
 
 /// Only fixed event names cross this boundary. Never add free-form parameters,
-/// URLs, errors, media metadata, license keys, or user identifiers here.
+/// URLs, errors, media metadata, purchase data, or user identifiers here.
 @MainActor
 final class AppAnalytics {
     enum Event: String, CaseIterable {

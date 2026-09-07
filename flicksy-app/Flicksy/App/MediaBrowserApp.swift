@@ -43,7 +43,7 @@ struct FlicksyApp: App {
         .defaultPosition(.center)
         .windowResizability(.contentSize)
 
-        Window("Flicksy License", id: LicenseView.windowID) {
+        Window("Flicksy Access", id: LicenseView.windowID) {
             LicenseView()
                 .environment(access)
         }
@@ -59,10 +59,6 @@ struct FlicksyApp: App {
     }
 
     private var flicksyHelpURL: URL {
-        let checkout = Bundle.main.object(forInfoDictionaryKey: "FlicksyCheckoutURL") as? String
-        if let checkout, let host = URL(string: checkout)?.host, let docs = URL(string: "https://\(host)/docs") {
-            return docs
-        }
         return URL(string: "https://flicksy.me/docs")!
     }
 }
@@ -223,13 +219,13 @@ private struct AboutCommands: Commands {
         }
 
         CommandGroup(after: .appInfo) {
-            Button("Flicksy License…") {
+            Button("Flicksy Access…") {
                 openWindow(id: LicenseView.windowID)
             }
 
 #if DIRECT_DISTRIBUTION
             if access.state != .licensed {
-                Button("Buy Flicksy…") {
+                Button("View on App Store") {
                     Task { await access.purchase() }
                 }
             }

@@ -76,9 +76,6 @@ struct FlicksyRootView: View {
 
 struct AccessGateView: View {
     @Environment(AccessController.self) private var access
-#if DIRECT_DISTRIBUTION
-    @State private var licenseKey = ""
-#endif
 
     var body: some View {
         VStack(spacing: 0) {
@@ -135,21 +132,10 @@ struct AccessGateView: View {
                 .controlSize(.large)
             }
 
-            Button("Buy Flicksy — \(access.purchasePrice ?? "$19")") {
+            Button("Buy on the App Store") {
                 Task { await access.purchase() }
             }
             .controlSize(.large)
-
-            HStack(spacing: 8) {
-                TextField("License key", text: $licenseKey)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 285)
-                    .onSubmit { activate() }
-
-                Button("Activate") { activate() }
-                    .disabled(licenseKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-            .padding(.top, 4)
 
             if access.isBusy {
                 ProgressView()
@@ -204,7 +190,7 @@ struct AccessGateView: View {
 #else
         return switch access.state {
         case .expired:
-            "Buy Flicksy once to keep using the complete app and receive every future update. Your folders and Flicksy library remain untouched."
+            "Buy and install Flicksy from the Mac App Store to continue. Your folders and Flicksy library remain untouched."
         case .recoverableError(let message, _):
             message
         default:
@@ -215,22 +201,12 @@ struct AccessGateView: View {
 
     private var footer: String {
 #if DIRECT_DISTRIBUTION
-        "No Flicksy account required. Your license key arrives by email and works on up to three Macs."
+        "No Flicksy account required. Buy and install the Mac App Store version to continue after your trial."
 #else
         "No Flicksy account required. The paid download is associated with your Apple Account."
 #endif
     }
 
-#if DIRECT_DISTRIBUTION
-    private func activate() {
-        let key = licenseKey
-        Task {
-            if await access.activate(licenseKey: key) {
-                licenseKey = ""
-            }
-        }
-    }
-#endif
 }
 
 #if DIRECT_DISTRIBUTION
@@ -244,7 +220,7 @@ struct TrialReminderView: View {
             Text("Your Flicksy trial has \(access.trialTimeRemaining ?? "a little time") remaining.")
                 .font(.callout)
             Spacer()
-            Button("Buy Flicksy") {
+            Button("View on App Store") {
                 Task { await access.purchase() }
             }
             .buttonStyle(.bordered)
@@ -262,28 +238,8 @@ struct LicenseView: View {
     static let windowID = "flicksy-license"
 
     @Environment(AccessController.self) private var access
-#if DIRECT_DISTRIBUTION
-    @State private var licenseKey = ""
-    @State private var confirmsDeactivation = false
-#endif
-
     var body: some View {
-#if DIRECT_DISTRIBUTION
         content
-            .confirmationDialog(
-                "Deactivate Flicksy on this Mac?",
-                isPresented: $confirmsDeactivation
-            ) {
-                Button("Deactivate This Mac", role: .destructive) {
-                    Task { await access.deactivate() }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This returns one activation to your license. An internet connection is required.")
-            }
-#else
-        content
-#endif
     }
 
     private var content: some View {
@@ -293,7 +249,7 @@ struct LicenseView: View {
                     .resizable()
                     .frame(width: 58, height: 58)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Flicksy License")
+                    Text("Flicksy Access")
                         .font(.title2.weight(.semibold))
                     Text(statusText)
                         .foregroundStyle(.secondary)
@@ -308,16 +264,9 @@ struct LicenseView: View {
             if let purchasedAt = access.purchasedAt {
                 LabeledContent("Purchased", value: purchasedAt.formatted(date: .abbreviated, time: .omitted))
             }
-#if DIRECT_DISTRIBUTION
-            LabeledContent("Purchase channel", value: "Direct")
-#else
+#if APP_STORE_DISTRIBUTION
             LabeledContent("Purchase channel", value: "Mac App Store")
 #endif
-
-#if DIRECT_DISTRIBUTION
-            if let usage = access.activationUsage, let limit = access.activationLimit {
-                LabeledContent("Activations", value: "\(usage) of \(limit)")
-            }
 
 #if TEST_ENVIRONMENT
             HStack {
@@ -326,14 +275,8 @@ struct LicenseView: View {
             }
             .help("Flicksy Test only — production builds do not contain these controls.")
 #endif
-#endif
 
             controls
-
-            Text("Direct and Mac App Store purchases are separate and cannot be restored across stores.")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(24)
         .frame(width: 440)
@@ -343,29 +286,7 @@ struct LicenseView: View {
     @ViewBuilder
     private var controls: some View {
 #if DIRECT_DISTRIBUTION
-        if access.state == .licensed {
-            HStack {
-                Button("Buy Another License") { Task { await access.purchase() } }
-                Spacer()
-                Button("Deactivate This Mac") { confirmsDeactivation = true }
-            }
-        } else {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    TextField("License key", text: $licenseKey)
-                    Button("Activate") {
-                        let key = licenseKey
-                        Task {
-                            if await access.activate(licenseKey: key) { licenseKey = "" }
-                        }
-                    }
-                    .disabled(licenseKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-                Button("Buy Flicksy — \(access.purchasePrice ?? "$19")") {
-                    Task { await access.purchase() }
-                }
-            }
-        }
+        Button("View on App Store") { Task { await access.purchase() } }
 #else
         HStack {
             if access.state != .licensed {

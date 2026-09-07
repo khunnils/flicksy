@@ -24,12 +24,8 @@
     <string>$(MARKETING_VERSION)</string>
     <key>CFBundleVersion</key>
     <string>$(CURRENT_PROJECT_VERSION)</string>
-    <key>FlicksyCheckoutURL</key>
-    <string>$(FLICKSY_CHECKOUT_URL)</string>
-    <key>FlicksyLicenseAPIURL</key>
-    <string>$(FLICKSY_LICENSE_API_URL)</string>
-    <key>FlicksyPurchasePrice</key>
-    <string>$19</string>
+    <key>FlicksyAppStoreURL</key>
+    <string>$(FLICKSY_APP_STORE_URL)</string>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.graphics-design</string>
     <key>LSMinimumSystemVersion</key>

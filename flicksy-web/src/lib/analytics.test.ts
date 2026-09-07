@@ -20,7 +20,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 it('only recognizes public routes', () => {
   expect(analyticsPage('/docs/preview/')).toBe('/docs/preview');
-  for (const path of ['/purchase/success', '/files/private.jpg', '/?secret=value', '/docs/private']) {
+  for (const path of ['/buy', '/files/private.jpg', '/?secret=value', '/docs/private']) {
     expect(analyticsPage(path)).toBeUndefined();
   }
 });
@@ -32,7 +32,7 @@ it('respects opt-out and browser signals', () => {
   expect(analyticsAllowed(null, null, true)).toBe(false);
 });
 
-it.each([{ disabled: true }, { dnt: '1' }, { gpc: true }, { path: '/purchase/success' }])('does not send when blocked: %j', async (options) => {
+it.each([{ disabled: true }, { dnt: '1' }, { gpc: true }, { path: '/buy' }])('does not send when blocked: %j', async (options) => {
   const { fetch } = browser(options);
   setupAnalytics(appID, true);
   await new Promise(resolve => setTimeout(resolve, 20));

@@ -11,7 +11,7 @@ const events = new Set([
 ]);
 
 // An allowlist avoids leaking arbitrary path segments, queries, fragments or
-// purchase callback data. Checkout/success and unknown pages send nothing.
+// unknown pages send nothing.
 export function analyticsPage(pathname: string): string | undefined {
   const page = pathname.replace(/\/$/, '') || '/';
   return pages.has(page) ? page : undefined;

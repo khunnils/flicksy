@@ -7,7 +7,7 @@ import { readPublicConfig } from '../lib/environment';
 export const prerender = false;
 
 const { directDownloadURL, appStoreURL } = readPublicConfig(env);
-const appStoreHref = appStoreURL ?? 'https://apps.apple.com/app/flicksy';
+const appStoreHref = appStoreURL ?? '/buy';
 
 const features = [
   { icon: '⌁', title: 'Skim without opening', text: 'Move across any thumbnail to scrub through a clip. The right frame finds you before another player window can open.' },
@@ -35,8 +35,8 @@ const faqs = [
   { q: 'Is it a photo library or cloud backup?', a: 'Neither. Flicksy is a fast, visual window onto local media. Nothing is uploaded and there is no library to maintain.' },
   { q: 'Which Macs are supported?', a: 'Flicksy is a native Apple Silicon app for macOS 15 and newer.' },
   { q: 'What is included in the trial?', a: 'The complete app. The 14-day trial begins only when you start it, does not auto-renew, and never creates a charge.' },
-  { q: 'Do I need a Flicksy account?', a: 'No. After purchase, a license key arrives by email.' },
-  { q: 'How many Macs can I use?', a: 'A license activates up to three Macs. Deactivate an old Mac from Flicksy before moving that seat to another.' },
+  { q: 'Do I need a Flicksy account?', a: 'No. The paid app is associated with the Apple Account you use on the Mac App Store.' },
+  { q: 'How do I continue after the trial?', a: 'Buy and install Flicksy from the Mac App Store. Your folders and compatible Flicksy data stay on your Mac.' },
 ];
 ---
 
@@ -48,7 +48,7 @@ const faqs = [
     processorRequirements: 'Apple Silicon', image: canonicalURL('/flicksy-app-icon.png'),
     screenshot: canonicalURL('/social-preview.jpg'),
     description: 'A native media browser for Mac. Browse local images, video, and audio, compare images, and organize files with favorites, tags, and collections.',
-    offers: { '@type': 'Offer', price: '24.99', priceCurrency: 'USD', url: canonicalURL('/') + '#pricing', description: 'One-time purchase for up to three Macs, including all 1.x updates. A 14-day full trial is available.' },
+    offers: { '@type': 'Offer', url: canonicalURL('/') + '#pricing', description: 'Paid Mac App Store app with a 14-day full trial download available.' },
   },
 ]}>
   <div class="site-shell" id="top">
@@ -72,7 +72,7 @@ const faqs = [
           <a class="button button-dark" href={directDownloadURL} data-analytics-event="com.flicksy.Web.downloadClicked">Download now <span>↘</span></a>
           <a class="button button-light" href={appStoreHref} data-analytics-event="com.flicksy.Web.appStoreClicked">Mac App Store <span>↗</span></a>
         </div>
-        <p class="fine-print">14-day full trial · $24.99 once · all 1.x updates</p>
+        <p class="fine-print">14-day full trial · paid once on the Mac App Store · no subscription</p>
       </div>
 
       <div class="iridescent-stage" aria-label="Flicksy app screenshot">
@@ -135,13 +135,13 @@ const faqs = [
 
     <section class="section pricing" id="pricing">
       <div class="wrap pricing-grid">
-        <div class="pricing-copy" data-reveal><p class="eyebrow">Simple by design</p><h2>No subscription.<br />Yours forever.</h2><p>Fourteen days with the full app, then $24.99 once. No account, no subscription, and all 1.x updates included.</p><div class="compatibility"><span>●</span> macOS 15+ · Apple Silicon</div></div>
+        <div class="pricing-copy" data-reveal><p class="eyebrow">Simple by design</p><h2>No subscription.<br />Yours forever.</h2><p>Fourteen days with the full app, then buy once on the Mac App Store. No account and no subscription.</p><div class="compatibility"><span>●</span> macOS 15+ · Apple Silicon</div></div>
         <div class="price-card" data-reveal data-reveal-delay="1">
           <div class="price-top"><img src="/flicksy-app-icon.png" alt="Flicksy app icon" width="72" height="72" /><span>Flicksy</span></div>
-          <div class="price-line"><strong>$24.99</strong><span>USD<br />once</span></div>
+          <div class="price-line"><strong>Buy once</strong><span>MAC APP STORE</span></div>
           <ul>
             <li>14-day full trial</li>
-            <li>Up to 3 Macs</li>
+            <li>Apple Account purchase</li>
             <li>No subscription</li>
             <li>No account</li>
             <li>All 1.x updates</li>
@@ -149,7 +149,7 @@ const faqs = [
           <div class="purchase-actions">
             <a class="button button-dark button-wide" href={directDownloadURL} data-analytics-event="com.flicksy.Web.downloadClicked">Download now <span>↓</span></a>
           </div>
-          <p class="channel-note">A license key arrives by email and activates up to three Macs.</p>
+          <p class="channel-note">After your trial, buy and install the paid Mac App Store version.</p>
         </div>
       </div>
     </section>

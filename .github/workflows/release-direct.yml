@@ -34,7 +34,7 @@ jobs:
           echo "DMG_PATH=$RUNNER_TEMP/updates/Flicksy-${{ inputs.version }}.dmg" >> "$GITHUB_ENV"
 
       - name: Verify approved source configuration
-        run: flicksy-app/Release/verify-source.sh production '${{ vars.FLICKSY_APP_STORE_URL }}' '${{ vars.CREEM_PRODUCT_ID }}'
+        run: flicksy-app/Release/verify-source.sh production '${{ vars.FLICKSY_APP_STORE_URL }}'
 
       - name: Import Developer ID certificate
         env:
@@ -66,6 +66,7 @@ jobs:
             MARKETING_VERSION='${{ inputs.version }}' \
             CURRENT_PROJECT_VERSION='${{ inputs.build }}' \
             DEVELOPMENT_TEAM='${{ vars.APPLE_TEAM_ID }}' \
+            FLICKSY_APP_STORE_URL='${{ vars.FLICKSY_APP_STORE_URL }}' \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY='Developer ID Application'
 
@@ -130,17 +131,12 @@ jobs:
           pnpm build:production
           jq \
             --arg app_store_url '${{ vars.FLICKSY_APP_STORE_URL }}' \
-            --arg product_id '${{ vars.CREEM_PRODUCT_ID }}' \
-            '.vars.FLICKSY_APP_STORE_URL = $app_store_url | .vars.CREEM_PRODUCT_ID = $product_id' \
+            '.vars.FLICKSY_APP_STORE_URL = $app_store_url' \
             dist/server/wrangler.json > "$RUNNER_TEMP/wrangler-production.json"
           mv "$RUNNER_TEMP/wrangler-production.json" dist/server/wrangler.json
-      - name: Configure live Creem secret and deploy production site
+      - name: Deploy production site
         working-directory: flicksy-web
-        env:
-          CREEM_API_KEY: ${{ secrets.CREEM_API_KEY }}
         run: |
-          [[ -n "$CREEM_API_KEY" && "$CREEM_API_KEY" != creem_test_* ]] || { echo "Expected a live Creem API key" >&2; exit 1; }
-          printf '%s' "$CREEM_API_KEY" | pnpm exec wrangler secret put CREEM_API_KEY --env production
           pnpm exec wrangler deploy --config dist/server/wrangler.json
       - name: Production health check
         run: |

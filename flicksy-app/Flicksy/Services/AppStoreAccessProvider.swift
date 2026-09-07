@@ -134,16 +134,8 @@ final class AppStoreAccessProvider: AccessProviding {
         throw AccessActionError.configuration("Flicksy is purchased upfront from the Mac App Store.")
     }
 
-    func activate(licenseKey: String, now: Date) async throws -> AccessSnapshot {
-        throw AccessActionError.configuration("License keys are available only in the direct version of Flicksy.")
-    }
-
     func restore(now: Date) async throws -> AccessSnapshot {
         try snapshot(from: try await verifier.refresh())
-    }
-
-    func deactivate(now: Date) async throws -> AccessSnapshot {
-        throw AccessActionError.configuration("Mac App Store purchases cannot be deactivated from Flicksy.")
     }
 
     private func snapshot(from result: AppPurchaseVerification) throws -> AccessSnapshot {
@@ -174,7 +166,6 @@ final class AppStoreAccessProvider: AccessProviding {
     private func licensedSnapshot(_ purchase: VerifiedAppPurchase) -> AccessSnapshot {
         AccessSnapshot(
             state: .licensed,
-            purchasePrice: "$19",
             purchasedAt: purchase.originalPurchaseDate
         )
     }

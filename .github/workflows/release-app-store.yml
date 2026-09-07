@@ -50,7 +50,7 @@ jobs:
         working-directory: flicksy-app
         run: |
           set -o pipefail
-          Release/verify-source.sh production '${{ vars.FLICKSY_APP_STORE_URL }}' '${{ vars.CREEM_PRODUCT_ID }}'
+          Release/verify-source.sh production '${{ vars.FLICKSY_APP_STORE_URL }}'
           [[ '${{ vars.FLICKSY_APP_STORE_APP_ID }}' =~ ^[0-9]+$ ]] || { echo "FLICKSY_APP_STORE_APP_ID is missing" >&2; exit 1; }
           auth=(
             -authenticationKeyPath "$RUNNER_TEMP/private_keys/AuthKey_${{ vars.APP_STORE_CONNECT_KEY_ID }}.p8"

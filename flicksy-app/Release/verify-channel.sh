@@ -19,20 +19,17 @@ case "$channel" in
     [[ -d "$app_path/Contents/Frameworks/Sparkle.framework" ]] || { echo "Direct build is missing Sparkle.framework" >&2; exit 1; }
     bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$info")"
     display_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$info")"
-    checkout_url="$(/usr/libexec/PlistBuddy -c 'Print :FlicksyCheckoutURL' "$info")"
-    license_url="$(/usr/libexec/PlistBuddy -c 'Print :FlicksyLicenseAPIURL' "$info")"
+    app_store_url="$(/usr/libexec/PlistBuddy -c 'Print :FlicksyAppStoreURL' "$info")"
     feed_url="$(/usr/libexec/PlistBuddy -c 'Print :SUFeedURL' "$info")"
     public_key="$(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' "$info")"
 
     if [[ "$channel" == "direct-test" ]]; then
       [[ "$bundle_id" == "me.flicksy.app.test" && "$display_name" == "Flicksy Test" ]] || { echo "Direct test identity is incorrect" >&2; exit 1; }
-      [[ "$checkout_url" == "https://preview.flicksy.me/buy?source=app" ]] || { echo "Direct test checkout URL is incorrect" >&2; exit 1; }
-      [[ "$license_url" == "https://preview.flicksy.me/api/licenses" ]] || { echo "Direct test license base URL is incorrect" >&2; exit 1; }
+      [[ -z "$app_store_url" ]] || { echo "Flicksy Test must not contain an App Store URL" >&2; exit 1; }
       [[ -z "$feed_url" && -z "$public_key" ]] || { echo "Sparkle must be disabled in Flicksy Test" >&2; exit 1; }
     else
       [[ "$bundle_id" == "me.flicksy.app" && "$display_name" == "Flicksy" ]] || { echo "Direct production identity is incorrect" >&2; exit 1; }
-      [[ "$checkout_url" == "https://flicksy.me/buy?source=app" ]] || { echo "Direct production checkout URL is incorrect" >&2; exit 1; }
-      [[ "$license_url" == "https://flicksy.me/api/licenses" ]] || { echo "Direct production license base URL is incorrect" >&2; exit 1; }
+      [[ "$app_store_url" =~ ^https://apps\.apple\.com/.+/id[0-9]+$ ]] || { echo "Direct production App Store URL is incorrect" >&2; exit 1; }
       [[ "$feed_url" == "https://flicksy.me/updates/appcast.xml" ]] || { echo "Direct production appcast URL is incorrect" >&2; exit 1; }
       [[ -n "$public_key" && ! "$public_key" =~ REPLACE|PLACEHOLDER|SUPublicEDKey ]] || { echo "Direct production Sparkle public key is missing or a placeholder" >&2; exit 1; }
       if strings "$binary" | grep -Eq 'preview\.flicksy\.me|me\.flicksy\.app\.test|Reset Trial|Expire Trial'; then
@@ -50,8 +47,8 @@ case "$channel" in
       echo "App Store build unexpectedly contains SUFeedURL" >&2
       exit 1
     fi
-    if strings "$binary" | grep -Eqi '/api/licenses|Enter License Key|Deactivate This Mac'; then
-      echo "App Store executable unexpectedly contains direct-license code or UI" >&2
+    if strings "$binary" | grep -Eqi '/api/licenses|Enter License Key|Deactivate This Mac|Creem'; then
+      echo "App Store executable unexpectedly contains removed licensing code or UI" >&2
       exit 1
     fi
     if find "$app_path" -name 'Flicksy.storekit' -print -quit | grep -q .; then

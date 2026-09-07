@@ -1,8 +1,7 @@
 #include "DirectBase.xcconfig"
 
-FLICKSY_CHECKOUT_URL = https:/$()/preview.flicksy.me/buy?source=app
+FLICKSY_APP_STORE_URL =
 FLICKSY_DISPLAY_NAME = Flicksy Test
-FLICKSY_LICENSE_API_URL = https:/$()/preview.flicksy.me/api/licenses
 PRODUCT_BUNDLE_IDENTIFIER = me.flicksy.app.test
 PRODUCT_NAME = Flicksy Test
 SPARKLE_FEED_URL =

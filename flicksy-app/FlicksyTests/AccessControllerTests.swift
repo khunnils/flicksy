@@ -14,7 +14,6 @@ final class AccessControllerTests: XCTestCase {
         let provider = StubAccessProvider(
             snapshot: AccessSnapshot(
                 state: .licensed,
-                purchasePrice: "$19",
                 purchasedAt: Date(timeIntervalSince1970: 100)
             )
         )
@@ -23,7 +22,6 @@ final class AccessControllerTests: XCTestCase {
         await controller.start()
 
         XCTAssertEqual(controller.state, .licensed)
-        XCTAssertEqual(controller.purchasePrice, "$19")
         XCTAssertTrue(controller.hasAccess)
     }
 
@@ -62,7 +60,5 @@ private final class StubAccessProvider: AccessProviding {
 
     func startTrial(now: Date) async throws -> AccessSnapshot { snapshot }
     func purchase(now: Date) async throws -> AccessSnapshot { snapshot }
-    func activate(licenseKey: String, now: Date) async throws -> AccessSnapshot { snapshot }
     func restore(now: Date) async throws -> AccessSnapshot { snapshot }
-    func deactivate(now: Date) async throws -> AccessSnapshot { snapshot }
 }
