@@ -64,12 +64,11 @@ struct QuickGotoView: View {
                 }
             }
             .frame(width: 520)
-            .background(Color.white, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+            .background(Color(nsColor: .windowBackgroundColor), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .strokeBorder(Color.black.opacity(0.08))
+                    .strokeBorder(Color.primary.opacity(0.08))
             }
-            .environment(\.colorScheme, .light)
             .shadow(color: .black.opacity(0.22), radius: 28, y: 12)
             .padding(.top, 72)
         }

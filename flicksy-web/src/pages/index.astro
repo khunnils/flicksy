@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { canonicalURL } from '../lib/seo';
 import { env } from 'cloudflare:workers';
 import { readPublicConfig } from '../lib/environment';
 
@@ -39,7 +40,17 @@ const faqs = [
 ];
 ---
 
-<Layout title="Flicksy — A modern media browser for Mac" description="A modern media browser designed for content creators. Browse, compare, organize, and work with images, video, and audio on your Mac.">
+<Layout title="Flicksy — Media Browser for Mac | Images, Video & Audio" description="Browse, preview, and organize images, video, and audio on your Mac. Compare photos and scrub clips without importing files. Try Flicksy free for 14 days." structuredData={[
+  { '@type': 'WebSite', '@id': canonicalURL('/') + '#website', name: 'Flicksy', url: canonicalURL('/') },
+  {
+    '@type': 'SoftwareApplication', '@id': canonicalURL('/') + '#app', name: 'Flicksy',
+    url: canonicalURL('/'), applicationCategory: 'MultimediaApplication', operatingSystem: 'macOS 15 or later',
+    processorRequirements: 'Apple Silicon', image: canonicalURL('/flicksy-app-icon.png'),
+    screenshot: canonicalURL('/social-preview.jpg'),
+    description: 'A native media browser for Mac. Browse local images, video, and audio, compare images, and organize files with favorites, tags, and collections.',
+    offers: { '@type': 'Offer', price: '24.99', priceCurrency: 'USD', url: canonicalURL('/') + '#pricing', description: 'One-time purchase for up to three Macs, including all 1.x updates. A 14-day full trial is available.' },
+  },
+]}>
   <div class="site-shell" id="top">
     <nav class="nav wrap" aria-label="Main navigation">
       <a class="brand" href="#top" aria-label="Flicksy home">
@@ -66,7 +77,7 @@ const faqs = [
 
       <div class="iridescent-stage" aria-label="Flicksy app screenshot">
         <span class="aurora aurora-blue"></span><span class="aurora aurora-pink"></span><span class="aurora aurora-mint"></span>
-        <div class="app-window hero-window"><img src="/app-browser-dinos.jpeg" alt="Flicksy on macOS showing a visual grid of video clips" width="1784" height="1293" /></div>
+        <div class="app-window hero-window"><img src="/optimized/app-browser-dinos-1200.webp" srcset="/optimized/app-browser-dinos-640.webp 640w, /optimized/app-browser-dinos-1200.webp 1200w, /optimized/app-browser-dinos-1784.webp 1784w" sizes="(max-width: 700px) 100vw, (max-width: 950px) 90vw, 1100px" loading="eager" fetchpriority="high" decoding="async" alt="Flicksy on macOS showing a visual grid of video clips" width="1784" height="1293" /></div>
       </div>
     </header>
   </div>
@@ -75,11 +86,11 @@ const faqs = [
     <section class="showcase section wrap" id="how">
       <div class="showcase-grid">
         <div class="showcase-copy" data-reveal>
-          <p class="eyebrow">Mac native</p><h2>All your media, in one place.</h2>
-          <p>Images, video, and audio live together in one fast, native view. Browse real folders and external drives without importing a library, learning a new interface, or moving a single file.</p>
+          <p class="eyebrow">Mac native</p><h2>Browse images, video, and audio in one place.</h2>
+          <p>Images, video, and audio live together in one fast, native view. Browse real folders and external drives without importing a library, learning a new interface, or moving a single file. <a href="/docs/browsing">Explore media browsing</a>.</p>
           <ul class="check-list"><li><span>✓</span> Built in Swift for Apple Silicon</li><li><span>✓</span> Reads folders and external drives in place</li><li><span>✓</span> Stays fluid across thousands of assets</li></ul>
         </div>
-        <div class="window-wrap" data-reveal data-reveal-delay="1"><div class="app-window detail-window"><img src="/app-browser-audio.png" alt="Flicksy showing an audio library with file details, playback controls, and a waveform" width="3030" height="1740" /></div></div>
+        <div class="window-wrap" data-reveal data-reveal-delay="1"><div class="app-window detail-window"><img src="/optimized/app-browser-audio-1200.webp" srcset="/optimized/app-browser-audio-640.webp 640w, /optimized/app-browser-audio-1200.webp 1200w, /optimized/app-browser-audio-1784.webp 1784w" sizes="(max-width: 950px) 90vw, 640px" loading="lazy" decoding="async" alt="Flicksy showing an audio library with file details, playback controls, and a waveform" width="3030" height="1740" /></div></div>
       </div>
     </section>
 
@@ -89,12 +100,12 @@ const faqs = [
         <div class="section-intro light" data-reveal><p class="eyebrow">Made for momentum</p><h2>Keep your hands moving.<br />Keep your ideas intact.</h2><p>Flicksy is keyboard-first by design. Press ⌘J to jump to any folder or collection, then use ⌘K for everything else—so the distance between “I know I have it” and “there it is” stays short.</p></div>
         <div class="feature-grid">{features.map((feature, index) => <article class="glass-card" data-reveal data-reveal-delay={String(index % 4)}><span class="feature-icon">{feature.icon}</span><h3>{feature.title}</h3><p>{feature.text}</p></article>)}</div>
         <div class="preview-card">
-          <div class="preview-copy" data-reveal><p class="eyebrow">Built-in adjustments</p><h3>Stay in the flow, even for the little fixes.</h3><p>Preview, rotate, and flip an image, or crop with standardized guides for common print formats—all without leaving your media browser.</p></div>
-          <div class="app-window preview-window" data-reveal data-reveal-delay="1"><img src="/app-preview-crop.jpeg" alt="Flicksy image preview with native macOS crop controls" width="1784" height="1154" /></div>
+          <div class="preview-copy" data-reveal><p class="eyebrow">Built-in adjustments</p><h3>Stay in the flow, even for the little fixes.</h3><p>Preview, rotate, and flip an image, or crop with standardized guides for common print formats—all without leaving your media browser. <a href="/docs/preview">Learn how to preview and compare images</a>.</p></div>
+          <div class="app-window preview-window" data-reveal data-reveal-delay="1"><img src="/optimized/app-preview-crop-1200.webp" srcset="/optimized/app-preview-crop-640.webp 640w, /optimized/app-preview-crop-1200.webp 1200w, /optimized/app-preview-crop-1784.webp 1784w" sizes="(max-width: 950px) 90vw, 640px" loading="lazy" decoding="async" alt="Flicksy image preview with native macOS crop controls" width="1784" height="1154" /></div>
         </div>
         <div class="preview-card comparison-card">
-          <div class="preview-copy" data-reveal data-reveal-delay="1"><p class="eyebrow">Made to compare</p><h3>Choose the best shot, without the window shuffle.</h3><p>Finder can select images. Preview can open them. Flicksy lets you compare them in sensible layouts.</p></div>
-          <div class="app-window comparison-window" data-reveal><img src="/app-compare.jpeg" alt="Flicksy comparing four images side by side in a native macOS window" width="3562" height="2608" /></div>
+          <div class="preview-copy" data-reveal data-reveal-delay="1"><p class="eyebrow">Made to compare</p><h3>Compare images side by side on your Mac.</h3><p>Finder can select images. Preview can open them. Flicksy lets you compare them in sensible layouts.</p></div>
+          <div class="app-window comparison-window" data-reveal><img src="/optimized/app-compare-1200.webp" srcset="/optimized/app-compare-640.webp 640w, /optimized/app-compare-1200.webp 1200w, /optimized/app-compare-1784.webp 1784w" sizes="(max-width: 950px) 90vw, 640px" loading="lazy" decoding="async" alt="Flicksy comparing four images side by side in a native macOS window" width="3562" height="2608" /></div>
         </div>
       </div>
     </section>
@@ -110,7 +121,7 @@ const faqs = [
 
     <section class="section feature-inventory" id="features">
       <div class="wrap">
-        <div class="section-intro inventory-intro" data-reveal><p class="eyebrow">The full toolkit</p><h2>Everything you expect.<br />Plus what Finder is missing.</h2><p>Flicksy combines everyday file browsing with the media-first tools content creators reach for all day.</p></div>
+        <div class="section-intro inventory-intro" data-reveal><p class="eyebrow">The full toolkit</p><h2>Everything you expect.<br />Plus what Finder is missing.</h2><p>Flicksy combines everyday file browsing with the media-first tools content creators reach for all day. Learn how to <a href="/docs/audio">preview and trim audio</a> or <a href="/docs/organize">organize media with tags and collections</a>.</p></div>
         <div class="inventory-grid">
           {featureInventory.map((feature, index) => (
             <article class="inventory-item" data-reveal data-reveal-delay={String(index % 3)}>

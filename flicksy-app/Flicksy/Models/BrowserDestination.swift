@@ -10,6 +10,7 @@ struct BrowserDestination: Identifiable, Hashable, Sendable {
     enum Kind: String, Sendable {
         case library = "Library"
         case collection = "Collection"
+        case smartCollection = "Smart Collection"
         case tag = "Tag"
         case folder = "Folder"
     }
@@ -82,6 +83,17 @@ extension BrowserModel {
                 systemImage: "rectangle.stack.badge.play",
                 kind: .collection,
                 source: .collection(collection.id)
+            )
+        }
+
+        destinations += smartCollections.map { collection in
+            BrowserDestination(
+                id: "smart-collection-\(collection.id)",
+                title: collection.name,
+                detail: "Smart Collection",
+                systemImage: "gearshape",
+                kind: .smartCollection,
+                source: .smartCollection(collection.id)
             )
         }
 

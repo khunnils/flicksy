@@ -116,7 +116,6 @@ struct CommandPaletteView: View {
             .frame(maxWidth: 824)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .environment(\.colorScheme, .light)
         .ignoresSafeArea()
         .onAppear {
             model.isCommandPaletteFieldFocused = true

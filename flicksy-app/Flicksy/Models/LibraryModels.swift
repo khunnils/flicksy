@@ -69,6 +69,7 @@ struct MissingCollectionItem: Identifiable, Hashable, Sendable {
 
 enum LibraryQuery: Sendable {
     case all
+    case smartCollection(SmartCollectionDefinition, rootPaths: [String], now: Date)
     case favorites
     case tag(UUID)
     case collection(UUID)
@@ -89,6 +90,8 @@ struct LibrarySearchRecord: Sendable {
 /// Shared sheet routing for organization editors opened from the sidebar,
 /// toolbar, or command palette.
 enum OrganizationEditorRequest: Identifiable {
+    case newSmartCollection
+    case editSmartCollection(SmartCollection)
     case newCollection(addingSelection: Bool)
     case editCollection(MediaCollection)
     case newTag(applyingSelection: Bool)
@@ -96,6 +99,8 @@ enum OrganizationEditorRequest: Identifiable {
 
     var id: String {
         switch self {
+        case .newSmartCollection: "new-smart-collection"
+        case .editSmartCollection(let collection): "smart-collection-\(collection.id)"
         case .newCollection(let applies): "new-collection-\(applies)"
         case .editCollection(let collection): "collection-\(collection.id)"
         case .newTag(let applies): "new-tag-\(applies)"

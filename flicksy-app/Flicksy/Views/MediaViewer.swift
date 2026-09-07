@@ -31,7 +31,6 @@ struct MediaViewer: View {
                     .mediaItemInteractions(item, model: model, draggable: false)
             }
         }
-        .preferredColorScheme(.light)
         .task(id: item.contentVersion) {
             preparePlayback()
         }
@@ -49,7 +48,7 @@ struct MediaViewer: View {
 
     private var viewerContent: some View {
         ZStack {
-            Color.white
+            Color("PreviewCanvas")
                 .ignoresSafeArea()
 
             media
@@ -138,7 +137,7 @@ struct MediaViewer: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 10)
-                .background(.black.opacity(0.06), in: Capsule())
+                .background(.primary.opacity(0.06), in: Capsule())
                 .padding(.bottom, 16)
             }
         }
@@ -258,7 +257,7 @@ private struct ComparisonImageCell: View {
     var body: some View {
         ZStack(alignment: .bottomLeading) {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.black.opacity(0.035))
+                .fill(Color("MediaMat"))
 
             if let item {
                 ComparisonLoadedImage(item: item, targetPixels: 3072)
@@ -324,7 +323,7 @@ private struct ComparisonThumbnailStrip: View {
             .scrollIndicators(.hidden)
         }
         .frame(height: 66)
-        .background(.black.opacity(0.055), in: RoundedRectangle(cornerRadius: 12))
+        .background(.primary.opacity(0.055), in: RoundedRectangle(cornerRadius: 12))
         .overlay {
             RoundedRectangle(cornerRadius: 12)
                 .strokeBorder(.primary.opacity(0.08))
@@ -340,7 +339,7 @@ private struct ComparisonThumbnail: View {
     var body: some View {
         ComparisonLoadedImage(item: item, targetPixels: 192)
             .frame(width: 76, height: 54)
-            .background(Color.black.opacity(0.04))
+            .background(Color("MediaMat"))
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .overlay {
                 RoundedRectangle(cornerRadius: 6)

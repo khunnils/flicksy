@@ -18,7 +18,8 @@
     "deploy:production": "pnpm build:production && wrangler deploy --config dist/server/wrangler.json",
     "dry-run:test": "pnpm build:test && wrangler deploy --config dist/server/wrangler.json --dry-run",
     "dry-run:production": "pnpm build:production && wrangler deploy --config dist/server/wrangler.json --dry-run",
-    "astro": "astro"
+    "astro": "astro",
+    "optimize:images": "node scripts/optimize-images.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.2.6",
@@ -27,6 +28,8 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.6",
+    "@types/node": "^26.4.1",
+    "sharp": "^0.35.4",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4",
     "wrangler": "^4.128.0"

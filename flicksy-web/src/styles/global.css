@@ -8,7 +8,7 @@
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; background: var(--bg); }
+html { overflow-x: clip; scroll-behavior: smooth; background: var(--bg); }
 body { margin: 0; overflow-x: hidden; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--font-sans); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 img { display: block; max-width: 100%; }
 a { color: inherit; }

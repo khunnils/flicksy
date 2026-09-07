@@ -5,6 +5,7 @@
 
 import AppKit
 import SwiftUI
+import Combine
 
 /// Accumulates precise (trackpad) scroll deltas so Command-scroll zoom steps at a
 /// comfortable rate rather than firing on every fractional event. A reference type
@@ -29,6 +30,20 @@ struct MainView: View {
                 .navigationSplitViewColumnWidth(min: 220, ideal: 260)
         } detail: {
             MediaBrowserView()
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    if let collection = model.selectedSmartCollection {
+                        HStack(spacing: 12) {
+                            Text(model.smartCollectionRepairMessage ?? collection.repairMessage ?? collection.definition.summary(tags: model.tags))
+                                .font(.callout).foregroundStyle(.secondary)
+                                .lineLimit(2)
+                                .help(collection.definition.summary(tags: model.tags))
+                            Spacer()
+                            Button("Edit Rules…") { model.organizationEditorRequest = .editSmartCollection(collection) }
+                        }
+                        .padding(12)
+                        .background(.bar)
+                    }
+                }
                 .navigationTitle(selectedSourceTitle)
                 .toolbar {
                     if model.viewerItem == nil {
@@ -85,6 +100,13 @@ struct MainView: View {
         .animation(.easeOut(duration: 0.12), value: model.isQuickGotoPresented)
         .task {
             model.restore()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            Task { await model.refreshSmartCollections() }
+        }
+        .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in
+            guard NSApplication.shared.isActive else { return }
+            Task { await model.refreshSmartCollections(relativeDatesOnly: true) }
         }
         .onAppear {
             installScrollMonitor()
@@ -165,6 +187,10 @@ struct MainView: View {
     @ViewBuilder
     private func organizationEditor(_ request: OrganizationEditorRequest) -> some View {
         switch request {
+        case .newSmartCollection:
+            SmartCollectionEditor(collection: nil).environment(model)
+        case .editSmartCollection(let collection):
+            SmartCollectionEditor(collection: collection).environment(model)
         case .newCollection(let addingSelection):
             CollectionEditor(title: "New Collection", initialName: "") {
                 model.createCollection(name: $0, addingSelected: addingSelection)
@@ -192,6 +218,8 @@ struct MainView: View {
             model.tags.first(where: { $0.id == id })?.name ?? "Tag"
         case .collection(let id):
             model.collections.first(where: { $0.id == id })?.name ?? "Collection"
+        case .smartCollection(let id):
+            model.smartCollections.first(where: { $0.id == id })?.name ?? "Smart Collection"
         case .clipboard:
             "Clipboard"
         case .standardFolder(let folder):
@@ -256,17 +284,16 @@ struct MainView: View {
     }
 }
 
-/// Opaque white titlebar while the media viewer is open, so the unified toolbar
-/// does not pick up a grey material over the preview.
+/// Match the preview canvas while inheriting the window’s appearance. A viewer
+/// must not publish a color-scheme preference that changes the browser window.
 private struct PreviewToolbarStyle: ViewModifier {
     let isPreviewing: Bool
 
     func body(content: Content) -> some View {
         if isPreviewing {
             content
-                .toolbarBackground(Color.white, for: .windowToolbar)
+                .toolbarBackground(Color("PreviewCanvas"), for: .windowToolbar)
                 .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
-                .toolbarColorScheme(.light, for: .windowToolbar)
         } else {
             content
         }

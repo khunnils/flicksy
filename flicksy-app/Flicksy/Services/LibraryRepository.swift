@@ -54,6 +54,16 @@ actor LibraryRepository {
             }
             try execute("PRAGMA foreign_keys = ON")
             try execute("PRAGMA journal_mode = WAL")
+            sqlite3_create_function_v2(db, "flicksy_contains", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, nil, { context, _, arguments in
+                guard let arguments,
+                      let haystack = sqlite3_value_text(arguments[0]),
+                      let needle = sqlite3_value_text(arguments[1]) else {
+                    sqlite3_result_null(context)
+                    return
+                }
+                let matches = String(cString: haystack).range(of: String(cString: needle), options: .caseInsensitive) != nil
+                sqlite3_result_int(context, matches ? 1 : 0)
+            }, nil, nil, nil)
             try migrate()
         } catch {
             sqlite3_close(db)
@@ -86,10 +96,15 @@ actor LibraryRepository {
         var predicate = "a.available = 1"
         var order = "a.name COLLATE NOCASE, a.id"
         var argument: String?
+        var smartArguments: [SmartArgument] = []
 
         switch query {
         case .all:
             break
+        case .smartCollection(let definition, let roots, let now):
+            let compiled = try smartPredicate(definition, rootPaths: roots, now: now)
+            predicate = compiled.sql
+            smartArguments = compiled.arguments
         case .favorites:
             predicate += " AND a.favorite = 1"
         case .tag(let id):
@@ -112,6 +127,7 @@ actor LibraryRepository {
             """)
         defer { sqlite3_finalize(statement) }
         if let argument { bind(argument, to: 1, in: statement) }
+        bindSmartArguments(smartArguments, in: statement)
 
         var items: [MediaItem] = []
         while sqlite3_step(statement) == SQLITE_ROW {
@@ -622,6 +638,133 @@ actor LibraryRepository {
         return path == rootPath || path.hasPrefix(rootPath.hasSuffix("/") ? rootPath : rootPath + "/")
     }
 
+    // Smart definitions own no membership rows. Both previews and listings compile
+    // through this predicate, including reference validation and availability.
+    private enum SmartArgument {
+        case text(String), number(Double)
+    }
+
+    private func bindSmartArguments(_ arguments: [SmartArgument], in statement: OpaquePointer) {
+        for (offset, argument) in arguments.enumerated() {
+            let index = Int32(offset + 1)
+            switch argument {
+            case .text(let value): bind(value, to: index, in: statement)
+            case .number(let value): sqlite3_bind_double(statement, index, value)
+            }
+        }
+    }
+
+    private func smartPredicate(
+        _ definition: SmartCollectionDefinition, rootPaths: [String], now: Date
+    ) throws -> (sql: String, arguments: [SmartArgument]) {
+        guard definition.version == 1 else { throw SmartCollectionError.unsupportedDefinition }
+        guard definition.isValid else { throw SmartCollectionError.invalidRules }
+        var arguments: [SmartArgument] = []
+        var scope = "a.available = 1"
+        if let root = definition.rootPath {
+            guard rootPaths.contains(root) else { throw SmartCollectionError.missingRoot }
+            scope += " AND a.root_path = ?"
+            arguments.append(.text(root))
+        }
+        let existingTags = Set(try tags().map(\.id))
+        var predicates: [String] = []
+        for rule in definition.rules {
+            switch rule.field {
+            case .filename:
+                predicates.append("flicksy_contains(a.name, ?) = " + (rule.condition == .contains ? "1" : "0"))
+                arguments.append(.text(rule.text))
+            case .mediaType:
+                let type: MediaType = switch rule.kind { case .image: .image; case .video: .video; case .audio: .audio }
+                predicates.append("a.media_type " + (rule.condition == .isValue ? "=" : "!=") + " ?")
+                arguments.append(.number(Double(type.databaseValue)))
+            case .fileSize:
+                predicates.append("a.file_size " + (rule.condition == .greaterThan ? ">" : "<") + " ?")
+                arguments.append(.number(rule.number * rule.unit.multiplier))
+            case .modifiedDate:
+                let cutoff = now.addingTimeInterval(-rule.number * 86_400).timeIntervalSinceReferenceDate
+                if rule.condition == .withinDays {
+                    predicates.append("(a.modified_at >= ? AND a.modified_at <= ?)")
+                    arguments.append(contentsOf: [.number(cutoff), .number(now.timeIntervalSinceReferenceDate)])
+                } else {
+                    predicates.append("a.modified_at < ?")
+                    arguments.append(.number(cutoff))
+                }
+            case .tag:
+                if rule.condition == .hasNoTags {
+                    predicates.append("NOT EXISTS (SELECT 1 FROM asset_tags st WHERE st.asset_id = a.id)")
+                } else {
+                    guard let id = rule.tagID, existingTags.contains(id) else { throw SmartCollectionError.missingTag }
+                    predicates.append((rule.condition == .doesNotHaveTag ? "NOT " : "") +
+                        "EXISTS (SELECT 1 FROM asset_tags st WHERE st.asset_id = a.id AND st.tag_id = ?)")
+                    arguments.append(.text(id.uuidString))
+                }
+            case .favorite:
+                predicates.append("a.favorite = " + (rule.condition == .isValue ? "1" : "0"))
+            }
+        }
+        return (scope + " AND (" + predicates.joined(separator: definition.match == .all ? " AND " : " OR ") + ")", arguments)
+    }
+
+    func smartCollectionCount(_ definition: SmartCollectionDefinition, rootPaths: [String], now: Date = Date()) throws -> Int {
+        let compiled = try smartPredicate(definition, rootPaths: rootPaths, now: now)
+        let statement = try prepare("SELECT COUNT(*) FROM assets a WHERE " + compiled.sql)
+        defer { sqlite3_finalize(statement) }
+        bindSmartArguments(compiled.arguments, in: statement)
+        guard sqlite3_step(statement) == SQLITE_ROW else { throw RepositoryError.database(String(cString: sqlite3_errmsg(db))) }
+        return Int(sqlite3_column_int64(statement, 0))
+    }
+
+    func smartCollections(rootPaths: [String], now: Date = Date()) throws -> [SmartCollection] {
+        let statement = try prepare("SELECT id, name, definition FROM smart_collections ORDER BY name COLLATE NOCASE")
+        defer { sqlite3_finalize(statement) }
+        var result: [SmartCollection] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            guard let id = UUID(uuidString: text(statement, 0)) else { continue }
+            let decoded = try? JSONDecoder().decode(SmartCollectionDefinition.self, from: Data(text(statement, 2).utf8))
+            var collection = SmartCollection(id: id, name: text(statement, 1),
+                definition: decoded ?? SmartCollectionDefinition(version: 0))
+            do {
+                collection.itemCount = try smartCollectionCount(collection.definition, rootPaths: rootPaths, now: now)
+            } catch let error as SmartCollectionError {
+                collection.repairMessage = error.localizedDescription
+            }
+            result.append(collection)
+        }
+        return result
+    }
+
+    @discardableResult
+    func saveSmartCollection(id: UUID = UUID(), name: String, definition: SmartCollectionDefinition,
+                             rootPaths: [String]) throws -> UUID {
+        let cleanName = try validatedName(name)
+        _ = try smartPredicate(definition, rootPaths: rootPaths, now: Date())
+        let conflict = try prepare("SELECT id FROM smart_collections WHERE normalized_name = ? AND id != ?")
+        defer { sqlite3_finalize(conflict) }
+        bind(Self.normalized(cleanName), to: 1, in: conflict)
+        bind(id.uuidString, to: 2, in: conflict)
+        if sqlite3_step(conflict) == SQLITE_ROW { throw RepositoryError.duplicateName }
+        let encoded = String(decoding: try JSONEncoder().encode(definition), as: UTF8.self)
+        let statement = try prepare("""
+            INSERT INTO smart_collections(id, name, normalized_name, definition) VALUES(?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET name=excluded.name, normalized_name=excluded.normalized_name,
+                definition=excluded.definition
+            """)
+        defer { sqlite3_finalize(statement) }
+        bind(id.uuidString, to: 1, in: statement)
+        bind(cleanName, to: 2, in: statement)
+        bind(Self.normalized(cleanName), to: 3, in: statement)
+        bind(encoded, to: 4, in: statement)
+        try stepDone(statement)
+        return id
+    }
+
+    func deleteSmartCollection(id: UUID) throws {
+        let statement = try prepare("DELETE FROM smart_collections WHERE id = ?")
+        defer { sqlite3_finalize(statement) }
+        bind(id.uuidString, to: 1, in: statement)
+        try stepDone(statement)
+    }
+
     // MARK: - SQLite
 
     private func migrate() throws {
@@ -653,7 +796,11 @@ actor LibraryRepository {
                 position INTEGER NOT NULL, UNIQUE(collection_id, asset_id)
             );
             CREATE INDEX IF NOT EXISTS collection_order ON collection_items(collection_id, position);
-            PRAGMA user_version = 1;
+            CREATE TABLE IF NOT EXISTS smart_collections(
+                id TEXT PRIMARY KEY, name TEXT NOT NULL, normalized_name TEXT NOT NULL UNIQUE,
+                definition TEXT NOT NULL
+            );
+            PRAGMA user_version = 2;
             """)
     }
 
@@ -839,7 +986,7 @@ actor LibraryRepository {
 }
 
 extension MediaType {
-    fileprivate var databaseValue: Int {
+    nonisolated fileprivate var databaseValue: Int {
         switch self {
         case .image: 0
         case .video: 1
@@ -847,7 +994,7 @@ extension MediaType {
         }
     }
 
-    fileprivate init?(databaseValue: Int) {
+    nonisolated fileprivate init?(databaseValue: Int) {
         switch databaseValue {
         case 0: self = .image
         case 1: self = .video

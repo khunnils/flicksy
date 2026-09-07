@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { canonicalURL } from '../lib/seo';
 import { docPath, type DocEntry } from '../lib/docs';
 
 interface Props {
@@ -10,10 +11,17 @@ interface Props {
 }
 
 const { title, description, docs, currentSlug } = Astro.props;
-const pageTitle = currentSlug ? `${title} — Flicksy Help` : 'Help — Flicksy';
+const pageTitle = currentSlug ? `${title} — Flicksy Help` : 'Flicksy Help — Mac Media Browser Guides';
 ---
 
-<Layout title={pageTitle} description={description}>
+<Layout title={pageTitle} description={description} structuredData={[{
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Flicksy', item: canonicalURL('/') },
+    { '@type': 'ListItem', position: 2, name: 'Help', item: canonicalURL('/docs') },
+    ...(currentSlug ? [{ '@type': 'ListItem', position: 3, name: title, item: canonicalURL(`/docs/${currentSlug}`) }] : []),
+  ],
+}]}>
   <div class="docs-shell">
     <header class="docs-nav wrap">
       <a class="brand" href="/" aria-label="Flicksy home">

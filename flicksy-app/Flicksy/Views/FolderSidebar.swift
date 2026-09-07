@@ -78,6 +78,29 @@ struct FolderSidebar: View {
             }
 
             Section {
+                if model.smartCollections.isEmpty {
+                    Text("No smart collections").foregroundStyle(.tertiary)
+                }
+                ForEach(model.smartCollections) { collection in
+                    countRow(collection.name,
+                             systemImage: collection.repairMessage == nil ? "gearshape" : "exclamationmark.triangle",
+                             count: collection.itemCount)
+                        .sidebarSource(.smartCollection(collection.id), selected: model.selectedSource)
+                        .help(collection.repairMessage ?? collection.definition.summary(tags: model.tags))
+                        .contextMenu {
+                            Button("Edit Rules…") { model.organizationEditorRequest = .editSmartCollection(collection) }
+                            Button("Rename…") { model.organizationEditorRequest = .editSmartCollection(collection) }
+                            Button("Duplicate…") { model.duplicateSmartCollection(collection) }
+                            Button("Delete Smart Collection", role: .destructive) { model.deleteSmartCollection(collection) }
+                        }
+                }
+            } header: {
+                organizationSectionHeader("Smart Collections", help: "New Smart Collection") {
+                    model.organizationEditorRequest = .newSmartCollection
+                }
+            }
+
+            Section {
                 if model.tags.isEmpty {
                     Text("No tags").foregroundStyle(.tertiary)
                 } else {

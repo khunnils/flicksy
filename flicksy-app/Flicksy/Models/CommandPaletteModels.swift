@@ -98,6 +98,7 @@ extension BrowserSource {
         case .favorites: "favorites"
         case .tag(let id): "tag-\(id)"
         case .collection(let id): "collection-\(id)"
+        case .smartCollection(let id): "smart-collection-\(id)"
         case .clipboard: "clipboard"
         case .standardFolder(let folder): "standard-\(folder.rawValue)"
         case .folder(let id): "folder-\(id)"

@@ -61,7 +61,7 @@ struct MediaThumbnailSurface<Content: View>: View {
                     .fill(
                         isSelected
                             ? AnyShapeStyle(Color.primary.opacity(0.09))
-                            : AnyShapeStyle(Color(white: 0.97))
+                            : AnyShapeStyle(Color("MediaMat"))
                     )
 
                 content

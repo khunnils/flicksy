@@ -35,6 +35,7 @@ enum BrowserSource: Hashable, Sendable {
     case favorites
     case tag(UUID)
     case collection(UUID)
+    case smartCollection(UUID)
     case clipboard
     case standardFolder(StandardBrowserFolder)
     case folder(MediaFolder.ID)
@@ -219,7 +220,7 @@ final class BrowserModel {
     var isCollectionSelected: Bool { selectedCollectionID != nil }
     var isLibrarySourceSelected: Bool {
         switch selectedSource {
-        case .favorites, .tag, .collection: true
+        case .favorites, .tag, .collection, .smartCollection: true
         default: false
         }
     }
@@ -228,6 +229,17 @@ final class BrowserModel {
     private(set) var mediaItems: [MediaItem] = []
     private(set) var tags: [LibraryTag] = []
     private(set) var collections: [MediaCollection] = []
+    private(set) var smartCollections: [SmartCollection] = []
+    private(set) var smartCollectionRepairMessage: String?
+    var smartCollectionRoots: [URL] { rootStore.urls.map(\.standardizedFileURL) }
+    var isSmartCollectionSelected: Bool {
+        if case .smartCollection = selectedSource { return true }
+        return false
+    }
+    var selectedSmartCollection: SmartCollection? {
+        guard case .smartCollection(let id) = selectedSource else { return nil }
+        return smartCollections.first { $0.id == id }
+    }
     private(set) var missingCollectionItems: [MissingCollectionItem] = []
     private(set) var isIndexingLibrary = false
 
@@ -883,7 +895,7 @@ final class BrowserModel {
     private static let sortAscendingKey = "sortAscending"
 
     private let rootStore = RootFolderStore()
-    private let libraryRepository = LibraryRepository()
+    private let libraryRepository: LibraryRepository
     private let standardFolderStore = StandardFolderStore()
     private let scanExclusionStore = FolderScanExclusionStore()
     private let clipboardStore = ClipboardHistoryStore()
@@ -918,7 +930,8 @@ final class BrowserModel {
         self.init(onboardingStore: OnboardingStore())
     }
 
-    init(onboardingStore: OnboardingStore) {
+    init(onboardingStore: OnboardingStore, libraryRepository: LibraryRepository = LibraryRepository()) {
+        self.libraryRepository = libraryRepository
         self.onboardingStore = onboardingStore
         isWelcomePresented = onboardingStore.shouldPresent
 
@@ -1385,8 +1398,55 @@ final class BrowserModel {
             async let loadedCollections = libraryRepository.collections()
             tags = try await loadedTags
             collections = try await loadedCollections
+            smartCollections = try await libraryRepository.smartCollections(rootPaths: smartCollectionRoots.map(\.path))
             invalidateCommandPaletteSearchIndex()
-            if reloadSelection { loadMediaForSelection(preservingInteraction: true) }
+            if reloadSelection || isSmartCollectionSelected { loadMediaForSelection(preservingInteraction: true) }
+        } catch { organizationError = error.localizedDescription }
+    }
+
+    func previewSmartCollection(_ definition: SmartCollectionDefinition) async throws -> Int {
+        try await libraryRepository.smartCollectionCount(definition, rootPaths: smartCollectionRoots.map(\.path))
+    }
+
+    func saveSmartCollection(id: UUID?, name: String, definition: SmartCollectionDefinition) async throws {
+        let savedID = try await libraryRepository.saveSmartCollection(id: id ?? UUID(), name: name,
+            definition: definition, rootPaths: smartCollectionRoots.map(\.path))
+        await refreshOrganization(reloadSelection: false)
+        selectedSource = .smartCollection(savedID)
+    }
+
+    func deleteSmartCollection(_ collection: SmartCollection) {
+        Task {
+            do {
+                try await libraryRepository.deleteSmartCollection(id: collection.id)
+                if selectedSource == .smartCollection(collection.id) { selectedSource = .favorites }
+                await refreshOrganization(reloadSelection: false)
+            } catch { organizationError = error.localizedDescription }
+        }
+    }
+
+    func duplicateSmartCollection(_ collection: SmartCollection) {
+        var copy = collection
+        copy.id = UUID()
+        var suffix = 1
+        copy.name = collection.name + " Copy"
+        while smartCollections.contains(where: { $0.name.localizedCaseInsensitiveCompare(copy.name) == .orderedSame }) {
+            suffix += 1
+            copy.name = collection.name + " Copy \(suffix)"
+        }
+        // Open a draft so even a broken reference can be repaired before saving.
+        organizationEditorRequest = .editSmartCollection(copy)
+    }
+
+    func refreshSmartCollections(relativeDatesOnly: Bool = false) async {
+        guard !smartCollections.isEmpty,
+              !relativeDatesOnly || smartCollections.contains(where: { $0.definition.usesRelativeDates }) else { return }
+        do {
+            smartCollections = try await libraryRepository.smartCollections(rootPaths: smartCollectionRoots.map(\.path))
+            if isSmartCollectionSelected,
+               !relativeDatesOnly || selectedSmartCollection?.definition.usesRelativeDates == true {
+                loadMediaForSelection(preservingInteraction: true)
+            }
         } catch { organizationError = error.localizedDescription }
     }
 
@@ -1700,7 +1760,7 @@ final class BrowserModel {
             URL(fileURLWithPath: id, isDirectory: true)
         case .standardFolder(let folder):
             urlForStandardFolder(folder)
-        case .favorites, .tag, .collection, .clipboard, nil:
+        case .favorites, .tag, .collection, .smartCollection, .clipboard, nil:
             nil
         }
     }
@@ -1928,6 +1988,7 @@ final class BrowserModel {
     private func loadMediaForSelection(preservingInteraction: Bool = false) {
         mediaTask?.cancel()
         activeMediaLoadID = nil
+        smartCollectionRepairMessage = nil
         guard let source = selectedSource else {
             isLoadingMedia = false
             setMediaItems([])
@@ -1952,6 +2013,10 @@ final class BrowserModel {
                     try await loadLibraryQuery(.tag(id), preservingInteraction: preservingInteraction)
                 case .collection(let id):
                     try await loadLibraryQuery(.collection(id), preservingInteraction: preservingInteraction)
+                case .smartCollection(let id):
+                    guard let collection = smartCollections.first(where: { $0.id == id }) else { return }
+                    try await loadLibraryQuery(.smartCollection(collection.definition,
+                        rootPaths: smartCollectionRoots.map(\.path), now: Date()), preservingInteraction: preservingInteraction)
                 case .clipboard:
                     let items = await clipboardStore.items()
                     clipboardItemCount = items.count
@@ -1983,8 +2048,13 @@ final class BrowserModel {
             } catch is CancellationError {
                 return
             } catch {
+                guard !Task.isCancelled, activeMediaLoadID == loadID else { return }
                 pendingCommandPaletteOpen = nil
                 setMediaItems([])
+                if let error = error as? SmartCollectionError {
+                    smartCollectionRepairMessage = error.localizedDescription
+                    return
+                }
                 loadError = source == .clipboard
                     ? "Clipboard history could not be loaded."
                     : "This folder could not be read."
@@ -1999,6 +2069,11 @@ final class BrowserModel {
         let result = try await libraryRepository.query(query)
         try Task.checkCancellation()
         missingCollectionItems = result.missingItems
+        if case .smartCollection = query, case .smartCollection(let id) = selectedSource,
+           let index = smartCollections.firstIndex(where: { $0.id == id }) {
+            smartCollections[index].itemCount = result.items.count
+            smartCollections[index].repairMessage = nil
+        }
         replaceMediaItems(result.items, resetInteraction: !preservingInteraction)
     }
 
@@ -2965,6 +3040,7 @@ final class BrowserModel {
     /// permanent delete. Files that succeed are removed from the listing
     /// immediately; the focus moves to the nearest surviving neighbour.
     func moveSelectedItemsToTrash() {
+        guard !isSmartCollectionSelected else { return }
         if isCollectionSelected {
             removeSelectedFromCollection()
             return
