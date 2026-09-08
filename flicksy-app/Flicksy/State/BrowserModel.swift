@@ -124,6 +124,19 @@ enum MediaLibraryTab: String, CaseIterable, Identifiable {
         case .audio: "waveform"
         }
     }
+
+    /// Per-tab toolbar tooltip. Keep these distinct; a shared picker tooltip
+    /// would replace every segment with the same sentence.
+    var help: String {
+        switch self {
+        case .all:
+            "Add media view (⌘1)"
+        case .visual:
+            "Images and video view (⌘2)"
+        case .audio:
+            "Audio view (⌘3)"
+        }
+    }
 }
 
 /// Keys the listing can be ordered by. The same choice applies to both library
@@ -223,9 +236,11 @@ enum AudioSeekKind {
 @MainActor
 final class MediaItemSelectionState {
     var isSelected: Bool
+    var isFocused: Bool
 
-    init(isSelected: Bool) {
+    init(isSelected: Bool, isFocused: Bool = false) {
         self.isSelected = isSelected
+        self.isFocused = isFocused
     }
 }
 
@@ -439,6 +454,14 @@ final class BrowserModel {
         selectedAudioItem != nil || playingAudioID != nil
     }
 
+    var canMoveBrowserFocus: Bool {
+        viewerItemID == nil
+            && !isTextFieldFocused
+            && !orderedItems.isEmpty
+            && !isCommandPalettePresented
+            && !isShortcutsHelpPresented
+    }
+
     func requestAudioSeek(_ kind: AudioSeekKind) {
         guard canControlInspectorAudio else { return }
         audioSeekKind = kind
@@ -558,8 +581,33 @@ final class BrowserModel {
     var selectionAnchorID: MediaItem.ID?
 
     /// The keyboard cursor: the last item touched by a click or arrow move. Drives
-    /// arrow navigation, Space preview and Enter playback.
-    var focusedItemID: MediaItem.ID?
+    /// arrow navigation, Space preview and Enter playback. Command-arrow can move
+    /// this independently of `selectedItemIDs`.
+    var focusedItemID: MediaItem.ID? {
+        didSet {
+            guard oldValue != focusedItemID else { return }
+            if let oldValue {
+                selectionStateByID[oldValue]?.isFocused = false
+            }
+            applyKeyboardFocusChrome(to: focusedItemID)
+        }
+    }
+
+    /// True after Command-arrow / Command-Return. The dotted cursor is shown only
+    /// in this mode so regular arrows and mouse selection stay unadorned.
+    var isKeyboardMultiSelectActive = false {
+        didSet {
+            guard oldValue != isKeyboardMultiSelectActive else { return }
+            applyKeyboardFocusChrome(to: focusedItemID)
+        }
+    }
+
+    /// Column count used by Command-arrow focus movement from menu commands.
+    var keyboardNavigationColumns = 1
+
+    /// Set by keyboard navigation so the browser can scroll the cursor into view
+    /// without also recentering items that were focused by a click.
+    var pendingKeyboardScroll = false
 
     private(set) var isScanning = false
     private(set) var isLoadingMedia = false
@@ -2323,6 +2371,7 @@ final class BrowserModel {
             selectedItemIDs = []
             selectionStateByID.removeAll(keepingCapacity: true)
             selectionAnchorID = nil
+            isKeyboardMultiSelectActive = false
             focusedItemID = nil
         }
         rebuildVisibleItems()
@@ -2723,7 +2772,10 @@ final class BrowserModel {
     /// Stable, fine-grained highlight state for a rendered row or grid cell.
     func selectionState(for id: MediaItem.ID) -> MediaItemSelectionState {
         if let state = selectionStateByID[id] { return state }
-        let state = MediaItemSelectionState(isSelected: selectionSnapshot.contains(id))
+        let state = MediaItemSelectionState(
+            isSelected: selectionSnapshot.contains(id),
+            isFocused: showsKeyboardFocus(for: id)
+        )
         selectionStateByID[id] = state
         return state
     }
@@ -2772,6 +2824,7 @@ final class BrowserModel {
     ///   disturbing the rest.
     /// - neither: a plain click that selects only `item`.
     func selectItem(_ item: MediaItem, toggle: Bool = false, extend: Bool = false) {
+        endKeyboardMultiSelect()
         if extend, let anchor = selectionAnchorID ?? focusedItemID {
             selectRange(from: anchor, to: item.id)
             focusedItemID = item.id
@@ -2812,6 +2865,7 @@ final class BrowserModel {
     }
 
     func clearSelection() {
+        endKeyboardMultiSelect()
         selectedItemIDs = []
         selectionAnchorID = nil
         focusedItemID = nil
@@ -2821,6 +2875,7 @@ final class BrowserModel {
     /// to the active tab because visible cell frames can briefly overlap a tab
     /// change while SwiftUI tears down the old lazy container.
     func setMarqueeSelection(_ ids: Set<MediaItem.ID>) {
+        endKeyboardMultiSelect()
         let ordered = orderedItems
         let allowedIDs = Set(ordered.map(\.id))
         selectedItemIDs = ids.intersection(allowedIDs)
@@ -2838,13 +2893,114 @@ final class BrowserModel {
         }
     }
 
-    /// Move the keyboard cursor through the active tab.
+    /// Move the keyboard cursor through the active tab, replacing or extending
+    /// the selection to match.
     ///
     /// Left/Right step by one; Up/Down step by a full row. Movement clamps at
     /// either end rather than wrapping, matching Finder.
     func moveSelection(_ direction: MoveDirection, columns: Int, extending: Bool) {
+        guard let item = itemForKeyboardMove(direction, columns: columns) else { return }
+        if item.id != focusedItemID {
+            pendingKeyboardScroll = true
+        }
+        selectItem(item, extend: extending)
+    }
+
+    /// Move the keyboard cursor without changing which items are selected.
+    func moveFocus(_ direction: MoveDirection, columns: Int) {
+        guard let item = itemForKeyboardMove(direction, columns: columns) else { return }
+        if item.id != focusedItemID {
+            pendingKeyboardScroll = true
+        }
+        focusedItemID = item.id
+        beginKeyboardMultiSelect()
+    }
+
+    /// Add or remove the focused item from the selection, leaving focus in place.
+    func toggleFocusedItemSelection() {
+        guard let focusedItemID,
+              let item = orderedItemByID[focusedItemID]
+        else { return }
+        beginKeyboardMultiSelect()
+        applyItemToggle(item)
+    }
+
+    private func applyItemToggle(_ item: MediaItem) {
+        if selectedItemIDs.contains(item.id) {
+            selectedItemIDs.remove(item.id)
+        } else {
+            selectedItemIDs.insert(item.id)
+        }
+        focusedItemID = item.id
+        selectionAnchorID = item.id
+    }
+
+    private func selectRangePreservingKeyboardMultiSelect(to direction: MoveDirection, columns: Int) {
+        guard let item = itemForKeyboardMove(direction, columns: columns) else { return }
+        if item.id != focusedItemID {
+            pendingKeyboardScroll = true
+        }
+        beginKeyboardMultiSelect()
+        if let anchor = selectionAnchorID ?? focusedItemID {
+            selectRange(from: anchor, to: item.id)
+            focusedItemID = item.id
+        } else {
+            selectedItemIDs = [item.id]
+            focusedItemID = item.id
+            selectionAnchorID = item.id
+        }
+    }
+
+    private func showsKeyboardFocus(for id: MediaItem.ID) -> Bool {
+        isKeyboardMultiSelectActive && focusedItemID == id
+    }
+
+    private func applyKeyboardFocusChrome(to id: MediaItem.ID?) {
+        guard let id else { return }
+        selectionStateByID[id]?.isFocused = showsKeyboardFocus(for: id)
+    }
+
+    private func beginKeyboardMultiSelect() {
+        isKeyboardMultiSelectActive = true
+    }
+
+    private func endKeyboardMultiSelect() {
+        isKeyboardMultiSelectActive = false
+    }
+
+    /// Shared keyboard routing for browser arrows. Command (and Option) move the
+    /// cursor without changing the selection. Command-Shift Left/Right jump the
+    /// audio playhead when the inspector is active.
+    func handleBrowserKeyboardArrow(
+        _ direction: MoveDirection,
+        columns: Int,
+        extend: Bool,
+        option: Bool,
+        command: Bool
+    ) {
+        let isHorizontal = direction == .left || direction == .right
+        if command && extend && isHorizontal && canControlInspectorAudio {
+            requestAudioSeek(direction == .left ? .start : .end)
+            return
+        }
+        if command || option {
+            if extend {
+                selectRangePreservingKeyboardMultiSelect(to: direction, columns: columns)
+            } else {
+                moveFocus(direction, columns: columns)
+            }
+            return
+        }
+        if isHorizontal && canControlInspectorAudio {
+            requestAudioSeek(direction == .left ? .rewind : .forward)
+            return
+        }
+        moveSelection(direction, columns: columns, extending: extend)
+    }
+
+    private func itemForKeyboardMove(_ direction: MoveDirection, columns: Int) -> MediaItem? {
         let ordered = orderedItems
-        guard !ordered.isEmpty else { return }
+        guard !ordered.isEmpty else { return nil }
 
         let cols = max(1, columns)
         let currentIndex = focusedItemID.flatMap { orderedItemIndexByID[$0] } ?? 0
@@ -2857,9 +3013,16 @@ final class BrowserModel {
         case .down: target = currentIndex + cols
         }
         target = min(max(target, 0), ordered.count - 1)
+        return ordered[target]
+    }
 
-        let item = ordered[target]
-        selectItem(item, extend: extending)
+    /// Installs a listing without scanning. Used by unit tests.
+    func replaceMediaItemsForTesting(_ items: [MediaItem], tab: MediaLibraryTab = .visual) {
+        libraryTab = tab
+        replaceMediaItems(items, resetInteraction: true)
+        if libraryTab != tab {
+            libraryTab = tab
+        }
     }
 
     // MARK: - Preview / viewer playlist

@@ -77,16 +77,20 @@ struct LibraryTabPicker: View {
             ForEach(MediaLibraryTab.allCases) { tab in
                 Image(systemName: tab.systemImage)
                     .accessibilityLabel(tab.title)
-                    .help(tab.title)
+                    .help(tab.help)
                     .tag(tab)
                     .disabled(model.isClipboardSelected && tab == .audio)
             }
         }
         .pickerStyle(.segmented)
         .labelsHidden()
-        .help("Switch library view (⌘1 All, ⌘2 Images & Video, ⌘3 Audio)")
         .accessibilityLabel("Library")
         .frame(width: 138)
+        .background {
+            SegmentedControlTooltipInstaller(
+                tooltips: MediaLibraryTab.allCases.map(\.help)
+            )
+        }
     }
 }
 
@@ -219,5 +223,74 @@ private final class HeaderClickView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         onClick?(convert(event.locationInWindow, from: nil))
+    }
+}
+
+/// SwiftUI's segmented picker tooltip is control-wide. This finds the underlying
+/// `NSSegmentedControl` and sets a distinct tooltip on each segment.
+private struct SegmentedControlTooltipInstaller: NSViewRepresentable {
+    var tooltips: [String]
+
+    func makeNSView(context: Context) -> SegmentedControlTooltipView {
+        let view = SegmentedControlTooltipView()
+        view.tooltips = tooltips
+        return view
+    }
+
+    func updateNSView(_ nsView: SegmentedControlTooltipView, context: Context) {
+        nsView.tooltips = tooltips
+    }
+}
+
+private final class SegmentedControlTooltipView: NSView {
+    var tooltips: [String] = [] {
+        didSet { applyTooltips() }
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        applyTooltips()
+    }
+
+    override func viewDidMoveToSuperview() {
+        super.viewDidMoveToSuperview()
+        applyTooltips()
+    }
+
+    override func layout() {
+        super.layout()
+        applyTooltips()
+    }
+
+    private func applyTooltips() {
+        DispatchQueue.main.async { [weak self] in
+            self?.installTooltips()
+        }
+    }
+
+    private func installTooltips() {
+        guard let control = nearestSegmentedControl() else { return }
+        control.toolTip = nil
+        for (index, tooltip) in tooltips.enumerated() where index < control.segmentCount {
+            control.setToolTip(tooltip, forSegment: index)
+        }
+    }
+
+    private func nearestSegmentedControl() -> NSSegmentedControl? {
+        var ancestor: NSView? = superview
+        while let view = ancestor {
+            if let control = view as? NSSegmentedControl { return control }
+            if let control = Self.segmentedControl(in: view) { return control }
+            ancestor = view.superview
+        }
+        return nil
+    }
+
+    private static func segmentedControl(in root: NSView) -> NSSegmentedControl? {
+        if let control = root as? NSSegmentedControl { return control }
+        for subview in root.subviews {
+            if let control = segmentedControl(in: subview) { return control }
+        }
+        return nil
     }
 }

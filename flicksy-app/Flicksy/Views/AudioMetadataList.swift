@@ -112,6 +112,7 @@ private struct AudioMetadataRow: View {
             Rectangle()
                 .fill(.quaternary.opacity(selectionState.isSelected ? 0.5 : 0))
         }
+        .keyboardFocusOutline(isFocused: selectionState.isFocused, cornerRadius: 4, inset: 1)
         .overlay(alignment: .bottom) {
             Divider()
         }

@@ -533,11 +533,11 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
+				FLICKSY_APP_STORE_URL = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Flicksy/Info-Direct.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Flicksy;
 				INFOPLIST_KEY_FlicksyAppStoreURL = "$(FLICKSY_APP_STORE_URL)";
-				FLICKSY_APP_STORE_URL = "";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Flicksy";
 				INFOPLIST_KEY_SUEnableInstallerLauncherService = YES;
 				INFOPLIST_KEY_SUFeedURL = "$(SPARKLE_FEED_URL)";
@@ -576,11 +576,11 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
+				FLICKSY_APP_STORE_URL = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Flicksy/Info-Direct.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Flicksy;
 				INFOPLIST_KEY_FlicksyAppStoreURL = "$(FLICKSY_APP_STORE_URL)";
-				FLICKSY_APP_STORE_URL = "";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Flicksy";
 				INFOPLIST_KEY_SUEnableInstallerLauncherService = YES;
 				INFOPLIST_KEY_SUFeedURL = "$(SPARKLE_FEED_URL)";

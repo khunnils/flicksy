@@ -61,8 +61,10 @@ enum KeyboardShortcutsCatalog {
             id: "browser",
             title: "Browser",
             entries: [
-                .init(id: "move-focus", title: "Move focus", keys: "← → ↑ ↓"),
+                .init(id: "move-focus", title: "Move selection", keys: "← → ↑ ↓"),
                 .init(id: "extend-selection", title: "Extend selection", keys: "⇧← → ↑ ↓"),
+                .init(id: "move-focus-only", title: "Move focus without selecting", keys: "⌘← → ↑ ↓"),
+                .init(id: "toggle-focused", title: "Toggle focused item", keys: "⌘Return"),
                 .init(id: "preview", title: "Open preview", keys: "Space"),
                 .init(id: "compare", title: "Compare images", keys: "⇧Space"),
                 .init(id: "play-return", title: "Play / Pause", keys: "Return"),
@@ -84,10 +86,10 @@ enum KeyboardShortcutsCatalog {
             id: "audio",
             title: "Audio",
             entries: [
-                .init(id: "jump-start", title: "Jump to start", keys: "⌘←"),
+                .init(id: "jump-start", title: "Jump to start", keys: "⌘⇧←"),
                 .init(id: "rewind", title: "Rewind 5 seconds", keys: "←"),
                 .init(id: "forward", title: "Forward 5 seconds", keys: "→"),
-                .init(id: "jump-end", title: "Jump to end", keys: "⌘→"),
+                .init(id: "jump-end", title: "Jump to end", keys: "⌘⇧→"),
             ]
         ),
     ]

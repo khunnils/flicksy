@@ -25,10 +25,11 @@ struct ImageCell: View {
     @State private var cardSize: CGSize = .zero
 
     private var isSelected: Bool { selectionState.isSelected }
+    private var isFocused: Bool { selectionState.isFocused }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            MediaCardBackground(isSelected: isSelected && image == nil) {
+            MediaCardBackground(isSelected: isSelected && image == nil, isFocused: isFocused) {
                 content
             }
             .aspectRatio(cardAspectRatio, contentMode: .fit)

@@ -34,10 +34,11 @@ struct VideoCell: View {
     private var isActive: Bool { model.playingVideoID == item.id }
 
     private var isSelected: Bool { selectionState.isSelected }
+    private var isFocused: Bool { selectionState.isFocused }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            MediaCardBackground(isSelected: isSelected && !hasVisualContent) {
+            MediaCardBackground(isSelected: isSelected && !hasVisualContent, isFocused: isFocused) {
                 content
             }
             .aspectRatio(cardAspectRatio, contentMode: .fit)

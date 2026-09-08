@@ -119,7 +119,7 @@ struct AudioInspectorPanel: View {
 
     private var transport: some View {
         HStack(spacing: 10) {
-            transportButton("backward.end.fill", help: "Jump to Start (⌘←)") {
+            transportButton("backward.end.fill", help: "Jump to Start (⌘⇧←)") {
                 model.requestAudioSeek(.start)
             }
             transportButton("gobackward.5", help: "Rewind 5 Seconds (←)") {
@@ -137,7 +137,7 @@ struct AudioInspectorPanel: View {
             transportButton("goforward.5", help: "Forward 5 Seconds (→)") {
                 model.requestAudioSeek(.forward)
             }
-            transportButton("forward.end.fill", help: "Jump to End (⌘→)") {
+            transportButton("forward.end.fill", help: "Jump to End (⌘⇧→)") {
                 model.requestAudioSeek(.end)
             }
 

@@ -10,6 +10,7 @@ import SwiftUI
 /// it stays visible over light or dark media without competing with the image.
 struct MediaCardBackground<Content: View>: View {
     var isSelected: Bool = false
+    var isFocused: Bool = false
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -41,6 +42,7 @@ struct MediaCardBackground<Content: View>: View {
                 radius: isSelected ? 4 : 0,
                 y: isSelected ? 1 : 0
             )
+            .keyboardFocusOutline(isFocused: isFocused, cornerRadius: 8)
     }
 }
 
@@ -49,6 +51,7 @@ struct MediaCardBackground<Content: View>: View {
 struct MediaThumbnailSurface<Content: View>: View {
     let aspectRatio: CGFloat
     var isSelected: Bool = false
+    var isFocused: Bool = false
     var inset: CGFloat = 7
     @ViewBuilder var content: Content
 
@@ -90,6 +93,7 @@ struct MediaThumbnailSurface<Content: View>: View {
                     radius: isSelected ? 4 : 0,
                     y: isSelected ? 1 : 0
                 )
+                .keyboardFocusOutline(isFocused: isFocused, cornerRadius: 8)
                 .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
         }
     }
@@ -129,6 +133,20 @@ enum MediaThumbnailLayout {
 }
 
 extension View {
+    /// A dotted grey ring for the keyboard cursor. Inset so GeometryReader and
+    /// clipShape cannot crop it away from the selected-item stroke.
+    func keyboardFocusOutline(isFocused: Bool, cornerRadius: CGFloat, inset: CGFloat = 2.5) -> some View {
+        overlay {
+            RoundedRectangle(cornerRadius: max(2, cornerRadius - inset), style: .continuous)
+                .strokeBorder(
+                    isFocused ? Color.primary.opacity(0.28) : .clear,
+                    style: StrokeStyle(lineWidth: 1.25, dash: [3, 2.25])
+                )
+                .padding(inset)
+                .allowsHitTesting(false)
+        }
+    }
+
     /// Reports this element's full hit area for empty-space drag selection.
     func reportSelectionFrame(
         for item: MediaItem,

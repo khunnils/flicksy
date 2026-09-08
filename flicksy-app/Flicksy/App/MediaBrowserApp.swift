@@ -93,18 +93,78 @@ private struct BrowserCommands: Commands {
                     Button("Audio") { model.selectLibraryTab(.audio) }
                         .keyboardShortcut("3", modifiers: .command)
                         .disabled(model.viewerItemID != nil || model.isClipboardSelected)
-                    Button("Jump to Start") { model.requestAudioSeek(.start) }
-                        .keyboardShortcut(.leftArrow, modifiers: .command)
-                        .disabled(!model.canControlInspectorAudio)
-                    Button("Rewind") { model.requestAudioSeek(.rewind) }
-                        .keyboardShortcut(.leftArrow, modifiers: [])
-                        .disabled(!model.canControlInspectorAudio)
-                    Button("Forward") { model.requestAudioSeek(.forward) }
-                        .keyboardShortcut(.rightArrow, modifiers: [])
-                        .disabled(!model.canControlInspectorAudio)
-                    Button("Jump to End") { model.requestAudioSeek(.end) }
-                        .keyboardShortcut(.rightArrow, modifiers: .command)
-                        .disabled(!model.canControlInspectorAudio)
+                    audioSeekMenuItem(
+                        "Jump to Start",
+                        enabled: model.canControlInspectorAudio,
+                        shortcut: .leftArrow,
+                        modifiers: [.command, .shift]
+                    ) {
+                        model.requestAudioSeek(.start)
+                    }
+                    audioSeekMenuItem(
+                        "Rewind",
+                        enabled: model.canControlInspectorAudio,
+                        shortcut: .leftArrow,
+                        modifiers: []
+                    ) {
+                        model.requestAudioSeek(.rewind)
+                    }
+                    audioSeekMenuItem(
+                        "Forward",
+                        enabled: model.canControlInspectorAudio,
+                        shortcut: .rightArrow,
+                        modifiers: []
+                    ) {
+                        model.requestAudioSeek(.forward)
+                    }
+                    audioSeekMenuItem(
+                        "Jump to End",
+                        enabled: model.canControlInspectorAudio,
+                        shortcut: .rightArrow,
+                        modifiers: [.command, .shift]
+                    ) {
+                        model.requestAudioSeek(.end)
+                    }
+                    browserFocusMenuItem(
+                        "Move Focus Left",
+                        enabled: model.canMoveBrowserFocus,
+                        shortcut: .leftArrow,
+                        modifiers: .command
+                    ) {
+                        model.moveFocus(.left, columns: model.keyboardNavigationColumns)
+                    }
+                    browserFocusMenuItem(
+                        "Move Focus Right",
+                        enabled: model.canMoveBrowserFocus,
+                        shortcut: .rightArrow,
+                        modifiers: .command
+                    ) {
+                        model.moveFocus(.right, columns: model.keyboardNavigationColumns)
+                    }
+                    browserFocusMenuItem(
+                        "Move Focus Up",
+                        enabled: model.canMoveBrowserFocus,
+                        shortcut: .upArrow,
+                        modifiers: .command
+                    ) {
+                        model.moveFocus(.up, columns: model.keyboardNavigationColumns)
+                    }
+                    browserFocusMenuItem(
+                        "Move Focus Down",
+                        enabled: model.canMoveBrowserFocus,
+                        shortcut: .downArrow,
+                        modifiers: .command
+                    ) {
+                        model.moveFocus(.down, columns: model.keyboardNavigationColumns)
+                    }
+                    browserFocusMenuItem(
+                        "Toggle Focused Item",
+                        enabled: model.canMoveBrowserFocus && model.focusedItemID != nil,
+                        shortcut: .return,
+                        modifiers: .command
+                    ) {
+                        model.toggleFocusedItemSelection()
+                    }
                     Button("Organize…") { model.isOrganizePresented = true }
                         .keyboardShortcut("t", modifiers: .command)
                         .disabled(!model.canOrganizeSelection || model.viewerItemID != nil)
@@ -154,6 +214,42 @@ private struct BrowserCommands: Commands {
         Button("Find Media") { model.isSearchPresented = true }
             .keyboardShortcut("f", modifiers: .command)
             .disabled(!model.hasSelectedSource || model.viewerItemID != nil)
+    }
+
+    /// Disabled menu key equivalents still swallow the event. Only attach the
+    /// shortcut while the command can run.
+    @ViewBuilder
+    private func audioSeekMenuItem(
+        _ title: String,
+        enabled: Bool,
+        shortcut: KeyEquivalent,
+        modifiers: EventModifiers,
+        action: @escaping () -> Void
+    ) -> some View {
+        browserFocusMenuItem(
+            title,
+            enabled: enabled,
+            shortcut: shortcut,
+            modifiers: modifiers,
+            action: action
+        )
+    }
+
+    @ViewBuilder
+    private func browserFocusMenuItem(
+        _ title: String,
+        enabled: Bool,
+        shortcut: KeyEquivalent,
+        modifiers: EventModifiers,
+        action: @escaping () -> Void
+    ) -> some View {
+        if enabled {
+            Button(title, action: action)
+                .keyboardShortcut(shortcut, modifiers: modifiers)
+        } else {
+            Button(title, action: action)
+                .disabled(true)
+        }
     }
 }
 

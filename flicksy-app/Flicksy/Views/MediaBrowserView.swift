@@ -32,9 +32,8 @@ struct MediaBrowserView: View {
     /// thumbnail size is committed only when the gesture ends.
     @GestureState private var gridMagnification: CGFloat = 1
 
-    /// Keyboard moves set this so the focused cell is scrolled into view. Clicks
-    /// leave it false — selecting an already-visible tile should not recenter it.
-    @State private var shouldScrollFocusIntoView = false
+    /// Intercepts Option/Command arrows before menu key equivalents swallow them.
+    @State private var keyMonitor: BrowserKeyMonitor?
 
     /// Highlights the empty-state drop target while folders are dragged over it.
     @State private var isSourceDropTargeted = false
@@ -115,6 +114,20 @@ struct MediaBrowserView: View {
             searchFieldFocused: $searchFieldFocused
         ))
         .onKeyPress { handleKey($0) }
+        .onAppear { installKeyMonitor() }
+        .onDisappear { removeKeyMonitor() }
+        .onChange(of: browserWidth) { _, _ in
+            keyMonitor?.columns = navigationColumns
+            model.keyboardNavigationColumns = navigationColumns
+        }
+        .onChange(of: model.libraryTab) { _, _ in
+            keyMonitor?.columns = navigationColumns
+            model.keyboardNavigationColumns = navigationColumns
+        }
+        .onChange(of: model.thumbnailSize) { _, _ in
+            keyMonitor?.columns = navigationColumns
+            model.keyboardNavigationColumns = navigationColumns
+        }
         .onChange(of: searchFieldFocused) { _, focused in
             model.isSearchFieldFocused = focused
         }
@@ -221,8 +234,8 @@ struct MediaBrowserView: View {
                 .clipped()
                 .onChange(of: model.focusedItemID) {
                     let id = model.focusedItemID
-                    guard shouldScrollFocusIntoView, let id else { return }
-                    shouldScrollFocusIntoView = false
+                    guard model.pendingKeyboardScroll, let id else { return }
+                    model.pendingKeyboardScroll = false
                     if let frame = selectionFrames[id]?.frame,
                        browserViewportSize.height > 0,
                        frame.minY >= 0,
@@ -424,29 +437,40 @@ struct MediaBrowserView: View {
 
         let extend = press.modifiers.contains(.shift)
         let command = press.modifiers.contains(.command)
+        let option = press.modifiers.contains(.option)
         switch press.key {
         case .leftArrow:
-            if command {
-                guard model.canControlInspectorAudio else { return .ignored }
-                model.requestAudioSeek(.start)
-            } else if model.canControlInspectorAudio {
-                model.requestAudioSeek(.rewind)
-            } else {
-                moveFocus(.left, extending: extend)
-            }
+            model.handleBrowserKeyboardArrow(
+                .left,
+                columns: navigationColumns,
+                extend: extend,
+                option: option,
+                command: command
+            )
         case .rightArrow:
-            if command {
-                guard model.canControlInspectorAudio else { return .ignored }
-                model.requestAudioSeek(.end)
-            } else if model.canControlInspectorAudio {
-                model.requestAudioSeek(.forward)
-            } else {
-                moveFocus(.right, extending: extend)
-            }
+            model.handleBrowserKeyboardArrow(
+                .right,
+                columns: navigationColumns,
+                extend: extend,
+                option: option,
+                command: command
+            )
         case .upArrow:
-            moveFocus(.up, extending: extend)
+            model.handleBrowserKeyboardArrow(
+                .up,
+                columns: navigationColumns,
+                extend: extend,
+                option: option,
+                command: command
+            )
         case .downArrow:
-            moveFocus(.down, extending: extend)
+            model.handleBrowserKeyboardArrow(
+                .down,
+                columns: navigationColumns,
+                extend: extend,
+                option: option,
+                command: command
+            )
         case .space:
             if extend {
                 if model.canCompareSelectedImages {
@@ -458,7 +482,11 @@ struct MediaBrowserView: View {
                 model.openPreview()
             }
         case .return:
-            model.togglePlaybackOfFocusedItem()
+            if command {
+                model.toggleFocusedItemSelection()
+            } else {
+                model.togglePlaybackOfFocusedItem()
+            }
         case .delete, .deleteForward:
             model.moveSelectedItemsToTrash()
         default:
@@ -476,13 +504,88 @@ struct MediaBrowserView: View {
         return model.selectedAudioItem != nil
     }
 
-    private func moveFocus(_ direction: MoveDirection, extending: Bool) {
-        let previous = model.focusedItemID
-        shouldScrollFocusIntoView = true
-        model.moveSelection(direction, columns: navigationColumns, extending: extending)
-        if model.focusedItemID == previous {
-            shouldScrollFocusIntoView = false
+    private func installKeyMonitor() {
+        guard keyMonitor == nil else { return }
+        let monitor = BrowserKeyMonitor(model: model)
+        monitor.columns = navigationColumns
+        monitor.install()
+        keyMonitor = monitor
+        model.keyboardNavigationColumns = navigationColumns
+    }
+
+    private func removeKeyMonitor() {
+        keyMonitor?.remove()
+        keyMonitor = nil
+    }
+}
+
+/// Intercepts Option/Command arrows before window menu key equivalents swallow them.
+@MainActor
+private final class BrowserKeyMonitor {
+    let model: BrowserModel
+    var columns = 1
+    private var token: Any?
+
+    init(model: BrowserModel) {
+        self.model = model
+    }
+
+    func install() {
+        guard token == nil else { return }
+        token = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, self.handle(event) else { return event }
+            return nil
         }
+    }
+
+    func remove() {
+        if let token {
+            NSEvent.removeMonitor(token)
+        }
+        token = nil
+    }
+
+    private func handle(_ event: NSEvent) -> Bool {
+        guard shouldHandle else { return false }
+
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        let option = flags.contains(.option)
+        let command = flags.contains(.command)
+        let extend = flags.contains(.shift)
+        guard option || command else { return false }
+
+        let direction: MoveDirection
+        switch event.keyCode {
+        case 123: direction = .left
+        case 124: direction = .right
+        case 125: direction = .down
+        case 126: direction = .up
+        case 36, 76:
+            if command && !extend && !option {
+                model.toggleFocusedItemSelection()
+                return true
+            }
+            return false
+        default:
+            return false
+        }
+
+        model.handleBrowserKeyboardArrow(
+            direction,
+            columns: columns,
+            extend: extend,
+            option: option,
+            command: command
+        )
+        return true
+    }
+
+    private var shouldHandle: Bool {
+        guard model.canMoveBrowserFocus else { return false }
+        if let responder = NSApp.keyWindow?.firstResponder {
+            if responder is NSTextView || responder is NSTextField { return false }
+        }
+        return true
     }
 }
 
