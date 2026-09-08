@@ -1774,6 +1774,10 @@ final class BrowserModel {
             }.value
 
             if succeeded {
+                // Library views query the catalog rather than scanning the folder.
+                // Reconcile the new path before loading those views again so the
+                // renamed asset retains its identity and collection memberships.
+                await reconcileLibrary(roots: rootStore.urls)
                 refreshAfterFileMutation()
             } else {
                 loadError = "\(item.name) could not be renamed."

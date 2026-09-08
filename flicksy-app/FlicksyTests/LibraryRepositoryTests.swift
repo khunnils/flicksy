@@ -276,6 +276,45 @@ final class LibraryRepositoryTests: XCTestCase {
 
     // MARK: - Identity reconciliation
 
+    @MainActor
+    func testBrowserRenameInCollectionRefreshesCatalog() async throws {
+        let repo = makeRepository()
+        let root = try makeRoot()
+        let original = try writeFile("before.png", in: root)
+        try await repo.reconcile(roots: [root])
+        let item = try await repo.query(.all).items.first!
+        let id = try XCTUnwrap(item.libraryID)
+        let collection = try await repo.createCollection(name: "C")
+        try await repo.add(assetIDs: [id], to: collection.id)
+        let tag = try await repo.createTag(name: "Pick", color: .yellow)
+        try await repo.setTag(tag.id, on: [id], enabled: true)
+
+        let savedBookmarks = UserDefaults.standard.object(forKey: "rootFolderBookmarks")
+        let services = SharedLibraryServices()
+        defer { UserDefaults.standard.set(savedBookmarks, forKey: "rootFolderBookmarks") }
+        XCTAssertEqual(services.rootStore.addFolders([root]).count, 1)
+        let model = BrowserModel(services: services, libraryRepository: repo)
+        defer { model.shutdown() }
+        model.selectedSource = .collection(collection.id)
+        model.replaceMediaItemsForTesting([item], tab: .all)
+
+        model.rename(item, to: "after.png")
+        let deadline = Date().addingTimeInterval(5)
+        while Date() < deadline {
+            if model.orderedItems.first?.name == "after.png", !model.isLoadingMedia { break }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: original.path))
+        XCTAssertEqual(model.orderedItems.first?.name, "after.png")
+        XCTAssertTrue(model.missingCollectionItems.isEmpty)
+        let result = try await repo.query(.collection(collection.id))
+        XCTAssertEqual(result.items.map(\.libraryID), [id])
+        XCTAssertEqual(result.items.first?.name, "after.png")
+        XCTAssertEqual(result.items.first?.tags.map(\.name), ["Pick"])
+        XCTAssertTrue(result.missingItems.isEmpty)
+    }
+
     func testRenameWithinRootKeepsIdentityAndOrganization() async throws {
         let repo = makeRepository()
         let root = try makeRoot()

@@ -24,6 +24,7 @@ final class AppAnalytics {
     private let stop: @MainActor () -> Void
     private var running = false
 
+
     var isEnabled: Bool { defaults.bool(forKey: Self.enabledKey) }
 
     init(
