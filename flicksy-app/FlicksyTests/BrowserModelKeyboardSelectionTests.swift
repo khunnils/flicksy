@@ -215,6 +215,65 @@ final class BrowserModelKeyboardSelectionTests: XCTestCase {
         XCTAssertTrue(MediaLibraryTab.audio.help.localizedCaseInsensitiveContains("waveform"))
     }
 
+    func testLibraryTabsAreAvailableOnlyWhenSourceHasMatchingItems() {
+        let (model, _) = makeModel(itemCount: 0, tab: .all)
+        XCTAssertTrue(model.isLibraryTabAvailable(.all))
+        XCTAssertFalse(model.isLibraryTabAvailable(.visual))
+        XCTAssertFalse(model.isLibraryTabAvailable(.audio))
+
+        model.replaceMediaItemsForTesting(makeItems(count: 2, type: .image), tab: .visual)
+        XCTAssertTrue(model.isLibraryTabAvailable(.visual))
+        XCTAssertFalse(model.isLibraryTabAvailable(.audio))
+
+        model.replaceMediaItemsForTesting(makeItems(count: 1, type: .video), tab: .visual)
+        XCTAssertTrue(model.isLibraryTabAvailable(.visual))
+        XCTAssertFalse(model.isLibraryTabAvailable(.audio))
+
+        model.replaceMediaItemsForTesting(makeItems(count: 2, type: .audio), tab: .audio)
+        XCTAssertFalse(model.isLibraryTabAvailable(.visual))
+        XCTAssertTrue(model.isLibraryTabAvailable(.audio))
+
+        let mixed = makeItems(count: 1, type: .image) + makeItems(count: 1, type: .audio, namePrefix: "audio")
+        model.replaceMediaItemsForTesting(mixed, tab: .all)
+        XCTAssertTrue(model.isLibraryTabAvailable(.visual))
+        XCTAssertTrue(model.isLibraryTabAvailable(.audio))
+    }
+
+    func testSelectLibraryTabIgnoresTabsWithoutMatchingItems() {
+        let (model, _) = makeModel(itemCount: 2, type: .image, tab: .visual)
+
+        model.selectLibraryTab(.audio)
+        XCTAssertEqual(model.libraryTab, .visual)
+
+        model.selectLibraryTab(.all)
+        XCTAssertEqual(model.libraryTab, .all)
+    }
+
+    func testSearchDoesNotDisableLibraryTabsWhenSourceStillHasItems() {
+        let mixed = makeItems(count: 1, type: .image) + makeItems(count: 1, type: .audio, namePrefix: "song")
+        let (model, _) = makeModel(itemCount: 0, tab: .all)
+        model.replaceMediaItemsForTesting(mixed, tab: .all)
+        model.searchQuery = "song"
+
+        XCTAssertTrue(model.visualItems.isEmpty)
+        XCTAssertTrue(model.isLibraryTabAvailable(.visual))
+        XCTAssertTrue(model.isLibraryTabAvailable(.audio))
+    }
+
+    func testEmptySpecializedTabFallsBackToAPopulatedView() {
+        let (model, _) = makeModel(itemCount: 2, type: .image, tab: .visual)
+
+        model.replaceMediaItemsForTesting(
+            makeItems(count: 2, type: .audio),
+            tab: .visual,
+            preserveTab: false
+        )
+        XCTAssertEqual(model.libraryTab, .audio)
+
+        model.replaceMediaItemsForTesting([], tab: .audio, preserveTab: false)
+        XCTAssertEqual(model.libraryTab, .all)
+    }
+
     private func makeModel(
         itemCount: Int,
         type: MediaType = .image,
@@ -231,16 +290,26 @@ final class BrowserModelKeyboardSelectionTests: XCTestCase {
         )
         model.sortKey = .name
         model.sortAscending = true
+        model.replaceMediaItemsForTesting(makeItems(count: itemCount, type: type), tab: tab)
+        return (model, model.orderedItems)
+    }
 
-        let fileExtension = type == .audio ? "mp3" : "png"
-        let items = (0..<itemCount).map { index in
+    private func makeItems(
+        count: Int,
+        type: MediaType,
+        namePrefix: String = "item"
+    ) -> [MediaItem] {
+        let fileExtension = switch type {
+        case .audio: "mp3"
+        case .video: "mov"
+        case .image: "png"
+        }
+        return (0..<count).map { index in
             MediaItem(
-                url: URL(fileURLWithPath: "/tmp/keyboard-\(index).\(fileExtension)"),
+                url: URL(fileURLWithPath: "/tmp/keyboard-\(namePrefix)-\(index).\(fileExtension)"),
                 type: type,
-                name: String(format: "item-%02d.\(fileExtension)", index)
+                name: String(format: "\(namePrefix)-%02d.\(fileExtension)", index)
             )
         }
-        model.replaceMediaItemsForTesting(items, tab: tab)
-        return (model, model.orderedItems)
     }
 }

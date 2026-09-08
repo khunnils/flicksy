@@ -460,8 +460,19 @@ final class BrowserModel {
         }
     }
 
+    func isLibraryTabAvailable(_ tab: MediaLibraryTab) -> Bool {
+        switch tab {
+        case .all:
+            true
+        case .visual:
+            mediaItems.contains { $0.type == .image || $0.type == .video }
+        case .audio:
+            mediaItems.contains { $0.type == .audio }
+        }
+    }
+
     func selectLibraryTab(_ tab: MediaLibraryTab) {
-        if isClipboardSelected, tab == .audio { return }
+        guard isLibraryTabAvailable(tab) else { return }
         libraryTab = tab
     }
 
@@ -2700,20 +2711,15 @@ final class BrowserModel {
         }
     }
 
-    /// If the restored tab is empty for this folder but the other is not, show
-    /// the tab that actually has files.
+    /// If the restored tab has no files of that kind, show a pane that does.
     private func preferPopulatedTab() {
-        let hasVisual = mediaItems.contains { $0.type == .image || $0.type == .video }
-        let hasAudio = mediaItems.contains { $0.type == .audio }
-        switch libraryTab {
-        case .all:
-            break
-        case .visual where !hasVisual && hasAudio:
-            libraryTab = .audio
-        case .audio where !hasAudio && hasVisual:
+        guard !isLibraryTabAvailable(libraryTab) else { return }
+        if isLibraryTabAvailable(.visual) {
             libraryTab = .visual
-        default:
-            break
+        } else if isLibraryTabAvailable(.audio) {
+            libraryTab = .audio
+        } else {
+            libraryTab = .all
         }
     }
 
@@ -3049,10 +3055,14 @@ final class BrowserModel {
     }
 
     /// Installs a listing without scanning. Used by unit tests.
-    func replaceMediaItemsForTesting(_ items: [MediaItem], tab: MediaLibraryTab = .visual) {
+    func replaceMediaItemsForTesting(
+        _ items: [MediaItem],
+        tab: MediaLibraryTab = .visual,
+        preserveTab: Bool = true
+    ) {
         libraryTab = tab
         replaceMediaItems(items, resetInteraction: true)
-        if libraryTab != tab {
+        if preserveTab, libraryTab != tab {
             libraryTab = tab
         }
     }

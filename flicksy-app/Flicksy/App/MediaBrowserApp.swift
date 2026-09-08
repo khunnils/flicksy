@@ -89,10 +89,10 @@ private struct BrowserCommands: Commands {
                         .disabled(model.viewerItemID != nil)
                     Button("Images & Video") { model.selectLibraryTab(.visual) }
                         .keyboardShortcut("2", modifiers: .command)
-                        .disabled(model.viewerItemID != nil)
+                        .disabled(model.viewerItemID != nil || !model.isLibraryTabAvailable(.visual))
                     Button("Audio") { model.selectLibraryTab(.audio) }
                         .keyboardShortcut("3", modifiers: .command)
-                        .disabled(model.viewerItemID != nil || model.isClipboardSelected)
+                        .disabled(model.viewerItemID != nil || !model.isLibraryTabAvailable(.audio))
                     audioSeekMenuItem(
                         "Jump to Start",
                         enabled: model.canControlInspectorAudio,

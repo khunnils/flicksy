@@ -67,29 +67,89 @@ struct SortControl: View {
 }
 
 /// All, Images & Video, and Audio, shown as a native segmented tab control.
+///
+/// Built on `NSSegmentedControl` so individual segments can be disabled. SwiftUI
+/// pickers still deliver clicks on `.disabled` tags.
 struct LibraryTabPicker: View {
     @Environment(BrowserModel.self) private var model
 
     var body: some View {
-        @Bindable var model = model
-
-        Picker("Library", selection: $model.libraryTab) {
-            ForEach(MediaLibraryTab.allCases) { tab in
-                Image(systemName: tab.systemImage)
-                    .accessibilityLabel(tab.title)
-                    .help(tab.help)
-                    .tag(tab)
-                    .disabled(model.isClipboardSelected && tab == .audio)
+        LibraryTabSegmentedControl(
+            selected: model.libraryTab,
+            availability: MediaLibraryTab.allCases.map(model.isLibraryTabAvailable),
+            onSelect: { tab in
+                model.selectLibraryTab(tab)
+                return model.libraryTab
             }
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .accessibilityLabel("Library")
+        )
         .frame(width: 138)
-        .background {
-            SegmentedControlTooltipInstaller(
-                tooltips: MediaLibraryTab.allCases.map(\.help)
-            )
+        .accessibilityLabel("Library")
+    }
+}
+
+private struct LibraryTabSegmentedControl: NSViewRepresentable {
+    var selected: MediaLibraryTab
+    var availability: [Bool]
+    var onSelect: (MediaLibraryTab) -> MediaLibraryTab
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onSelect: onSelect)
+    }
+
+    func makeNSView(context: Context) -> NSSegmentedControl {
+        let tabs = MediaLibraryTab.allCases
+        let images = tabs.map { tab in
+            NSImage(systemSymbolName: tab.systemImage, accessibilityDescription: tab.title)
+                ?? NSImage()
+        }
+        let control = NSSegmentedControl(
+            images: images,
+            trackingMode: .selectOne,
+            target: context.coordinator,
+            action: #selector(Coordinator.selectionChanged(_:))
+        )
+        control.segmentStyle = .rounded
+        control.setAccessibilityLabel("Library")
+        for (index, tab) in tabs.enumerated() {
+            control.setToolTip(tab.help, forSegment: index)
+            control.setWidth(46, forSegment: index)
+        }
+        apply(to: control)
+        return control
+    }
+
+    func updateNSView(_ control: NSSegmentedControl, context: Context) {
+        context.coordinator.onSelect = onSelect
+        apply(to: control)
+    }
+
+    private func apply(to control: NSSegmentedControl) {
+        let tabs = MediaLibraryTab.allCases
+        for (index, tab) in tabs.enumerated() {
+            let isAvailable = index < availability.count ? availability[index] : true
+            control.setEnabled(isAvailable, forSegment: index)
+            control.setToolTip(tab.help, forSegment: index)
+        }
+        if let index = tabs.firstIndex(of: selected) {
+            control.selectedSegment = index
+        }
+    }
+
+    final class Coordinator: NSObject {
+        var onSelect: (MediaLibraryTab) -> MediaLibraryTab
+
+        init(onSelect: @escaping (MediaLibraryTab) -> MediaLibraryTab) {
+            self.onSelect = onSelect
+        }
+
+        @objc func selectionChanged(_ sender: NSSegmentedControl) {
+            let tabs = MediaLibraryTab.allCases
+            let index = sender.selectedSegment
+            guard index >= 0, index < tabs.count else { return }
+            let selected = onSelect(tabs[index])
+            if let selectedIndex = tabs.firstIndex(of: selected) {
+                sender.selectedSegment = selectedIndex
+            }
         }
     }
 }
@@ -223,74 +283,5 @@ private final class HeaderClickView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         onClick?(convert(event.locationInWindow, from: nil))
-    }
-}
-
-/// SwiftUI's segmented picker tooltip is control-wide. This finds the underlying
-/// `NSSegmentedControl` and sets a distinct tooltip on each segment.
-private struct SegmentedControlTooltipInstaller: NSViewRepresentable {
-    var tooltips: [String]
-
-    func makeNSView(context: Context) -> SegmentedControlTooltipView {
-        let view = SegmentedControlTooltipView()
-        view.tooltips = tooltips
-        return view
-    }
-
-    func updateNSView(_ nsView: SegmentedControlTooltipView, context: Context) {
-        nsView.tooltips = tooltips
-    }
-}
-
-private final class SegmentedControlTooltipView: NSView {
-    var tooltips: [String] = [] {
-        didSet { applyTooltips() }
-    }
-
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        applyTooltips()
-    }
-
-    override func viewDidMoveToSuperview() {
-        super.viewDidMoveToSuperview()
-        applyTooltips()
-    }
-
-    override func layout() {
-        super.layout()
-        applyTooltips()
-    }
-
-    private func applyTooltips() {
-        DispatchQueue.main.async { [weak self] in
-            self?.installTooltips()
-        }
-    }
-
-    private func installTooltips() {
-        guard let control = nearestSegmentedControl() else { return }
-        control.toolTip = nil
-        for (index, tooltip) in tooltips.enumerated() where index < control.segmentCount {
-            control.setToolTip(tooltip, forSegment: index)
-        }
-    }
-
-    private func nearestSegmentedControl() -> NSSegmentedControl? {
-        var ancestor: NSView? = superview
-        while let view = ancestor {
-            if let control = view as? NSSegmentedControl { return control }
-            if let control = Self.segmentedControl(in: view) { return control }
-            ancestor = view.superview
-        }
-        return nil
-    }
-
-    private static func segmentedControl(in root: NSView) -> NSSegmentedControl? {
-        if let control = root as? NSSegmentedControl { return control }
-        for subview in root.subviews {
-            if let control = segmentedControl(in: subview) { return control }
-        }
-        return nil
     }
 }
