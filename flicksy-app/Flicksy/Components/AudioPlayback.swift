@@ -5,6 +5,7 @@
 
 import AVFoundation
 import Observation
+import MediaToolbox
 
 /// Owns a single audio `AVPlayer` and publishes just enough state to draw a
 /// playhead (spec section 15).
@@ -17,7 +18,14 @@ import Observation
 @Observable
 @MainActor
 final class AudioPlayback {
-    private(set) var isPlaying = false
+    private(set) var isPlaying = false { didSet { onPlayingChange?(isPlaying) } }
+    var onPlayingChange: ((Bool) -> Void)?
+    private(set) var meter: AudioLevelMeter?
+    private var setupTask: Task<Void, Never>?
+    private var setupComplete = true
+    private var seekInFlight = false
+    private var nextSeek: TimeInterval?
+    private var seekGeneration = 0
     private(set) var currentTime: TimeInterval = 0
 
     /// `nil` until the asset reports a usable duration.
@@ -47,9 +55,10 @@ final class AudioPlayback {
 
     /// `duration` should be passed in when the row already has it, which avoids a
     /// visible delay before the playhead can be positioned.
-    init(url: URL, duration: TimeInterval?) {
+    init(url: URL, duration: TimeInterval?, meteringEnabled: Bool = false) {
         player = AVPlayer(url: url)
         self.duration = duration
+        if meteringEnabled { meter = AudioLevelMeter(); setupComplete = false }
 
         // Hold at the end rather than stopping abruptly; `handlePlaybackEnded`
         // either loops or rewinds so the play button becomes Replay.
@@ -64,7 +73,9 @@ final class AudioPlayback {
             // Registered on the main queue, so this always runs on the main actor
             // even though the API's closure is not typed as isolated.
             MainActor.assumeIsolated {
-                self?.currentTime = time.seconds
+                guard let self, time.seconds.isFinite else { return }
+                if !self.seekInFlight { self.currentTime = time.seconds }
+                if self.isPlaying && !self.seekInFlight { self.meter?.update(at: time.seconds) }
             }
         }
 
@@ -79,6 +90,32 @@ final class AudioPlayback {
         }
 
         applyPlaybackBounds()
+        if let meter {
+            setupTask = Task { [weak self] in
+                defer {
+                    if !Task.isCancelled, let self {
+                        self.setupComplete = true
+                        if self.isPlaying { self.player.play() }
+                    }
+                }
+                let asset = AVURLAsset(url: url)
+                guard let tracks = try? await asset.loadTracks(withMediaType: .audio),
+                      tracks.count == 1, let track = tracks.first,
+                      let descriptions = try? await track.load(.formatDescriptions),
+                      let description = descriptions.first,
+                      let format = CMAudioFormatDescriptionGetStreamBasicDescription(description)?.pointee,
+                      !Task.isCancelled, let self else {
+                    if !Task.isCancelled { meter.markUnavailable() }
+                    return
+                }
+                guard let tap = meter.makeTap(sourceChannels: Int(format.mChannelsPerFrame)) else { return }
+                let parameters = AVMutableAudioMixInputParameters(track: track)
+                parameters.audioTapProcessor = tap
+                let mix = AVMutableAudioMix()
+                mix.inputParameters = [parameters]
+                self.player.currentItem?.audioMix = mix
+            }
+        }
 
         if duration == nil {
             // Goes through the shared metadata cache, so the parse is usually
@@ -102,13 +139,15 @@ final class AudioPlayback {
                 seek(toTime: range.lowerBound)
             }
         }
-        player.play()
         isPlaying = true
+        if setupComplete { player.play() }
     }
 
     func pause() {
         player.pause()
         isPlaying = false
+        // Keep already-decoded future samples for resume; seeking invalidates them.
+        meter?.reset(discardPending: false)
     }
 
     func togglePlayPause() {
@@ -145,11 +184,16 @@ final class AudioPlayback {
 
     /// Stop playback and release the decode pipeline.
     func tearDown() {
+        setupTask?.cancel()
+        setupTask = nil
+        seekGeneration += 1
+        nextSeek = nil
         durationTask?.cancel()
         durationTask = nil
 
         player.pause()
         isPlaying = false
+        meter?.reset()
 
         if let timeObserver {
             player.removeTimeObserver(timeObserver)
@@ -175,12 +219,24 @@ final class AudioPlayback {
     }
 
     private func seek(toTime time: TimeInterval) {
+        guard time.isFinite else { return }
         currentTime = time
-        player.seek(
-            to: CMTime(seconds: time, preferredTimescale: 600),
-            toleranceBefore: .zero,
-            toleranceAfter: .zero
-        )
+        meter?.reset()
+        if seekInFlight { nextSeek = time; return }
+        seekInFlight = true
+        let generation = seekGeneration
+        player.seek(to: CMTime(seconds: time, preferredTimescale: 600),
+                    toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, self.seekGeneration == generation else { return }
+                self.seekInFlight = false
+                self.meter?.reset()
+                if let next = self.nextSeek {
+                    self.nextSeek = nil
+                    self.seek(toTime: next)
+                }
+            }
+        }
     }
 
     private func applyPlaybackBounds() {
@@ -196,6 +252,7 @@ final class AudioPlayback {
     }
 
     private func handlePlaybackEnded() {
+        meter?.reset()
         let start = effectiveRange?.lowerBound ?? 0
         if isLooping {
             seek(toTime: start)

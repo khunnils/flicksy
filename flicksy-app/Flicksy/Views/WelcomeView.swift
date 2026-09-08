@@ -103,8 +103,8 @@ struct WelcomeView: View {
                 }
                 .keyboardShortcut(.defaultAction)
             } else {
-                Button("Add Folder…") {
-                    addFolder()
+                Button("Continue") {
+                    model.completeWelcome()
                 }
                 .keyboardShortcut(.defaultAction)
             }
@@ -120,12 +120,6 @@ struct WelcomeView: View {
         withAnimation(animation) {
             page = destination
         }
-    }
-
-    private func addFolder() {
-        guard let url = model.addRootFolder() else { return }
-        model.selectedSource = .folder(url.path)
-        model.completeWelcome()
     }
 }
 

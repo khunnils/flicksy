@@ -56,11 +56,27 @@ struct MediaBrowserView: View {
 
         Group {
             if !model.hasSelectedSource {
-                ContentUnavailableView(
-                    "No Source Selected",
-                    systemImage: "sidebar.left",
-                    description: Text("Select a source from the sidebar, or drag folders here to add them.")
-                )
+                Group {
+                    if model.hasRootFolders {
+                        ContentUnavailableView(
+                            "No Source Selected",
+                            systemImage: "sidebar.left",
+                            description: Text("Select a source from the sidebar, or drag folders here to add them.")
+                        )
+                    } else {
+                        ContentUnavailableView {
+                            Label("Add your first folder", systemImage: "folder.badge.plus")
+                        } description: {
+                            Text("Choose a folder to browse your media, or drag folders here.")
+                        } actions: {
+                            Button("Add Folder…") {
+                                guard let url = model.addRootFolder() else { return }
+                                model.selectedSource = .folder(url.path)
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                    }
+                }
                 .dropDestination(for: URL.self) { urls, _ in
                     model.addRootFolders(urls)
                 } isTargeted: { isSourceDropTargeted = $0 }
@@ -184,11 +200,9 @@ struct MediaBrowserView: View {
                         otherTabHint: model.visualItems.isEmpty ? nil : "Matching images and video are in the Images & Video tab."
                     )
                 } else {
-                    scrollingPane(audioList, axes: [.horizontal, .vertical])
+                    scrollingPane(audioList)
                         .safeAreaInset(edge: .bottom) {
-                            if let item = model.selectedAudioItem {
-                                AudioInspectorPanel(item: item)
-                            }
+                            AudioInspectorPanel()
                         }
                 }
             }

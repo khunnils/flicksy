@@ -5,8 +5,7 @@
 
 import SwiftUI
 
-/// Audio media shown as a metadata list. The selected clip's waveform lives in
-/// the bottom inspector, not in a second layout mode.
+/// Waveform-first sound asset browsing with a shared listening workspace.
 struct AudioSection: View {
     let items: [MediaItem]
     let selectionCoordinateSpace: String

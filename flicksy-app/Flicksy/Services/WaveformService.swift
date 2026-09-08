@@ -34,15 +34,22 @@ actor WaveformService {
         let key = PersistentMediaCache.key(for: url, variant: "waveform-\(Self.resolution)")
 
         if let cached = cache[key] { return cached }
-        if let existing = inFlight[key] {
-            return await withTaskCancellationHandler {
-                await existing.value
-            } onCancel: {
-                existing.cancel()
-            }
-        }
+        if let existing = inFlight[key] { return await existing.value }
 
         let task = Task<[Float]?, Never>.detached(priority: .utility) {
+            await WaveformDecodeLimiter.shared.acquire()
+            let result = await Self.loadOrGenerate(url: url, key: key)
+            await WaveformDecodeLimiter.shared.release()
+            return result
+        }
+        inFlight[key] = task
+        let result = await task.value
+        inFlight[key] = nil
+        cache[key] = .some(result)
+        return result
+    }
+
+    nonisolated private static func loadOrGenerate(url: URL, key: String) async -> [Float]? {
             if let record = PersistentMediaCache.load(
                 PersistentMediaCache.WaveformRecord.self,
                 namespace: "waveforms",
@@ -63,19 +70,6 @@ actor WaveformService {
                 )
             }
             return peaks
-        }
-        inFlight[key] = task
-
-        let result = await withTaskCancellationHandler {
-            await task.value
-        } onCancel: {
-            task.cancel()
-        }
-        inFlight[key] = nil
-        if !Task.isCancelled {
-            cache[key] = result
-        }
-        return result
     }
 
     // MARK: - Generation
@@ -217,5 +211,20 @@ actor WaveformService {
             return Array(repeating: 0, count: peaks.count)
         }
         return peaks.map { $0 / loudest }
+    }
+}
+
+/// Shared FIFO budget includes requests from rows and the listening panel.
+private actor WaveformDecodeLimiter {
+    static let shared = WaveformDecodeLimiter()
+    private var active = 0
+    private var waiting: [CheckedContinuation<Void, Never>] = []
+    func acquire() async {
+        if active < 2 { active += 1; return }
+        await withCheckedContinuation { waiting.append($0) }
+    }
+    func release() {
+        if waiting.isEmpty { active -= 1 }
+        else { waiting.removeFirst().resume() }
     }
 }

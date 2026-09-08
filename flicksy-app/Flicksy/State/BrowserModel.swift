@@ -101,7 +101,7 @@ private enum FolderLoadEvent: Sendable {
 }
 
 /// The library panes. All media shares a metadata list, images and video use a
-/// visual grid, and audio uses a metadata list with a bottom waveform inspector.
+/// visual grid, and audio uses waveform rows with a shared listening panel.
 enum MediaLibraryTab: String, CaseIterable, Identifiable {
     case all
     case visual
@@ -130,11 +130,11 @@ enum MediaLibraryTab: String, CaseIterable, Identifiable {
     var help: String {
         switch self {
         case .all:
-            "Add media view (⌘1)"
+            "All media list (⌘1)"
         case .visual:
-            "Images and video view (⌘2)"
+            "Images and video grid (⌘2)"
         case .audio:
-            "Audio view (⌘3)"
+            "Audio waveforms and level meters (⌘3)"
         }
     }
 }
@@ -253,6 +253,21 @@ final class MediaItemSelectionState {
 @Observable
 @MainActor
 final class BrowserModel {
+    @ObservationIgnored let sharingPresenter = MediaSharingPresenter()
+
+    var canShare: Bool { !actionItemsPreview(clicked: nil).isEmpty }
+
+    /// Resolve and snapshot the original files before any menu is dismissed.
+    func shareURLs(clicked item: MediaItem? = nil) -> [URL] {
+        itemsForAction(clicked: item).map(\.url)
+    }
+
+    func share(clicked item: MediaItem? = nil, from view: NSView? = nil) {
+        let urls = shareURLs(clicked: item)
+        dismissCommandPalette()
+        sharingPresenter.present(urls: urls, from: view)
+    }
+
     let sessionID = UUID()
     /// One pruned tree per authorized root folder, shown in the sidebar.
     private(set) var rootTrees: [MediaFolder] = []
@@ -262,6 +277,8 @@ final class BrowserModel {
     var selectedSource: BrowserSource? {
         didSet {
             guard selectedSource != oldValue else { return }
+            audioAudition.tearDown()
+            playingAudioID = nil
             searchQuery = ""
             isSearchPresented = false
             isSearchFieldFocused = false
@@ -437,6 +454,8 @@ final class BrowserModel {
         didSet {
             guard libraryTab != oldValue else { return }
             UserDefaults.standard.set(libraryTab.rawValue, forKey: Self.libraryTabKey)
+            audioAudition.tearDown()
+            playingAudioID = nil
             isolateCurrentTab()
         }
     }
@@ -466,6 +485,7 @@ final class BrowserModel {
         guard canControlInspectorAudio else { return }
         audioSeekKind = kind
         audioSeekRequestID += 1
+        if libraryTab == .audio { audioAudition.transportSeek(kind) }
     }
 
     /// Shared sort, applied to whichever tab is visible.
@@ -523,21 +543,26 @@ final class BrowserModel {
     /// Kept separate from `playingVideoID` because an audio row stays selected and
     /// scrubbable while paused, but the two are mutually exclusive: hearing a clip
     /// and a sound effect at once tells you nothing about either.
+    @ObservationIgnored lazy var audioAudition = AudioAuditionController(model: self)
+
     var playingAudioID: MediaItem.ID? {
         didSet {
             if playingAudioID != oldValue {
                 isAudioPlaying = playingAudioID != nil
             }
             if playingAudioID != nil { playingVideoID = nil }
+            if libraryTab == .audio { audioAudition.syncPlayback() }
         }
     }
 
     /// True while the audio inspector (or All-tab row) is actually outputting
     /// sound. Distinct from `playingAudioID`, which only claims the slot.
-    var isAudioPlaying = false
+    var isAudioPlaying = false {
+        didSet { if libraryTab == .audio { audioAudition.syncPlayback() } }
+    }
 
     /// Session transport: loop the inspector's current in/out range. Not saved.
-    var isAudioLooping = false
+    var isAudioLooping = false { didSet { audioAudition.applyRange() } }
 
     /// The single selected audio item, when the inspector should be shown.
     var selectedAudioItem: MediaItem? {
@@ -567,6 +592,10 @@ final class BrowserModel {
     /// opening, so the user can act on one or many items at once.
     var selectedItemIDs: Set<MediaItem.ID> = [] {
         didSet {
+            if libraryTab == .audio, oldValue != selectedItemIDs {
+                if playingAudioID != selectedAudioItem?.id { playingAudioID = nil }
+                audioAudition.load(selectedAudioItem)
+            }
             selectionSnapshot = selectedItemIDs
             for id in oldValue.symmetricDifference(selectedItemIDs) {
                 selectionStateByID[id]?.isSelected = selectedItemIDs.contains(id)
@@ -2027,6 +2056,9 @@ final class BrowserModel {
     }
 
     func shutdown() {
+        audioAudition.tearDown()
+        playingAudioID = nil
+        sharingPresenter.cancel()
         scanTask?.cancel()
         mediaTask?.cancel()
         monitorRefreshTask?.cancel()
@@ -3281,8 +3313,8 @@ final class BrowserModel {
                 playingVideoID = (playingVideoID == item.id) ? nil : item.id
             }
         case .audio:
-            if libraryTab == .audio, playingAudioID == item.id {
-                isAudioPlaying.toggle()
+            if libraryTab == .audio {
+                audioAudition.toggle(item)
             } else {
                 playingAudioID = (playingAudioID == item.id) ? nil : item.id
             }

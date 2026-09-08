@@ -85,6 +85,7 @@ struct MainView: View {
         }
         .background {
             ZStack {
+                MediaSharingWindowAnchor(presenter: model.sharingPresenter)
                 KeyboardShortcutsWindowPresenter(
                     model: model,
                     isPresented: model.isShortcutsHelpPresented

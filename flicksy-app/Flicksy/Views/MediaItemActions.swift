@@ -80,6 +80,12 @@ struct MediaItemInteractionsModifier: ViewModifier {
             Label("Get Info", systemImage: "info.circle")
         }
 
+        Button {
+            model.share(clicked: item, from: hostView)
+        } label: {
+            Label("Share…", systemImage: "square.and.arrow.up")
+        }
+
         let actionItems = model.actionItemsPreview(clicked: item)
         if actionItems.count == 1, actionItems.first?.type == .image {
             Button {

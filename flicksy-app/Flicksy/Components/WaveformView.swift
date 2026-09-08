@@ -34,6 +34,10 @@ struct WaveformView: View {
     /// When set, start/end handles are shown and drags report a new range.
     var onSelectionChange: ((ClosedRange<Double>) -> Void)? = nil
 
+    var duration: Double? = nil
+    var showsTimeLabels = false
+    var onScrub: ((Double, Bool) -> Void)? = nil
+    @State private var isScrubbing = false
     @State private var hoverFraction: Double?
     @State private var width: CGFloat = 0
 
@@ -88,10 +92,39 @@ struct WaveformView: View {
             }
         }
         .gesture(
-            SpatialTapGesture(coordinateSpace: .local).onEnded { value in
-                onSeek(clampedSeek(fraction(atX: value.location.x)))
-            }
+            DragGesture(minimumDistance: 3, coordinateSpace: .local)
+                .onChanged { value in
+                    isScrubbing = true
+                    let fraction = clampedSeek(fraction(atX: value.location.x))
+                    hoverFraction = fraction
+                    onScrub?(fraction, false)
+                }
+                .onEnded { value in
+                    onScrub?(clampedSeek(fraction(atX: value.location.x)), true)
+                    isScrubbing = false
+                }
+                .exclusively(before: SpatialTapGesture().onEnded { value in
+                    onSeek(clampedSeek(fraction(atX: value.location.x)))
+                })
         )
+        .overlay(alignment: .topLeading) {
+            if showsTimeLabels, let hoverFraction, let duration {
+                Text(MediaFormatting.clock(hoverFraction * duration) ?? "—")
+                    .font(.caption2.monospacedDigit())
+                    .padding(3)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 3))
+                    .offset(x: min(max(0, width * hoverFraction - 20), max(0, width - 48)), y: -18)
+                    .allowsHitTesting(false)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Audio position")
+        .accessibilityValue(MediaFormatting.clock((duration ?? 0) * progress) ?? "0:00")
+        .accessibilityAdjustableAction { direction in
+            let step = 5 / max(duration ?? 100, 1)
+            let next = clampedSeek(clamp(progress + (direction == .increment ? step : -step)))
+            if let onScrub { onScrub(next, true) } else { onSeek(next) }
+        }
     }
 
     // MARK: - Handles
@@ -173,6 +206,7 @@ struct WaveformView: View {
     }
 
     private func drawSelectionShade(in context: inout GraphicsContext, size: CGSize) {
+        guard showsHandles || selection != 0...1 else { return }
         let start = size.width * clamp(selection.lowerBound)
         let end = size.width * clamp(selection.upperBound)
         let rect = CGRect(x: start, y: 0, width: max(0, end - start), height: size.height)

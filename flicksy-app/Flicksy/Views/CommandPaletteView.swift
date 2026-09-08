@@ -17,6 +17,7 @@ private enum CommandPaletteAction: Hashable {
     case openSelection
     case compare
     case openWith
+    case share
     case openWithApplication(OpenWithApplication)
     case getInfo
     case resizeImage
@@ -429,6 +430,7 @@ struct CommandPaletteView: View {
         if capabilities.canGetInfo {
             rows.append(command(id: "get-info", title: "Get Info", icon: "info.circle", trailing: "⌘I", action: .getInfo))
         }
+        rows.append(command(id: "share", title: "Share…", icon: "square.and.arrow.up", action: .share, keywords: ["send", "airdrop"]))
         if capabilities.canResizeImage {
             rows.append(command(
                 id: "resize-image",
@@ -678,6 +680,7 @@ struct CommandPaletteView: View {
         case .selectionTags: page = .selectionTags
         case .selectionCollections: page = .selectionCollections
         case .openWith: page = .openWith
+        case .share: model.share()
         case .compare: dismissThen { model.startImageComparison() }
         case .jumpTo: dismissThen { model.presentQuickGoto() }
         case .addRootFolder: dismissThen { model.addRootFolder() }

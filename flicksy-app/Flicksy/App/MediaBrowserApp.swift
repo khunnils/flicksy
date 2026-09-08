@@ -259,6 +259,13 @@ private struct GetInfoCommands: Commands {
 
     var body: some Commands {
         CommandGroup(after: .newItem) {
+            Button {
+                model?.share()
+            } label: {
+                Label("Share…", systemImage: "square.and.arrow.up")
+            }
+            .disabled(!(model?.canShare ?? false))
+
             Button("Get Info") {
                 guard let model, let item = model.getInfoTarget else { return }
                 openWindow(id: MediaInfoView.windowID, value: model.registerInfoItem(item))
