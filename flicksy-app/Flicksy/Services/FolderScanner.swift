@@ -34,6 +34,8 @@ enum FolderScanner {
     /// descendant that does, matching the spec's "smart" sidebar (folders such as
     /// `Admin` that contain only non-media files disappear). The root node itself
     /// is always returned so the user can see the folder they added, even if empty.
+    /// Set `includeEmptyFolders` for move destinations, where empty folders are
+    /// useful targets even though they are hidden from the media sidebar.
     /// Excluded directories are never entered, so a `node_modules` sibling cannot
     /// keep an otherwise empty parent visible.
     ///
@@ -41,9 +43,10 @@ enum FolderScanner {
     /// main actor) while still propagating cancellation from the caller's `Task`.
     nonisolated static func buildTree(
         for root: URL,
-        policy: FolderScanPolicy = .default
+        policy: FolderScanPolicy = .default,
+        includeEmptyFolders: Bool = false
     ) async throws -> MediaFolder {
-        let children = try scanDirectory(root, policy: policy).children
+        let children = try scanDirectory(root, policy: policy, includeEmptyFolders: includeEmptyFolders).children
         return MediaFolder(url: root, isRoot: true, children: children)
     }
 
@@ -56,7 +59,8 @@ enum FolderScanner {
     /// child, so expensive trees are never listed.
     nonisolated private static func scanDirectory(
         _ directory: URL,
-        policy: FolderScanPolicy
+        policy: FolderScanPolicy,
+        includeEmptyFolders: Bool
     ) throws -> (children: [MediaFolder], containsMedia: Bool) {
         try Task.checkCancellation()
 
@@ -74,8 +78,8 @@ enum FolderScanner {
 
             if values?.isDirectory == true || policy.excludes(url) {
                 guard policy.shouldDescend(into: url, values: values) else { continue }
-                let result = try scanDirectory(url, policy: policy)
-                if result.containsMedia {
+                let result = try scanDirectory(url, policy: policy, includeEmptyFolders: includeEmptyFolders)
+                if includeEmptyFolders || result.containsMedia {
                     subfolders.append(MediaFolder(
                         url: url,
                         isRoot: false,

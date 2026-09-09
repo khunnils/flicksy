@@ -348,6 +348,59 @@ final class BrowserModel {
 
     /// Drives the window-level Jump to picker opened by Command-J.
     var isQuickGotoPresented = false
+    private(set) var moveToItems: [MediaItem] = []
+    private(set) var moveToDestinations: [BrowserDestination] = []
+    private(set) var isLoadingMoveToFolders = false
+    private var moveToFolderTask: Task<Void, Never>?
+
+    var isMovingToFolder: Bool { !moveToItems.isEmpty }
+    var canMoveSelection: Bool { !isClipboardSelected && !commandPaletteSelectionItems.isEmpty }
+
+    func presentMoveTo(clicked item: MediaItem? = nil) {
+        guard !isClipboardSelected else { return }
+        let items = item.map { itemsForAction(clicked: $0) } ?? commandPaletteSelectionItems
+        guard !items.isEmpty else { return }
+        presentQuickGoto()
+        moveToItems = items
+        moveToDestinations = browserDestinations.filter { $0.kind == .folder }
+        isLoadingMoveToFolders = true
+        let roots = rootStore.urls
+        let policy = scanExclusionStore.policy
+        moveToFolderTask = Task {
+            defer { if !Task.isCancelled { isLoadingMoveToFolders = false } }
+            do {
+                var destinations: [BrowserDestination] = []
+                for root in roots {
+                    let tree = try await FolderScanner.buildTree(for: root, policy: policy, includeEmptyFolders: true)
+                    appendBrowserFolders(tree, to: &destinations)
+                }
+                guard !Task.isCancelled else { return }
+                moveToDestinations = destinations
+            } catch is CancellationError {
+                return
+            } catch {
+                loadError = "Destination folders could not be loaded."
+            }
+        }
+    }
+
+    func dismissQuickGoto() {
+        isQuickGotoPresented = false
+        isQuickGotoFieldFocused = false
+        moveToFolderTask?.cancel()
+        moveToFolderTask = nil
+        moveToItems = []
+        isLoadingMoveToFolders = false
+    }
+
+    func moveTo(_ destination: BrowserDestination) {
+        guard destination.kind == .folder,
+              case .folder(let path) = destination.source,
+              moveToDestinations.contains(where: { $0.id == destination.id }) else { return }
+        let sources = moveToItems.map(\.url)
+        dismissQuickGoto()
+        moveMedia(sources, into: URL(fileURLWithPath: path, isDirectory: true))
+    }
 
     /// Keeps native pasteboard shortcuts available while the destination query
     /// owns keyboard focus.
@@ -381,6 +434,7 @@ final class BrowserModel {
     }
 
     func presentQuickGoto() {
+        dismissQuickGoto()
         isSearchPresented = false
         isShortcutsHelpPresented = false
         dismissCommandPalette()
@@ -398,8 +452,7 @@ final class BrowserModel {
     func presentCommandPalette() {
         if !isCommandPalettePresented { AppAnalytics.shared.record(.commandPaletteOpened) }
         isSearchPresented = false
-        isQuickGotoPresented = false
-        isQuickGotoFieldFocused = false
+        dismissQuickGoto()
         isShortcutsHelpPresented = false
         isCommandPalettePresented = true
         loadCommandPaletteIndexIfNeeded()
@@ -416,8 +469,7 @@ final class BrowserModel {
             return
         }
         isSearchPresented = false
-        isQuickGotoPresented = false
-        isQuickGotoFieldFocused = false
+        dismissQuickGoto()
         dismissCommandPalette()
         isShortcutsHelpPresented = true
     }
@@ -425,8 +477,7 @@ final class BrowserModel {
     func presentWelcome() {
         isSearchPresented = false
         isSearchFieldFocused = false
-        isQuickGotoPresented = false
-        isQuickGotoFieldFocused = false
+        dismissQuickGoto()
         isShortcutsHelpPresented = false
         isOrganizePresented = false
         dismissCommandPalette()
@@ -439,8 +490,7 @@ final class BrowserModel {
     }
 
     func go(to source: BrowserSource) {
-        isQuickGotoPresented = false
-        isQuickGotoFieldFocused = false
+        dismissQuickGoto()
         isShortcutsHelpPresented = false
         dismissCommandPalette()
         selectedSource = source
@@ -1954,6 +2004,12 @@ final class BrowserModel {
         let sources = urls.map(\.standardizedFileURL)
         guard sources.allSatisfy(visibleURLs.contains) else { return false }
 
+        return moveMedia(sources, into: destinationFolder)
+    }
+
+    @discardableResult
+    private func moveMedia(_ sources: [URL], into destinationFolder: URL) -> Bool {
+        guard !sources.isEmpty else { return false }
         let destination = destinationFolder.standardizedFileURL
         guard (try? destination.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true,
               sources.contains(where: {
@@ -2071,6 +2127,7 @@ final class BrowserModel {
     }
 
     func shutdown() {
+        dismissQuickGoto()
         audioAudition.tearDown()
         playingAudioID = nil
         sharingPresenter.cancel()

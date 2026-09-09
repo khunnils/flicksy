@@ -114,7 +114,7 @@ extension BrowserModel {
         return destinations
     }
 
-    private func appendBrowserFolders(
+    func appendBrowserFolders(
         _ folder: MediaFolder,
         to destinations: inout [BrowserDestination]
     ) {

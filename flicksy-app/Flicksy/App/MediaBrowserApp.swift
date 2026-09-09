@@ -69,6 +69,10 @@ private struct BrowserCommands: Commands {
     var body: some Commands {
         if let model {
             GetInfoCommands()
+            CommandGroup(after: .newItem) {
+                Button("Move To…") { model.presentMoveTo() }
+                    .disabled(!model.canMoveSelection || model.isTextFieldFocused)
+            }
             CommandGroup(after: .help) {
                 Button("Welcome to Flicksy…") { model.presentWelcome() }
                     .disabled(model.isWelcomePresented || model.editAudioTagsRequest != nil || model.organizationEditorRequest != nil)

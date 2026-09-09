@@ -12,7 +12,7 @@ struct QuickGotoView: View {
     @State private var selectedID: BrowserDestination.ID?
 
     private var filteredDestinations: [BrowserDestination] {
-        model.browserDestinations.enumerated()
+        (model.isMovingToFolder ? model.moveToDestinations : model.browserDestinations).enumerated()
             .compactMap { index, destination -> (BrowserDestination, Int, Int)? in
                 destination.matchRank(for: query).map { (destination, $0, index) }
             }
@@ -33,9 +33,9 @@ struct QuickGotoView: View {
 
             VStack(spacing: 0) {
                 HStack(spacing: 10) {
-                    Image(systemName: "arrow.right.circle")
+                    Image(systemName: model.isMovingToFolder ? "folder" : "arrow.right.circle")
                         .foregroundStyle(.secondary)
-                    TextField("Jump to a library or folder", text: $query)
+                    TextField(model.isMovingToFolder ? "Move to folder…" : "Jump to a library or folder", text: $query)
                         .textFieldStyle(.plain)
                         .font(.title3)
                         .focused($queryFocused)
@@ -55,6 +55,18 @@ struct QuickGotoView: View {
                 .frame(height: 52)
 
                 Divider()
+
+                if model.isMovingToFolder {
+                    HStack {
+                        Text("Move \(model.moveToItems.count) \(model.moveToItems.count == 1 ? "file" : "files")")
+                        Spacer()
+                        if model.isLoadingMoveToFolders { ProgressView().controlSize(.small) }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                }
 
                 if filteredDestinations.isEmpty {
                     ContentUnavailableView.search(text: query)
@@ -79,6 +91,11 @@ struct QuickGotoView: View {
         }
         .onDisappear {
             model.isQuickGotoFieldFocused = false
+        }
+        .onChange(of: filteredDestinations.map(\.id)) {
+            if !filteredDestinations.contains(where: { $0.id == selectedID }) {
+                selectedID = filteredDestinations.first?.id
+            }
         }
         .onChange(of: query) {
             selectedID = filteredDestinations.first?.id
@@ -174,11 +191,14 @@ struct QuickGotoView: View {
     }
 
     private func open(_ destination: BrowserDestination) {
-        model.go(to: destination.source)
+        if model.isMovingToFolder {
+            model.moveTo(destination)
+        } else {
+            model.go(to: destination.source)
+        }
     }
 
     private func dismiss() {
-        model.isQuickGotoPresented = false
-        model.isQuickGotoFieldFocused = false
+        model.dismissQuickGoto()
     }
 }

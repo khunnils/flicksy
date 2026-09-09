@@ -154,6 +154,13 @@ struct MediaItemInteractionsModifier: ViewModifier {
         }
 
         Button {
+            model.presentMoveTo(clicked: item)
+        } label: {
+            Label("Move To…", systemImage: "folder")
+        }
+        .disabled(model.isClipboardSelected)
+
+        Button {
             model.duplicate(clicked: item)
         } label: {
             Label("Duplicate", systemImage: "plus.square.on.square")

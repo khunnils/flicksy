@@ -52,6 +52,36 @@ final class BrowserModelSharingTests: XCTestCase {
         XCTAssertEqual(second.shareURLs(), [secondItems[2].url])
     }
 
+    func testMoveToSnapshotsSelectionAndDismissesWithoutMoving() {
+        let (model, items) = makeModel()
+        defer { model.shutdown() }
+        model.selectedItemIDs = [items[0].id, items[1].id]
+        model.presentMoveTo()
+        XCTAssertTrue(model.isQuickGotoPresented)
+        XCTAssertEqual(model.moveToItems.map(\.id), [items[0].id, items[1].id])
+        model.selectItem(items[2])
+        XCTAssertEqual(model.moveToItems.map(\.id), [items[0].id, items[1].id])
+        XCTAssertTrue(model.moveToDestinations.allSatisfy { $0.kind == .folder })
+        model.dismissQuickGoto()
+        XCTAssertTrue(model.moveToItems.isEmpty)
+        XCTAssertFalse(model.isQuickGotoPresented)
+    }
+
+    func testMoveToContextClickAndClipboardGuard() {
+        let (model, items) = makeModel()
+        defer { model.shutdown() }
+        model.selectItem(items[0])
+        model.presentMoveTo(clicked: items[2])
+        XCTAssertEqual(model.moveToItems.map(\.id), [items[2].id])
+        model.presentQuickGoto()
+        XCTAssertFalse(model.isMovingToFolder)
+        model.dismissQuickGoto()
+        model.selectedSource = .clipboard
+        XCTAssertFalse(model.canMoveSelection)
+        model.presentMoveTo(clicked: items[0])
+        XCTAssertFalse(model.isQuickGotoPresented)
+    }
+
     private func makeModel() -> (BrowserModel, [MediaItem]) {
         let suite = "BrowserModelSharingTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!

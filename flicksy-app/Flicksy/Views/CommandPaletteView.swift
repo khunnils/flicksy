@@ -29,6 +29,7 @@ private enum CommandPaletteAction: Hashable {
     case addToCollection(MediaCollection)
     case removeFromCollection
     case duplicate
+    case moveTo
     case rename
     case copy
     case copyPath
@@ -457,6 +458,9 @@ struct CommandPaletteView: View {
                 rows.append(command(id: "remove-collection", title: "Remove from Collection", icon: "rectangle.stack.badge.minus", action: .removeFromCollection))
             }
         }
+        if model.canMoveSelection {
+            rows.append(command(id: "move-to", title: "Move To…", icon: "folder", action: .moveTo, keywords: ["move", "folder", "destination"]))
+        }
         if capabilities.canDuplicate {
             rows.append(command(id: "duplicate", title: "Duplicate", icon: "plus.square.on.square", action: .duplicate))
             if capabilities.canRename {
@@ -698,6 +702,7 @@ struct CommandPaletteView: View {
         case .setTag(let tag, let enabled): dismissThen { model.setTag(tag, enabled: enabled) }
         case .addToCollection(let collection): dismissThen { model.addToCollection(collection) }
         case .removeFromCollection: dismissThen { model.removeSelectedFromCollection() }
+        case .moveTo: dismissThen { model.presentMoveTo() }
         case .duplicate: dismissThen { model.duplicateCommandPaletteSelection() }
         case .rename: model.presentRenameForCommandPaletteSelection()
         case .copy: dismissThen { model.copyCommandPaletteSelection() }

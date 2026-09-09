@@ -315,6 +315,62 @@ final class LibraryRepositoryTests: XCTestCase {
         XCTAssertTrue(result.missingItems.isEmpty)
     }
 
+    @MainActor
+    func testMoveToEmptyFolderKeepsCollectionAndTags() async throws {
+        let repo = makeRepository()
+        let root = try makeRoot()
+        let original = try writeFile("before.png", in: root)
+        try await repo.reconcile(roots: [root])
+        let item = try await repo.query(.all).items.first!
+        let id = try XCTUnwrap(item.libraryID)
+        let collection = try await repo.createCollection(name: "C")
+        try await repo.add(assetIDs: [id], to: collection.id)
+        let tag = try await repo.createTag(name: "Pick", color: .yellow)
+        try await repo.setTag(tag.id, on: [id], enabled: true)
+
+        let savedBookmarks = UserDefaults.standard.object(forKey: "rootFolderBookmarks")
+        let services = SharedLibraryServices()
+        defer { UserDefaults.standard.set(savedBookmarks, forKey: "rootFolderBookmarks") }
+        XCTAssertEqual(services.rootStore.addFolders([root]).count, 1)
+        let model = BrowserModel(services: services, libraryRepository: repo)
+        defer { model.shutdown() }
+        model.selectedSource = .collection(collection.id)
+        model.replaceMediaItemsForTesting([item], tab: .all)
+
+        let folder = root.appending(path: "Empty destination", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        model.selectItem(item)
+        model.presentMoveTo()
+        XCTAssertEqual(model.moveToItems.count, 1)
+        let scanDeadline = Date().addingTimeInterval(5)
+        while model.isLoadingMoveToFolders, Date() < scanDeadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        XCTAssertFalse(model.isLoadingMoveToFolders)
+        XCTAssertTrue(model.moveToDestinations.allSatisfy { $0.kind == .folder })
+        let destination = try XCTUnwrap(model.moveToDestinations.first {
+            guard case .folder(let path) = $0.source else { return false }
+            return URL(fileURLWithPath: path).resolvingSymlinksInPath() == folder.resolvingSymlinksInPath()
+        })
+        XCTAssertNotNil(destination.matchRank(for: "empty"))
+        model.moveTo(destination)
+        let moved = folder.appending(path: "before.png")
+        let deadline = Date().addingTimeInterval(5)
+        while Date() < deadline {
+            if model.orderedItems.first?.url.resolvingSymlinksInPath() == moved.resolvingSymlinksInPath(), !model.isLoadingMedia { break }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: original.path))
+        XCTAssertEqual(model.orderedItems.first?.url.resolvingSymlinksInPath(), moved.resolvingSymlinksInPath())
+        XCTAssertTrue(model.missingCollectionItems.isEmpty)
+        let result = try await repo.query(.collection(collection.id))
+        XCTAssertEqual(result.items.map(\.libraryID), [id])
+        XCTAssertEqual(result.items.first?.url.resolvingSymlinksInPath(), moved.resolvingSymlinksInPath())
+        XCTAssertEqual(result.items.first?.tags.map(\.name), ["Pick"])
+        XCTAssertTrue(result.missingItems.isEmpty)
+    }
+
     func testRenameWithinRootKeepsIdentityAndOrganization() async throws {
         let repo = makeRepository()
         let root = try makeRoot()

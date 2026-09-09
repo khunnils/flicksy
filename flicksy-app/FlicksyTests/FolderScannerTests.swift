@@ -59,6 +59,21 @@ final class FolderScannerTests: XCTestCase {
         XCTAssertEqual(tree.children.first?.children.map(\.name) ?? [], [])
     }
 
+    func testMoveDestinationsIncludeEmptyFoldersAndStillRespectExclusions() async throws {
+        try FileManager.default.createDirectory(
+            at: root.appending(path: "Empty/Nested"), withIntermediateDirectories: true
+        )
+        try write("Notes/readme.txt")
+        try write("node_modules/ignored.png")
+        try write(".secret/ignored.png")
+
+        let sidebar = try await FolderScanner.buildTree(for: root)
+        XCTAssertTrue(sidebar.children.isEmpty)
+        let destinations = try await FolderScanner.buildTree(for: root, includeEmptyFolders: true)
+        XCTAssertEqual(Set(destinations.children.map(\.name)), ["Empty", "Notes"])
+        XCTAssertEqual(destinations.children.first(where: { $0.name == "Empty" })?.children.map(\.name), ["Nested"])
+    }
+
     func testTreeEntersExcludedNameWhenItIsTheScanRoot() async throws {
         let nested = root.appending(path: "node_modules", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
